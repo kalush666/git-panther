@@ -11,7 +11,9 @@ import type {
   GraphPageDto,
   HunkActionDto,
   HunkDto_Serialize,
+  PullStrategyDto,
   RecentRepositoryDto,
+  RemoteDto,
   RepositorySummaryDto,
   WorkingTreeStatusDto_Serialize,
 } from './bindings';
@@ -28,6 +30,11 @@ export type DiffLine = DiffLineDto_Serialize;
 export type DiffSide = DiffSideDto;
 export type HunkAction = HunkActionDto;
 export type Branch = BranchDto_Serialize;
+export type Remote = RemoteDto;
+export type PullStrategy = PullStrategyDto;
+
+/** Receives progress of a long-running network job. */
+export type OnProgress = (progress: CloneProgress) => void;
 
 /** One hunk as the UI showed it; the backend refuses it if the file changed. */
 export interface HunkTarget {
@@ -55,7 +62,7 @@ export interface Backend {
   refreshRepository(path: string): Promise<Result<RepositorySummaryDto>>;
   cloneRepository(
     options: CloneOptions,
-    onProgress: (progress: CloneProgress) => void,
+    onProgress: OnProgress,
   ): Promise<Result<RepositorySummaryDto>>;
   cancelJob(jobId: string): Promise<Result<null>>;
   listRecentRepositories(): Promise<Result<RecentRepositoryDto[]>>;
@@ -84,6 +91,17 @@ export interface Backend {
   checkoutBranch(path: string, name: string): Promise<Result<null>>;
   renameBranch(path: string, from: string, to: string): Promise<Result<null>>;
   deleteBranch(path: string, name: string, force: boolean): Promise<Result<null>>;
+  listRemotes(path: string): Promise<Result<Remote[]>>;
+  /** Fetches every remote. `jobId` lets the caller cancel with `cancelJob`. */
+  fetchRemotes(path: string, jobId: string, onProgress: OnProgress): Promise<Result<null>>;
+  pullBranch(
+    path: string,
+    strategy: PullStrategy,
+    jobId: string,
+    onProgress: OnProgress,
+  ): Promise<Result<null>>;
+  /** Pushes the current branch, setting its upstream on the first push. */
+  pushBranch(path: string, jobId: string, onProgress: OnProgress): Promise<Result<null>>;
   /** Shows the native folder picker; resolves to `null` if the user cancels. */
   pickFolder(title: string): Promise<string | null>;
 }

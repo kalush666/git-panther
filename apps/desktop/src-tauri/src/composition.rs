@@ -9,10 +9,11 @@ use panther_application::clone_repository::CloneRepository;
 use panther_application::commit_graph::CommitGraph;
 use panther_application::open_repository::OpenRepository;
 use panther_application::recent_repositories::RecentRepositoryList;
+use panther_application::sync::Sync;
 use panther_application::working_copy::WorkingCopy;
 use panther_git::{
     Git2RepositoryOpener, GitBranchStore, GitCliCloner, GitCommitLog, GitCommitWriter,
-    GitWorkingTree, SystemGitProbe,
+    GitRemoteSync, GitWorkingTree, SystemGitProbe,
 };
 
 use crate::infra::recent_store::JsonRecentRepositoryStore;
@@ -28,6 +29,7 @@ pub struct AppServices {
     pub commit_graph: Arc<CommitGraph>,
     pub working_copy: Arc<WorkingCopy>,
     pub branches: Arc<Branches>,
+    pub sync: Arc<Sync>,
 }
 
 impl AppServices {
@@ -52,6 +54,7 @@ impl AppServices {
             )),
             commit_graph: Arc::new(CommitGraph::new(Arc::new(GitCommitLog::default()))),
             branches: Arc::new(Branches::new(Arc::new(GitBranchStore::default()))),
+            sync: Arc::new(Sync::new(Arc::new(GitRemoteSync::default()))),
             working_copy: Arc::new(WorkingCopy::new(
                 Arc::new(GitWorkingTree::default()),
                 Arc::new(GitCommitWriter::default()),

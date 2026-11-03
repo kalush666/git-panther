@@ -24,6 +24,9 @@ export type {
   FileDiff,
   HunkAction,
   HunkTarget,
+  OnProgress,
+  PullStrategy,
+  Remote,
   Result,
   WorkingTreeStatus,
 } from './backend';

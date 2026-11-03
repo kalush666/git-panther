@@ -7,6 +7,7 @@ use panther_domain::branch::{Branch, BranchKind};
 use panther_domain::commit::{ChangeKind, CommitDetails, FileChange, Person, RefKind, RefLabel};
 use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::ports::HunkAction;
+use panther_domain::remote::{PullStrategy, Remote};
 use panther_domain::repository::{CloneProgress, HeadState, RepositorySummary, repository_name};
 use panther_domain::working_tree::{
     ChangedFile, DiffLine, DiffSide, FileDiff, FileState, Hunk, LineKind, WorkingTreeStatus,
@@ -530,6 +531,42 @@ impl From<Branch> for BranchDto {
             ahead: branch.ahead,
             behind: branch.behind,
             is_head: branch.is_head,
+        }
+    }
+}
+
+/// A configured remote.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteDto {
+    pub name: String,
+    pub url: String,
+}
+
+impl From<Remote> for RemoteDto {
+    fn from(remote: Remote) -> Self {
+        Self {
+            name: remote.name,
+            url: remote.url,
+        }
+    }
+}
+
+/// How a pull combines fetched work with local commits.
+#[derive(Debug, Clone, Copy, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PullStrategyDto {
+    FastForwardOnly,
+    Merge,
+    Rebase,
+}
+
+impl From<PullStrategyDto> for PullStrategy {
+    fn from(strategy: PullStrategyDto) -> Self {
+        match strategy {
+            PullStrategyDto::FastForwardOnly => Self::FastForwardOnly,
+            PullStrategyDto::Merge => Self::Merge,
+            PullStrategyDto::Rebase => Self::Rebase,
         }
     }
 }

@@ -3,7 +3,9 @@
 use std::path::PathBuf;
 
 use panther_domain::commit::CommitId;
-use panther_domain::repository::{CloneRequest, RemoteUrl, RepositoryError};
+use panther_domain::repository::{
+    CancellationToken, CloneProgress, CloneRequest, RemoteUrl, RepositoryError,
+};
 use panther_domain::working_tree::HunkRef;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
@@ -11,8 +13,8 @@ use tauri_specta::Event;
 
 use super::dto::{
     BranchDto, CloneProgressDto, CommitDetailsDto, DiffSideDto, FileDiffDto, GitInstallationDto,
-    GraphPageDto, HunkActionDto, RecentRepositoryDto, RepositoryChanged, RepositorySummaryDto,
-    WorkingTreeStatusDto,
+    GraphPageDto, HunkActionDto, PullStrategyDto, RecentRepositoryDto, RemoteDto,
+    RepositoryChanged, RepositorySummaryDto, WorkingTreeStatusDto,
 };
 use super::error::{AppError, AppErrorKind};
 use crate::composition::AppServices;
@@ -26,6 +28,31 @@ async fn run_blocking<T: Send + 'static>(
     tauri::async_runtime::spawn_blocking(work)
         .await
         .map_err(AppError::background_task_failed)?
+}
+
+/// Runs a cancellable, progress-reporting job (clone, fetch, pull, push) on
+/// the blocking pool. The UI picks `job_id` so it can cancel with
+/// [`cancel_job`].
+async fn run_job<T: Send + 'static>(
+    jobs: &JobRegistry,
+    job_id: &str,
+    on_progress: Channel<CloneProgressDto>,
+    work: impl FnOnce(&mut dyn FnMut(CloneProgress), &CancellationToken) -> Result<T, AppError>
+    + Send
+    + 'static,
+) -> Result<T, AppError> {
+    let cancel = jobs.start(job_id);
+    let result = run_blocking(move || {
+        let mut report = |progress| {
+            // A closed channel means the window went away; the job itself
+            // should still finish cleanly.
+            let _ = on_progress.send(CloneProgressDto::from(progress));
+        };
+        work(&mut report, &cancel)
+    })
+    .await;
+    jobs.finish(job_id);
+    result
 }
 
 /// Reports whether a supported system git is installed.
@@ -87,19 +114,11 @@ pub async fn clone_repository(
         url: RemoteUrl::parse(&url)?,
         destination: PathBuf::from(destination),
     };
-    let cancel = jobs.start(&job_id);
     let use_case = services.clone_repository.clone();
-    let result = run_blocking(move || {
-        let mut report = |progress| {
-            // A closed channel means the window went away; the clone itself
-            // should still finish cleanly.
-            let _ = on_progress.send(CloneProgressDto::from(progress));
-        };
-        Ok(use_case.execute(&request, &mut report, &cancel)?.into())
+    run_job(&jobs, &job_id, on_progress, move |report, cancel| {
+        Ok(use_case.execute(&request, report, cancel)?.into())
     })
-    .await;
-    jobs.finish(&job_id);
-    result
+    .await
 }
 
 /// Asks a running job to stop. Unknown or finished jobs are ignored.
@@ -411,6 +430,76 @@ pub async fn delete_branch(
 ) -> Result<(), AppError> {
     let branches = services.branches.clone();
     run_blocking(move || Ok(branches.delete(&PathBuf::from(path), &name, force)?)).await
+}
+
+/// Configured remotes.
+#[tauri::command]
+#[specta::specta]
+pub async fn list_remotes(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Vec<RemoteDto>, AppError> {
+    let sync = services.sync.clone();
+    run_blocking(move || {
+        Ok(sync
+            .remotes(&PathBuf::from(path))?
+            .into_iter()
+            .map(RemoteDto::from)
+            .collect())
+    })
+    .await
+}
+
+/// Fetches every remote.
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_remotes(
+    services: State<'_, AppServices>,
+    jobs: State<'_, JobRegistry>,
+    path: String,
+    job_id: String,
+    on_progress: Channel<CloneProgressDto>,
+) -> Result<(), AppError> {
+    let sync = services.sync.clone();
+    run_job(&jobs, &job_id, on_progress, move |report, cancel| {
+        Ok(sync.fetch(&PathBuf::from(path), report, cancel)?)
+    })
+    .await
+}
+
+/// Pulls the current branch's upstream with `strategy`.
+#[tauri::command]
+#[specta::specta]
+pub async fn pull_branch(
+    services: State<'_, AppServices>,
+    jobs: State<'_, JobRegistry>,
+    path: String,
+    strategy: PullStrategyDto,
+    job_id: String,
+    on_progress: Channel<CloneProgressDto>,
+) -> Result<(), AppError> {
+    let sync = services.sync.clone();
+    run_job(&jobs, &job_id, on_progress, move |report, cancel| {
+        Ok(sync.pull(&PathBuf::from(path), strategy.into(), report, cancel)?)
+    })
+    .await
+}
+
+/// Pushes the current branch, setting its upstream on the first push.
+#[tauri::command]
+#[specta::specta]
+pub async fn push_branch(
+    services: State<'_, AppServices>,
+    jobs: State<'_, JobRegistry>,
+    path: String,
+    job_id: String,
+    on_progress: Channel<CloneProgressDto>,
+) -> Result<(), AppError> {
+    let sync = services.sync.clone();
+    run_job(&jobs, &job_id, on_progress, move |report, cancel| {
+        Ok(sync.push(&PathBuf::from(path), report, cancel)?)
+    })
+    .await
 }
 
 fn widen(value: u32) -> usize {
