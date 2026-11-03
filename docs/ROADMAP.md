@@ -47,9 +47,11 @@ Status, stage/unstage file and hunk, discard, commit / amend, unified and split 
 
 **Demo:** a "// Working copy" row above the graph opens the staging panel; files open a unified or split diff with word highlights and per-hunk Stage / Unstage / Discard; commits run through the git CLI so hooks and signing apply; commit details open per-commit file diffs.
 
-### ⏳ M4 — Branches
+### ✅ M4 — Branches
 
 Create, checkout, rename, delete; sidebar tree; graph context menus.
+
+**Demo:** the sidebar groups local and remote branches into folders with a filter, ahead/behind badges and the checked-out branch; double-click switches (remote branches get a tracking branch); right-click on branches or commits creates, renames, deletes or checks out. Changes run through `git switch` / `git branch`, so hooks and git's safety checks apply.
 
 ### ⏳ M5 — Remotes
 
