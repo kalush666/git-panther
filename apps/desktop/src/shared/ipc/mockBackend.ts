@@ -7,6 +7,10 @@ import { createMockWorkingTree } from './mockWorkingTree';
 
 /** Folder the mock folder picker "selects". */
 export const MOCK_PICKED_FOLDER = 'C:\\repos\\demo';
+/** Program the mock file picker "selects". */
+export const MOCK_PICKED_GIT = 'C:\\Program Files\\Git\\cmd\\git.exe';
+/** A path the mock treats as an old, unsupported git. */
+const OLD_GIT_MARKER = 'old-git';
 const NOT_A_REPO_MARKER = 'not-a-repo';
 const JOB_STEP_MS = 150;
 const CLONE_STEPS: readonly CloneProgress[] = [
@@ -34,6 +38,15 @@ function nameOf(path: string): string {
 
 function summary(path: string): RepositorySummaryDto {
   return { path, name: nameOf(path), head: { kind: 'branch', name: 'main' } };
+}
+
+function installationAt(executable: string): GitInstallationDto {
+  if (executable.includes(OLD_GIT_MARKER)) {
+    return { status: 'unsupported', found: '2.30.1', minimum: '2.40.0' };
+  }
+  return executable.toLowerCase().includes('git')
+    ? { status: 'supported', version: '2.52.0' }
+    : { status: 'missing', minimum: '2.40.0' };
 }
 
 function mockGitInstallation(): GitInstallationDto {
@@ -64,6 +77,7 @@ function createMockBackend(): Backend {
   const workingTree = createMockWorkingTree();
   const branchStore = createMockBranches();
   const stashes = createMockStashes(workingTree);
+  let gitExecutable: string | null = null;
 
   /** Plays `steps` as progress, then runs `finish` unless the job was cancelled. */
   const runJob = async <T>(
@@ -177,6 +191,31 @@ function createMockBackend(): Backend {
     markResolved: (_path, files) => Promise.resolve(workingTree.resolve(files)),
     continueOperation: () => Promise.resolve(workingTree.continueOperation()),
     abortOperation: () => Promise.resolve(workingTree.abortOperation()),
+    checkGitExecutable: (executable) => Promise.resolve(ok(installationAt(executable ?? 'git'))),
+    getSettings: () => Promise.resolve(ok({ gitExecutable, activeGitExecutable: 'git' })),
+    setGitExecutable: (executable) => {
+      const candidate = executable?.trim() ? executable.trim() : null;
+      if (installationAt(candidate ?? 'git').status !== 'supported') {
+        return Promise.resolve({
+          status: 'error',
+          error: {
+            kind: 'invalidGitExecutable',
+            message: `${candidate ?? 'git'} cannot be used as git: it is missing or older than 2.40.0.`,
+          },
+        });
+      }
+      gitExecutable = candidate;
+      return Promise.resolve(ok({ gitExecutable, activeGitExecutable: 'git' }));
+    },
+    restartApp: () => {
+      window.location.reload();
+      return Promise.resolve();
+    },
+    setZoom: (scale) => {
+      document.documentElement.style.setProperty('zoom', String(scale));
+      return Promise.resolve(ok(null));
+    },
+    pickExecutable: () => Promise.resolve(MOCK_PICKED_GIT),
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
   };
 }

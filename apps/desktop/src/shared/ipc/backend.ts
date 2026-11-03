@@ -17,6 +17,7 @@ import type {
   RecentRepositoryDto,
   RemoteDto,
   RepositorySummaryDto,
+  SettingsDto_Serialize,
   StashDto,
   WorkingTreeStatusDto_Serialize,
 } from './bindings';
@@ -38,6 +39,7 @@ export type PullStrategy = PullStrategyDto;
 export type Stash = StashDto;
 export type Operation = OperationDto;
 export type ConflictSide = ConflictSideDto;
+export type Settings = SettingsDto_Serialize;
 
 /** Receives progress of a long-running network job. */
 export type OnProgress = (progress: CloneProgress) => void;
@@ -121,6 +123,16 @@ export interface Backend {
   markResolved(path: string, files: string[]): Promise<Result<null>>;
   continueOperation(path: string): Promise<Result<null>>;
   abortOperation(path: string): Promise<Result<null>>;
+  /** Whether `executable` (git from `PATH` when `null`) is a supported git. */
+  checkGitExecutable(executable: string | null): Promise<Result<GitInstallationDto>>;
+  getSettings(): Promise<Result<Settings>>;
+  /** Used from the next start; refused if it is not a supported git. */
+  setGitExecutable(executable: string | null): Promise<Result<Settings>>;
+  restartApp(): Promise<void>;
+  /** Scales the whole interface, like a browser zoom. */
+  setZoom(scale: number): Promise<Result<null>>;
+  /** Shows the native file picker for a program; resolves to `null` if the user cancels. */
+  pickExecutable(title: string): Promise<string | null>;
   /** Shows the native folder picker; resolves to `null` if the user cancels. */
   pickFolder(title: string): Promise<string | null>;
 }

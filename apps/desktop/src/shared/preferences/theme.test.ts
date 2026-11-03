@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveTheme } from './themeStore';
+import { resolveTheme } from './theme';
 
 describe('resolveTheme', () => {
   it('uses an explicit preference regardless of the OS', () => {

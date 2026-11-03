@@ -51,6 +51,21 @@ export const tauriBackend: Backend = {
   markResolved: commands.markResolved,
   continueOperation: commands.continueOperation,
   abortOperation: commands.abortOperation,
+  checkGitExecutable: commands.checkGitExecutable,
+  getSettings: commands.getSettings,
+  setGitExecutable: commands.setGitExecutable,
+  restartApp: commands.restartApp,
+  setZoom: commands.setZoom,
+  pickExecutable: async (title) => {
+    const windows = navigator.userAgent.includes('Windows');
+    const selection = await open({
+      directory: false,
+      multiple: false,
+      title,
+      filters: windows ? [{ name: 'Programs', extensions: ['exe'] }] : [],
+    });
+    return typeof selection === 'string' ? selection : null;
+  },
   fetchRemotes: (path, jobId, onProgress) =>
     commands.fetchRemotes(path, jobId, progressChannel(onProgress)),
   pullBranch: (path, strategy, jobId, onProgress) =>

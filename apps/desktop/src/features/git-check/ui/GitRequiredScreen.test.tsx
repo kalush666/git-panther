@@ -12,11 +12,11 @@ vi.mock('../../../shared/ipc', async (importOriginal) => ({
   ipc: { checkGitInstallation },
 }));
 
-function renderWith(installation: GitInstallationDto) {
+function renderWith(installation: GitInstallationDto, onOpenSettings = vi.fn()) {
   checkGitInstallation.mockResolvedValue({ status: 'ok', data: installation });
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <GitRequiredScreen />
+      <GitRequiredScreen onOpenSettings={onOpenSettings} />
     </QueryClientProvider>,
   );
 }
@@ -33,5 +33,12 @@ describe('GitRequiredScreen', () => {
     expect(
       await screen.findByText(/Git 2\.30\.1 is installed.*needs 2\.40\.0/),
     ).toBeInTheDocument();
+  });
+
+  it('offers to choose a git that is not on PATH', async () => {
+    const onOpenSettings = vi.fn();
+    renderWith({ status: 'missing', minimum: '2.40.0' }, onOpenSettings);
+    (await screen.findByRole('button', { name: 'Choose git…' })).click();
+    expect(onOpenSettings).toHaveBeenCalledOnce();
   });
 });

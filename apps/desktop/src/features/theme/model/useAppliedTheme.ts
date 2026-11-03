@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
 
-import { resolveTheme, useThemeStore } from './themeStore';
+import { resolveTheme, useThemeStore } from '../../../shared/preferences/theme';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
