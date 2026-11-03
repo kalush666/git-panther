@@ -1,0 +1,35 @@
+{
+  "name": "git-panther",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @git-panther/desktop tauri dev",
+    "build": "pnpm --filter @git-panther/desktop tauri build",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @git-panther/desktop test:e2e",
+    "tokens": "pnpm --filter @git-panther/design-tokens generate",
+    "bindings": "node scripts/update-bindings.mjs",
+    "rust:fmt": "cargo fmt --all --check",
+    "rust:lint": "cargo clippy --workspace --all-targets -- -D warnings",
+    "rust:test": "cargo test --workspace",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm rust:fmt && pnpm rust:lint && pnpm rust:test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.14.0",
+    "eslint-plugin-boundaries": "^7.4.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}

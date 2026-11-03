@@ -1,0 +1,35 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gp-space-3);
+  max-width: var(--gp-content-max-width);
+  height: 100%;
+  margin: 0 auto;
+  padding: var(--gp-space-6);
+  text-align: center;
+}
+
+.icon {
+  color: var(--gp-warning);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--gp-text-xl);
+  font-weight: var(--gp-weight-semibold);
+}
+
+.message {
+  margin: 0;
+  color: var(--gp-text-secondary);
+}
+
+.details {
+  margin: 0;
+  color: var(--gp-text-muted);
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-sm);
+  user-select: text;
+}

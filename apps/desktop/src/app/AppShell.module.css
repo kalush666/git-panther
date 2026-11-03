@@ -1,0 +1,41 @@
+.shell {
+  display: grid;
+  grid-template-rows: var(--gp-titlebar-height) 1fr var(--gp-statusbar-height);
+  height: 100%;
+}
+
+.titleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--gp-space-3);
+  background: var(--gp-bg-surface);
+  border-bottom: 1px solid var(--gp-border-subtle);
+}
+
+.productName {
+  font-weight: var(--gp-weight-semibold);
+  letter-spacing: 0.01em;
+}
+
+.titleBarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-space-1);
+}
+
+.content {
+  min-height: 0;
+  overflow: auto;
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 var(--gp-space-3);
+  background: var(--gp-bg-surface);
+  border-top: 1px solid var(--gp-border-subtle);
+  color: var(--gp-text-muted);
+  font-size: var(--gp-text-xs);
+}

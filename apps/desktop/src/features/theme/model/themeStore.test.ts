@@ -1,0 +1,15 @@
+import { describe, expect, it } from 'vitest';
+
+import { resolveTheme } from './themeStore';
+
+describe('resolveTheme', () => {
+  it('uses an explicit preference regardless of the OS', () => {
+    expect(resolveTheme('light', true)).toBe('light');
+    expect(resolveTheme('dark', false)).toBe('dark');
+  });
+
+  it('follows the OS when the preference is system', () => {
+    expect(resolveTheme('system', true)).toBe('dark');
+    expect(resolveTheme('system', false)).toBe('light');
+  });
+});
