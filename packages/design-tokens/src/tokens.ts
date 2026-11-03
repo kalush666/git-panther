@@ -89,7 +89,7 @@ export const scaleTokens = {
   'dialog-width': '480px',
   'details-width': '340px',
   'col-author': '140px',
-  'col-date': '128px',
+  'col-date': '150px',
   'col-sha': '64px',
   'badge-max-width': '180px',
   'badge-height': '20px',
