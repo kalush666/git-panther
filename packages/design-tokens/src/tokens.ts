@@ -80,6 +80,7 @@ export const scaleTokens = {
   'space-6': '32px',
   'space-7': '48px',
   'row-height': '28px',
+  'commit-row-height': '34px',
   'control-height-sm': '26px',
   'control-height-md': '32px',
   'menu-min-width': '160px',
@@ -91,7 +92,8 @@ export const scaleTokens = {
   'col-date': '160px',
   'col-sha': '72px',
   'badge-max-width': '180px',
-  'badge-height': '18px',
+  'badge-height': '20px',
+  'refs-col-width': '200px',
   'titlebar-height': '40px',
   'statusbar-height': '24px',
 
