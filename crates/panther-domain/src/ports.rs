@@ -9,6 +9,7 @@ use crate::branch::{Branch, BranchName};
 use crate::commit::{CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
 use crate::git_installation::{GitVersion, GitVersionParseError};
 use crate::recent::RecentRepositories;
+use crate::remote::{PullStrategy, Remote};
 use crate::repository::{
     CancellationToken, CloneProgress, CloneRequest, RepositoryError, RepositorySummary,
 };
@@ -118,6 +119,51 @@ pub trait BranchStore: Send + Sync {
         repository: &Path,
         name: &BranchName,
         force: bool,
+    ) -> Result<(), RepositoryError>;
+}
+
+/// Exchanges commits with remotes. Every operation reports progress and can
+/// be cancelled.
+pub trait RemoteSync: Send + Sync {
+    /// # Errors
+    /// [`RepositoryError`] when the configuration cannot be read.
+    fn remotes(&self, repository: &Path) -> Result<Vec<Remote>, RepositoryError>;
+
+    /// Fetches from every remote and prunes deleted remote branches.
+    ///
+    /// # Errors
+    /// [`RepositoryError::AuthenticationFailed`], [`RepositoryError::NetworkFailed`]
+    /// or [`RepositoryError::Cancelled`].
+    fn fetch(
+        &self,
+        repository: &Path,
+        on_progress: &mut dyn FnMut(CloneProgress),
+        cancel: &CancellationToken,
+    ) -> Result<(), RepositoryError>;
+
+    /// Pulls the current branch's upstream.
+    ///
+    /// # Errors
+    /// [`RepositoryError::NoUpstream`], [`RepositoryError::NotFastForward`],
+    /// [`RepositoryError::PullConflict`] or any fetch error.
+    fn pull(
+        &self,
+        repository: &Path,
+        strategy: PullStrategy,
+        on_progress: &mut dyn FnMut(CloneProgress),
+        cancel: &CancellationToken,
+    ) -> Result<(), RepositoryError>;
+
+    /// Pushes the current branch, setting its upstream on the first push.
+    ///
+    /// # Errors
+    /// [`RepositoryError::PushRejected`], [`RepositoryError::NoRemote`] or any
+    /// network error.
+    fn push(
+        &self,
+        repository: &Path,
+        on_progress: &mut dyn FnMut(CloneProgress),
+        cancel: &CancellationToken,
     ) -> Result<(), RepositoryError>;
 }
 

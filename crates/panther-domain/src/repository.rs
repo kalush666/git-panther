@@ -143,6 +143,26 @@ pub enum RepositoryError {
     CannotDeleteCurrentBranch { name: String },
     #[error("Your uncommitted changes would be overwritten. Commit or stash them first. {details}")]
     CheckoutConflict { details: String },
+    #[error("Authentication failed. {hint} ({details})", hint = crate::remote::AUTHENTICATION_HINT)]
+    AuthenticationFailed { details: String },
+    #[error("The remote could not be reached: {details}")]
+    NetworkFailed { details: String },
+    #[error(
+        "The push was rejected because the remote has commits you do not have. Pull first, then push again."
+    )]
+    PushRejected { details: String },
+    #[error("\"{branch}\" has no upstream branch to pull from.")]
+    NoUpstream { branch: String },
+    #[error(
+        "The branches have diverged, so they cannot be fast-forwarded. Pull with merge or rebase instead."
+    )]
+    NotFastForward,
+    #[error(
+        "The pull stopped with conflicts. Resolve them, then commit (or abort the merge or rebase)."
+    )]
+    PullConflict { details: String },
+    #[error("This repository has no remote to push to.")]
+    NoRemote,
 }
 
 #[cfg(test)]
