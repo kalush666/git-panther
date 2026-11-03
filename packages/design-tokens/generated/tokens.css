@@ -29,13 +29,13 @@
   --gp-content-max-width: 560px;
   --gp-tab-max-width: 200px;
   --gp-dialog-width: 480px;
-  --gp-details-width: 380px;
-  --gp-col-author: 160px;
-  --gp-col-date: 160px;
-  --gp-col-sha: 72px;
+  --gp-details-width: 340px;
+  --gp-col-author: 140px;
+  --gp-col-date: 128px;
+  --gp-col-sha: 64px;
   --gp-badge-max-width: 180px;
   --gp-badge-height: 20px;
-  --gp-refs-col-width: 200px;
+  --gp-refs-col-width: 170px;
   --gp-titlebar-height: 40px;
   --gp-statusbar-height: 24px;
   --gp-radius-sm: 4px;
