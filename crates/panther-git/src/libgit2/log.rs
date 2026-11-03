@@ -7,7 +7,7 @@ use std::path::Path;
 use git2::{Commit, Delta, DiffFindOptions, ErrorCode, Oid, Reference, Repository, Sort};
 use panther_domain::commit::{
     ChangeKind, CommitDetails, CommitId, CommitNode, CommitSummary, FileChange, Person, RefKind,
-    RefLabel,
+    RefLabel, body_preview,
 };
 use panther_domain::ports::CommitLog;
 use panther_domain::repository::RepositoryError;
@@ -92,6 +92,7 @@ impl CommitLog for Git2CommitLog {
                     parents: commit.parent_ids().map(commit_id).collect(),
                     summary: String::from_utf8_lossy(commit.summary_bytes().unwrap_or_default())
                         .into_owned(),
+                    body_preview: body_preview(&String::from_utf8_lossy(commit.message_bytes())),
                     author: person(&commit.author()),
                 })
             })

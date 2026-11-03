@@ -94,6 +94,7 @@ function entry(index: number): GraphEntryDto {
     id,
     shortId: id.slice(0, 7),
     summary: isMerge ? `Merge topic ${index}` : `Change number ${MOCK_HISTORY_LENGTH - index}`,
+    bodyPreview: isMerge ? '' : 'Explains why the change was made.',
     author: {
       name: AUTHORS[index % AUTHORS.length] ?? 'Dev',
       email: 'dev@example.invalid',

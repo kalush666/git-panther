@@ -214,6 +214,8 @@ pub struct GraphEntryDto {
     pub id: String,
     pub short_id: String,
     pub summary: String,
+    /// First meaningful line of the body, or empty.
+    pub body_preview: String,
     pub author: PersonDto,
     pub refs: Vec<RefLabelDto>,
     pub graph: GraphRowDto,
@@ -225,6 +227,7 @@ impl From<GraphEntry> for GraphEntryDto {
             short_id: entry.commit.id.short().to_owned(),
             id: entry.commit.id.to_string(),
             summary: entry.commit.summary,
+            body_preview: entry.commit.body_preview,
             author: entry.commit.author.into(),
             refs: entry.refs.into_iter().map(RefLabelDto::from).collect(),
             graph: entry.row.into(),

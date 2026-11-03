@@ -151,6 +151,8 @@ fn summaries_follow_the_requested_order() {
 
     assert_eq!(summaries[0].summary, "Base");
     assert_eq!(summaries[1].summary, "Main work");
+    assert_eq!(summaries[1].body_preview, "Longer body.");
+    assert_eq!(summaries[0].body_preview, "");
     assert_eq!(summaries[1].author.name, "Git Panther Tests");
     assert!(summaries[1].author.time > summaries[0].author.time);
 }

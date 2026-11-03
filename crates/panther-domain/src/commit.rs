@@ -70,7 +70,29 @@ pub struct CommitSummary {
     pub parents: Vec<CommitId>,
     /// The first line of the message.
     pub summary: String,
+    /// The first meaningful line of the body, see [`body_preview`].
+    pub body_preview: String,
     pub author: Person,
+}
+
+/// The first line of a commit body worth showing next to the summary:
+/// skips blank lines and git trailers such as `Co-Authored-By: …` or
+/// `Signed-off-by: …`, which repeat on many commits and add no information.
+pub fn body_preview(message: &str) -> String {
+    message
+        .lines()
+        .skip(1)
+        .map(str::trim)
+        .find(|line| !line.is_empty() && !is_trailer(line))
+        .unwrap_or_default()
+        .to_owned()
+}
+
+/// `Token: value`, where the token is a single word of letters and dashes.
+fn is_trailer(line: &str) -> bool {
+    line.split_once(": ").is_some_and(|(token, _)| {
+        !token.is_empty() && token.chars().all(|c| c.is_ascii_alphabetic() || c == '-')
+    })
 }
 
 /// How a file changed in a commit, compared to its first parent.
@@ -141,6 +163,28 @@ mod tests {
         for bad in ["", "abc123", &"g".repeat(40), &"a".repeat(41)] {
             assert!(CommitId::parse(bad).is_err(), "{bad:?} should be rejected");
         }
+    }
+
+    #[test]
+    fn previews_the_first_body_line() {
+        let message = "Fix crash\n\nThe cache was stale.\nMore detail.";
+        assert_eq!(body_preview(message), "The cache was stale.");
+    }
+
+    #[test]
+    fn skips_trailers_and_empty_bodies() {
+        let trailers_only = "Fix\n\nCo-Authored-By: A <a@x>\nSigned-off-by: B <b@x>";
+        assert_eq!(body_preview(trailers_only), "");
+        assert_eq!(body_preview("Only a summary"), "");
+    }
+
+    #[test]
+    fn keeps_prose_that_contains_a_colon() {
+        let message = "Fix\n\nThe fix: retry twice before failing.";
+        assert_eq!(
+            body_preview(message),
+            "The fix: retry twice before failing."
+        );
     }
 
     #[test]

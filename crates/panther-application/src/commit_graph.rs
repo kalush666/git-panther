@@ -221,6 +221,7 @@ mod tests {
                     id: id.clone(),
                     parents: Vec::new(),
                     summary: format!("commit {}", id.short()),
+                    body_preview: String::new(),
                     author: Person {
                         name: "Dev".into(),
                         email: "dev@example.invalid".into(),

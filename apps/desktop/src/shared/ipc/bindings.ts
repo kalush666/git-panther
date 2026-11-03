@@ -88,6 +88,8 @@ export type GraphEntryDto = {
 	id: string,
 	shortId: string,
 	summary: string,
+	/**  First meaningful line of the body, or empty. */
+	bodyPreview: string,
 	author: PersonDto,
 	refs: RefLabelDto[],
 	graph: GraphRowDto,
