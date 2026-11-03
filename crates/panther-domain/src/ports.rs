@@ -11,6 +11,86 @@ use crate::recent::RecentRepositories;
 use crate::repository::{
     CancellationToken, CloneProgress, CloneRequest, RepositoryError, RepositorySummary,
 };
+use crate::working_tree::{CommitMessage, DiffSide, FileDiff, HunkRef, WorkingTreeStatus};
+
+/// What to do with a single hunk.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HunkAction {
+    /// Add an unstaged hunk to the index.
+    Stage,
+    /// Remove a staged hunk from the index.
+    Unstage,
+    /// Throw away an unstaged hunk from the work tree.
+    Discard,
+}
+
+/// Reads and changes uncommitted work.
+pub trait WorkingTree: Send + Sync {
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn status(&self, repository: &Path) -> Result<WorkingTreeStatus, RepositoryError>;
+
+    /// The staged or unstaged diff of one file.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn diff(
+        &self,
+        repository: &Path,
+        path: &str,
+        side: DiffSide,
+    ) -> Result<FileDiff, RepositoryError>;
+
+    /// Stages whole files, including deletions and untracked files.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the index cannot be updated.
+    fn stage(&self, repository: &Path, paths: &[String]) -> Result<(), RepositoryError>;
+
+    /// Moves staged changes of whole files back to the work tree.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the index cannot be updated.
+    fn unstage(&self, repository: &Path, paths: &[String]) -> Result<(), RepositoryError>;
+
+    /// Throws away unstaged changes; untracked files are deleted.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when files cannot be restored.
+    fn discard(&self, repository: &Path, paths: &[String]) -> Result<(), RepositoryError>;
+
+    /// Stages, unstages or discards one hunk.
+    ///
+    /// # Errors
+    /// [`RepositoryError::HunkOutdated`] if the hunk no longer matches.
+    fn apply_hunk(
+        &self,
+        repository: &Path,
+        hunk: &HunkRef,
+        action: HunkAction,
+    ) -> Result<(), RepositoryError>;
+}
+
+/// Creates commits.
+pub trait CommitWriter: Send + Sync {
+    /// Commits the index, or replaces the last commit when `amend` is set.
+    ///
+    /// # Errors
+    /// [`RepositoryError::NothingToCommit`], [`RepositoryError::IdentityMissing`]
+    /// or [`RepositoryError::CommitFailed`] (e.g. a rejecting hook).
+    fn commit(
+        &self,
+        repository: &Path,
+        message: &CommitMessage,
+        amend: bool,
+    ) -> Result<CommitId, RepositoryError>;
+
+    /// The message of the HEAD commit, used to prefill an amend.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn head_message(&self, repository: &Path) -> Result<Option<String>, RepositoryError>;
+}
 
 /// Reads commit history.
 pub trait CommitLog: Send + Sync {
@@ -49,6 +129,17 @@ pub trait CommitLog: Send + Sync {
     /// # Errors
     /// [`RepositoryError::CommitNotFound`] if `id` is unknown.
     fn details(&self, repository: &Path, id: &CommitId) -> Result<CommitDetails, RepositoryError>;
+
+    /// How `path` changed in commit `id` compared to its first parent.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] if `id` is unknown.
+    fn commit_file_diff(
+        &self,
+        repository: &Path,
+        id: &CommitId,
+        path: &str,
+    ) -> Result<FileDiff, RepositoryError>;
 }
 
 /// Opens existing repositories and creates new ones on the local disk.

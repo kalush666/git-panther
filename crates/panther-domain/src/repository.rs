@@ -121,6 +121,14 @@ pub enum RepositoryError {
     Storage { details: String },
     #[error("Commit {id} does not exist in this repository.")]
     CommitNotFound { id: String },
+    #[error("There is nothing staged to commit.")]
+    NothingToCommit,
+    #[error("{path} changed since it was shown. Review the updated diff and try again.")]
+    HunkOutdated { path: String },
+    #[error("Git does not know who you are. Set user.name and user.email in your git config.")]
+    IdentityMissing,
+    #[error("The commit was not created: {details}")]
+    CommitFailed { details: String },
 }
 
 #[cfg(test)]
