@@ -70,7 +70,7 @@ export function CloneDialog({ open, onOpenChange, onCloned }: CloneDialogProps) 
               id={`${ids}-url`}
               className={styles.input}
               value={url}
-              placeholder="https://github.com/owner/repo.git"
+              placeholder="git@your-git-server:team/repo.git"
               autoFocus
               spellCheck={false}
               disabled={clone.isCloning}
