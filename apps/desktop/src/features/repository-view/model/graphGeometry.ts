@@ -3,9 +3,12 @@ import { LANE_COLOR_COUNT, scaleTokens } from '@git-panther/design-tokens';
 import type { GraphRowDto } from '../../../shared/ipc';
 
 /** Height of one commit row, shared by the DOM list and the canvas. */
-export const ROW_HEIGHT = Number.parseInt(scaleTokens['row-height'], 10);
-export const LANE_WIDTH = 14;
-export const DOT_RADIUS = 4;
+export const ROW_HEIGHT = Number.parseInt(scaleTokens['commit-row-height'], 10);
+export const LANE_WIDTH = 22;
+/** Commit nodes are large enough to hold the author's initials. */
+export const NODE_RADIUS = 10;
+/** Merge commits are drawn as small dots so they read as joins, not work. */
+export const MERGE_DOT_RADIUS = 4;
 const GRAPH_PADDING = 8;
 /** Wider graphs are clipped so the message column stays readable. */
 export const MAX_VISIBLE_LANES = 12;
@@ -59,4 +62,11 @@ export function pagesForRange(first: number, last: number, pageSize: number): nu
   const firstPage = Math.floor(Math.max(first, 0) / pageSize);
   const lastPage = Math.floor(Math.max(last, first, 0) / pageSize);
   return Array.from({ length: lastPage - firstPage + 1 }, (_, offset) => firstPage + offset);
+}
+
+/** A merge commit connects down to more than one lane. */
+export function isMergeRow(row: GraphRowDto): boolean {
+  return (
+    row.bottom.filter((segment) => segment.from === row.lane && segment.to !== row.lane).length > 0
+  );
 }

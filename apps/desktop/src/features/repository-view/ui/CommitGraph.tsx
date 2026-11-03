@@ -1,14 +1,25 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { Check, Cloud, Laptop, Tag } from 'lucide-react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from 'react';
 
-import type { GraphEntryDto, RefLabelDto } from '../../../shared/ipc';
+import type { GraphEntryDto } from '../../../shared/ipc';
 import { useGraphPages } from '../api/useGraph';
 import { drawGraph, readPalette, type VisibleRow } from '../model/drawGraph';
 import { formatCommitTime } from '../model/formatTime';
-import { ROW_HEIGHT, graphColumnWidth } from '../model/graphGeometry';
+import { ROW_HEIGHT, graphColumnWidth, paletteIndex } from '../model/graphGeometry';
+import { groupRefs, initialsOf, type RefPill } from '../model/refPills';
 import styles from './CommitGraph.module.css';
 
 const OVERSCAN_ROWS = 20;
+/** Labels beyond this count collapse into a "+N" chip. */
+const VISIBLE_PILLS = 1;
 
 interface CommitGraphProps {
   path: string;
@@ -33,6 +44,16 @@ function useRedrawOnThemeChange(): void {
       observer.disconnect();
     };
   }, []);
+}
+
+function visibleRow(index: number, entry: GraphEntryDto): VisibleRow {
+  return {
+    index,
+    row: entry.graph,
+    initials: initialsOf(entry.author.name),
+    hasRefs: entry.refs.length > 0,
+    isHead: entry.refs.some((ref) => ref.isHead),
+  };
 }
 
 export function CommitGraph({
@@ -66,7 +87,7 @@ export function CommitGraph({
 
   const visibleRows: VisibleRow[] = items.flatMap((item) => {
     const entry = graph.entryAt(item.index);
-    return entry ? [{ index: item.index, row: entry.graph }] : [];
+    return entry ? [visibleRow(item.index, entry)] : [];
   });
   for (const { row } of visibleRows) {
     widestGraph.current = Math.max(widestGraph.current, row.width);
@@ -133,14 +154,16 @@ export function CommitGraph({
     return <p className={styles.message}>This repository has no commits yet.</p>;
   }
 
+  const gridTemplateColumns = columns(graphWidth);
   return (
     <div className={styles.graph}>
-      <div className={styles.header} style={{ gridTemplateColumns: columns(graphWidth) }}>
+      <div className={styles.header} style={{ gridTemplateColumns }}>
+        <span className={styles.headerCell}>Branch / Tag</span>
         <span className={styles.headerCell}>Graph</span>
-        <span className={styles.headerCell}>Message</span>
+        <span className={styles.headerCell}>Commit message</span>
         <span className={styles.headerCell}>Author</span>
         <span className={styles.headerCell}>Date</span>
-        <span className={styles.headerCell}>Commit</span>
+        <span className={styles.headerCell}>SHA</span>
       </div>
       <div
         ref={scrollRef}
@@ -168,7 +191,7 @@ export function CommitGraph({
               index={item.index}
               start={item.start}
               entry={graph.entryAt(item.index)}
-              graphWidth={graphWidth}
+              gridTemplateColumns={gridTemplateColumns}
               isSelected={item.index === selectedIndex}
               onSelect={select}
             />
@@ -180,19 +203,26 @@ export function CommitGraph({
 }
 
 const columns = (graphWidth: number) =>
-  `${graphWidth}px minmax(0, 1fr) var(--gp-col-author) var(--gp-col-date) var(--gp-col-sha)`;
+  `var(--gp-refs-col-width) ${graphWidth}px minmax(0, 1fr) var(--gp-col-author) var(--gp-col-date) var(--gp-col-sha)`;
 const rowId = (index: number) => `commit-row-${index}`;
 
 interface CommitRowProps {
   index: number;
   start: number;
   entry: GraphEntryDto | undefined;
-  graphWidth: number;
+  gridTemplateColumns: string;
   isSelected: boolean;
   onSelect: (index: number) => void;
 }
 
-function CommitRow({ index, start, entry, graphWidth, isSelected, onSelect }: CommitRowProps) {
+function CommitRow({
+  index,
+  start,
+  entry,
+  gridTemplateColumns,
+  isSelected,
+  onSelect,
+}: CommitRowProps) {
   return (
     <div
       id={rowId(index)}
@@ -200,35 +230,70 @@ function CommitRow({ index, start, entry, graphWidth, isSelected, onSelect }: Co
       aria-selected={isSelected}
       className={styles.row}
       data-selected={isSelected}
-      style={{ transform: `translateY(${start}px)`, gridTemplateColumns: columns(graphWidth) }}
+      style={{ transform: `translateY(${start}px)`, gridTemplateColumns }}
       onClick={() => {
         onSelect(index);
       }}
     >
-      <span />
       {entry ? (
         <>
+          <RefPills entry={entry} />
+          <span />
           <span className={styles.summary}>
-            {entry.refs.map((label) => (
-              <RefBadge key={`${label.kind}:${label.name}`} label={label} />
-            ))}
             <span className={styles.summaryText}>{entry.summary}</span>
+            {entry.bodyPreview && <span className={styles.preview}>{entry.bodyPreview}</span>}
           </span>
           <span className={styles.muted}>{entry.author.name}</span>
           <span className={styles.muted}>{formatCommitTime(entry.author.time)}</span>
           <span className={styles.sha}>{entry.shortId}</span>
         </>
       ) : (
-        <span className={styles.placeholder} />
+        <>
+          <span />
+          <span />
+          <span className={styles.placeholder} />
+        </>
       )}
     </div>
   );
 }
 
-function RefBadge({ label }: { label: RefLabelDto }) {
+function RefPills({ entry }: { entry: GraphEntryDto }) {
+  const pills = groupRefs(entry.refs);
+  const shown = pills.slice(0, VISIBLE_PILLS);
+  const hidden = pills.slice(VISIBLE_PILLS);
+  // Pills take the color of their commit's lane, tying label and node together.
+  const laneColor = {
+    '--gp-pill-lane': `var(--gp-lane-${paletteIndex(entry.graph.color)})`,
+  } as CSSProperties;
   return (
-    <span className={styles.badge} data-kind={label.kind} data-head={label.isHead}>
-      {label.name}
+    <span className={styles.refs} style={laneColor}>
+      {shown.map((pill) => (
+        <RefPillLabel key={`${pill.kind}:${pill.name}`} pill={pill} />
+      ))}
+      {hidden.length > 0 && (
+        <span className={styles.more} title={hidden.map((pill) => pill.name).join('\n')}>
+          +{hidden.length}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function RefPillLabel({ pill }: { pill: RefPill }) {
+  const where = [pill.isLocal ? 'local' : null, ...pill.remotes].filter(Boolean).join(', ');
+  return (
+    <span
+      className={styles.pill}
+      data-kind={pill.kind}
+      data-head={pill.isHead}
+      title={pill.kind === 'tag' ? `Tag ${pill.name}` : `${pill.name} (${where})`}
+    >
+      {pill.isHead && <Check size={12} strokeWidth={2.5} aria-label="checked out" />}
+      {pill.kind === 'tag' && <Tag size={12} strokeWidth={2} aria-hidden />}
+      <span className={styles.pillName}>{pill.name}</span>
+      {pill.isLocal && <Laptop size={12} strokeWidth={2} aria-label="local" />}
+      {pill.remotes.length > 0 && <Cloud size={12} strokeWidth={2} aria-label="remote" />}
     </span>
   );
 }

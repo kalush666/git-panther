@@ -13,9 +13,10 @@ test.describe('commit graph', () => {
     const first = commits.getByRole('option').first();
 
     await expect(first).toContainText('Merge topic 0');
-    await expect(first).toContainText('main');
-    await expect(first).toContainText('origin/main');
-    await expect(commits.getByRole('option', { name: /v1\.0\.0/ })).toBeVisible();
+    // origin/main is folded into the local main label.
+    await expect(first.getByTitle('main (local, origin)')).toBeVisible();
+    await expect(first.getByLabel('checked out')).toBeVisible();
+    await expect(commits.getByTitle('Tag v1.0.0')).toBeVisible();
   });
 
   test('shows details for the selected commit and follows the keyboard', async ({ page }) => {

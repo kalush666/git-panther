@@ -1,4 +1,4 @@
-import { GitBranch, TriangleAlert } from 'lucide-react';
+import { ChevronRight, GitBranch, TriangleAlert } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
 import { Button } from '../../../shared/ui/Button/Button';
@@ -50,16 +50,20 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
   return (
     <section className={styles.view} aria-labelledby="repository-title">
       <header className={styles.header}>
-        <h1 id="repository-title" className={styles.title}>
-          {name}
-        </h1>
-        <p className={styles.head}>
-          <GitBranch size={14} strokeWidth={1.75} aria-hidden />
-          {describeHead(head)}
-        </p>
-        <p className={styles.path} title={repository.data.path}>
-          {repository.data.path}
-        </p>
+        <div className={styles.crumb}>
+          <span className={styles.crumbLabel}>Repository</span>
+          <h1 id="repository-title" className={styles.title} title={repository.data.path}>
+            {name}
+          </h1>
+        </div>
+        <ChevronRight className={styles.crumbSeparator} size={16} aria-hidden />
+        <div className={styles.crumb}>
+          <span className={styles.crumbLabel}>Branch</span>
+          <p className={styles.head}>
+            <GitBranch size={14} strokeWidth={1.75} aria-hidden />
+            {describeHead(head)}
+          </p>
+        </div>
       </header>
       <div className={styles.body}>
         <div className={styles.graph}>
