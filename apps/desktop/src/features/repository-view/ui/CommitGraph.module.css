@@ -14,6 +14,7 @@
 }
 
 .header {
+  position: relative;
   flex-shrink: 0;
   height: var(--gp-row-height);
   border-bottom: 1px solid var(--gp-border-subtle);
@@ -27,6 +28,13 @@
 .headerCell {
   padding-left: var(--gp-space-3);
   white-space: nowrap;
+}
+
+.columnMenu {
+  position: absolute;
+  top: 50%;
+  right: var(--gp-space-2);
+  transform: translateY(-50%);
 }
 
 .scroller {
@@ -48,11 +56,10 @@
   width: 100%;
 }
 
-/* The canvas sits in the graph column, right after the label column. */
+/* Placed over the graph column; its left offset follows the label column. */
 .lanes {
   position: absolute;
   top: 0;
-  left: var(--gp-refs-col-width);
   z-index: 1;
   pointer-events: none;
 }
@@ -80,7 +87,7 @@
   padding-left: var(--gp-space-3);
 }
 
-.row > :nth-child(2) {
+.row > .graphCell {
   padding-left: 0;
 }
 
@@ -172,7 +179,6 @@
 }
 
 .placeholder {
-  grid-column: 3 / -1;
   height: var(--gp-space-2);
   margin-right: var(--gp-space-3);
   border-radius: var(--gp-radius-sm);

@@ -11,10 +11,12 @@ import {
 
 import type { GraphEntryDto } from '../../../shared/ipc';
 import { useGraphPages } from '../api/useGraph';
+import { columnTemplate, useColumnsStore, type ColumnVisibility } from '../model/columns';
 import { drawGraph, readPalette, type VisibleRow } from '../model/drawGraph';
 import { formatCommitTime } from '../model/formatTime';
 import { ROW_HEIGHT, graphColumnWidth, paletteIndex } from '../model/graphGeometry';
 import { groupRefs, initialsOf, type RefPill } from '../model/refPills';
+import { ColumnMenu } from './ColumnMenu';
 import styles from './CommitGraph.module.css';
 
 const OVERSCAN_ROWS = 20;
@@ -46,12 +48,12 @@ function useRedrawOnThemeChange(): void {
   }, []);
 }
 
-function visibleRow(index: number, entry: GraphEntryDto): VisibleRow {
+function visibleRow(index: number, entry: GraphEntryDto, showRefsColumn: boolean): VisibleRow {
   return {
     index,
     row: entry.graph,
     initials: initialsOf(entry.author.name),
-    hasRefs: entry.refs.length > 0,
+    hasRefs: showRefsColumn && entry.refs.length > 0,
     isHead: entry.refs.some((ref) => ref.isHead),
   };
 }
@@ -79,6 +81,7 @@ export function CommitGraph({
   const firstIndex = items[0]?.index ?? 0;
   const lastIndex = items.at(-1)?.index ?? 0;
   const graph = useGraphPages(path, firstIndex, lastIndex);
+  const columns = useColumnsStore((state) => state.visible);
   useRedrawOnThemeChange();
 
   useEffect(() => {
@@ -87,7 +90,7 @@ export function CommitGraph({
 
   const visibleRows: VisibleRow[] = items.flatMap((item) => {
     const entry = graph.entryAt(item.index);
-    return entry ? [visibleRow(item.index, entry)] : [];
+    return entry ? [visibleRow(item.index, entry, columns.refs)] : [];
   });
   for (const { row } of visibleRows) {
     widestGraph.current = Math.max(widestGraph.current, row.width);
@@ -154,16 +157,19 @@ export function CommitGraph({
     return <p className={styles.message}>This repository has no commits yet.</p>;
   }
 
-  const gridTemplateColumns = columns(graphWidth);
+  const gridTemplateColumns = columnTemplate(columns, graphWidth);
   return (
     <div className={styles.graph}>
       <div className={styles.header} style={{ gridTemplateColumns }}>
-        <span className={styles.headerCell}>Branch / Tag</span>
+        {columns.refs && <span className={styles.headerCell}>Branch / Tag</span>}
         <span className={styles.headerCell}>Graph</span>
         <span className={styles.headerCell}>Commit message</span>
-        <span className={styles.headerCell}>Author</span>
-        <span className={styles.headerCell}>Date</span>
-        <span className={styles.headerCell}>SHA</span>
+        {columns.author && <span className={styles.headerCell}>Author</span>}
+        {columns.date && <span className={styles.headerCell}>Date</span>}
+        {columns.sha && <span className={styles.headerCell}>SHA</span>}
+        <span className={styles.columnMenu}>
+          <ColumnMenu />
+        </span>
       </div>
       <div
         ref={scrollRef}
@@ -180,6 +186,7 @@ export function CommitGraph({
             className={styles.lanes}
             aria-hidden
             style={{
+              left: columns.refs ? 'var(--gp-refs-col-width)' : 0,
               width: graphWidth,
               height: viewportHeight,
               transform: `translateY(${scrollTop}px)`,
@@ -192,6 +199,7 @@ export function CommitGraph({
               start={item.start}
               entry={graph.entryAt(item.index)}
               gridTemplateColumns={gridTemplateColumns}
+              columns={columns}
               isSelected={item.index === selectedIndex}
               onSelect={select}
             />
@@ -202,8 +210,6 @@ export function CommitGraph({
   );
 }
 
-const columns = (graphWidth: number) =>
-  `var(--gp-refs-col-width) ${graphWidth}px minmax(0, 1fr) var(--gp-col-author) var(--gp-col-date) var(--gp-col-sha)`;
 const rowId = (index: number) => `commit-row-${index}`;
 
 interface CommitRowProps {
@@ -211,6 +217,7 @@ interface CommitRowProps {
   start: number;
   entry: GraphEntryDto | undefined;
   gridTemplateColumns: string;
+  columns: ColumnVisibility;
   isSelected: boolean;
   onSelect: (index: number) => void;
 }
@@ -220,6 +227,7 @@ function CommitRow({
   start,
   entry,
   gridTemplateColumns,
+  columns,
   isSelected,
   onSelect,
 }: CommitRowProps) {
@@ -237,20 +245,24 @@ function CommitRow({
     >
       {entry ? (
         <>
-          <RefPills entry={entry} />
-          <span />
+          {columns.refs && <RefPills entry={entry} />}
+          <span className={styles.graphCell} />
           <span className={styles.summary}>
+            {/* With the label column hidden, labels lead the message instead. */}
+            {!columns.refs && entry.refs.length > 0 && <RefPills entry={entry} />}
             <span className={styles.summaryText}>{entry.summary}</span>
             {entry.bodyPreview && <span className={styles.preview}>{entry.bodyPreview}</span>}
           </span>
-          <span className={styles.muted}>{entry.author.name}</span>
-          <span className={styles.muted}>{formatCommitTime(entry.author.time)}</span>
-          <span className={styles.sha}>{entry.shortId}</span>
+          {columns.author && <span className={styles.muted}>{entry.author.name}</span>}
+          {columns.date && (
+            <span className={styles.muted}>{formatCommitTime(entry.author.time)}</span>
+          )}
+          {columns.sha && <span className={styles.sha}>{entry.shortId}</span>}
         </>
       ) : (
         <>
-          <span />
-          <span />
+          {columns.refs && <span />}
+          <span className={styles.graphCell} />
           <span className={styles.placeholder} />
         </>
       )}

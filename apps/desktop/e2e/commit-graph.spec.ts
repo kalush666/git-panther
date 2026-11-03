@@ -43,3 +43,32 @@ test.describe('commit graph', () => {
     await expect(commits.getByRole('option', { name: /Change number 1\b/ })).toBeVisible();
   });
 });
+
+test.describe('graph columns', () => {
+  test('shows optional columns on demand and remembers the choice', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: /^Open repository/ }).click();
+    await expect(page.getByText('Commit message', { exact: true })).toBeVisible();
+    await expect(page.getByText('Author', { exact: true })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Choose columns' }).click();
+    await page.getByRole('menuitemcheckbox', { name: 'Author' }).click();
+    await page.getByRole('menuitemcheckbox', { name: 'SHA' }).click();
+    await expect(page.getByRole('menuitemcheckbox', { name: 'Graph' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await page.keyboard.press('Escape');
+
+    const firstRow = page.getByRole('listbox', { name: 'Commits' }).getByRole('option').first();
+    await expect(page.getByText('Author', { exact: true })).toBeVisible();
+    await expect(firstRow).toContainText('Ada Byron');
+
+    await page.reload();
+    await expect(page.getByText('Author', { exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Choose columns' }).click();
+    await page.getByRole('menuitem', { name: 'Reset columns to default' }).click();
+    await expect(page.getByText('Author', { exact: true })).toHaveCount(0);
+  });
+});
