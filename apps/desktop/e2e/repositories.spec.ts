@@ -1,4 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+
+import { expect, test } from './fixtures';
 
 // The mock backend's folder picker always selects C:\repos\demo.
 const openStartAction = (page: Page, label: string) =>

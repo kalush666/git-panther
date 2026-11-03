@@ -46,6 +46,8 @@ jobs:
         run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - name: Closed-network check (no external origins in the UI bundle)
+        run: pnpm check:offline
       - run: pnpm rust:fmt
       - run: pnpm rust:lint
       - name: Rust tests (incl. architecture + bindings freshness)

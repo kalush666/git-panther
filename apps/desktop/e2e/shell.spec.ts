@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test.describe('app shell', () => {
   test('shows the welcome screen and git version when git is supported', async ({ page }) => {
