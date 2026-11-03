@@ -5,6 +5,7 @@
 
 pub mod check_git_installation;
 pub mod clone_repository;
+pub mod commit_graph;
 pub mod open_repository;
 pub mod recent_repositories;
 
