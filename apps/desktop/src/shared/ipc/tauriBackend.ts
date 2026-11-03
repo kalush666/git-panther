@@ -21,6 +21,8 @@ export const tauriBackend: Backend = {
   removeRecentRepository: commands.removeRecentRepository,
   watchRepository: commands.watchRepository,
   unwatchRepository: commands.unwatchRepository,
+  loadGraphPage: commands.loadGraphPage,
+  commitDetails: commands.commitDetails,
   onRepositoryChanged: (listener) =>
     events.repositoryChanged.listen((event) => {
       listener(event.payload.path);

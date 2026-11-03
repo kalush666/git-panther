@@ -1,7 +1,9 @@
 import type {
   AppError,
   CloneProgressDto_Serialize,
+  CommitDetailsDto,
   GitInstallationDto,
+  GraphPageDto,
   RecentRepositoryDto,
   RepositorySummaryDto,
 } from './bindings';
@@ -39,6 +41,9 @@ export interface Backend {
   unwatchRepository(path: string): Promise<Result<null>>;
   /** Calls `listener` with the repository path on every change; returns an unsubscribe function. */
   onRepositoryChanged(listener: (path: string) => void): Promise<() => void>;
+  /** Up to `limit` rows of the commit graph starting at row `offset`. */
+  loadGraphPage(path: string, offset: number, limit: number): Promise<Result<GraphPageDto>>;
+  commitDetails(path: string, id: string): Promise<Result<CommitDetailsDto>>;
   /** Shows the native folder picker; resolves to `null` if the user cancels. */
   pickFolder(title: string): Promise<string | null>;
 }

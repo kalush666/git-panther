@@ -16,8 +16,15 @@ export type { Backend, CloneOptions, CloneProgress, Result } from './backend';
 export type {
   AppError,
   AppErrorKind,
+  CommitDetailsDto,
+  FileChangeDto,
   GitInstallationDto,
+  GraphEntryDto,
+  GraphPageDto,
+  GraphRowDto,
   HeadDto,
+  PersonDto,
+  RefLabelDto,
   RecentRepositoryDto,
   RepositorySummaryDto,
 } from './bindings';
