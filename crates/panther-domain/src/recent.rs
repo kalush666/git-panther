@@ -65,7 +65,10 @@ mod tests {
             recent.record(&PathBuf::from(index.to_string()));
         }
         assert_eq!(recent.paths().len(), MAX_RECENT_REPOSITORIES);
-        assert_eq!(recent.paths()[0], PathBuf::from(MAX_RECENT_REPOSITORIES.to_string()));
+        assert_eq!(
+            recent.paths()[0],
+            PathBuf::from(MAX_RECENT_REPOSITORIES.to_string())
+        );
         assert!(!recent.paths().contains(&PathBuf::from("0")));
     }
 

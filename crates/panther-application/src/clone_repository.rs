@@ -88,6 +88,6 @@ mod tests {
             clone.execute(&request(), &mut |_| {}, &cancel),
             Err(RepositoryError::Cancelled)
         ));
-        assert!(recent.list().unwrap().is_empty());
+        assert_eq!(recent.list().unwrap(), Vec::<PathBuf>::new());
     }
 }

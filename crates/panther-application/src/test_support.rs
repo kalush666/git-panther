@@ -14,7 +14,11 @@ pub struct InMemoryRecentStore(Mutex<RecentRepositories>);
 
 impl RecentRepositoryStore for InMemoryRecentStore {
     fn load(&self) -> Result<RecentRepositories, RepositoryError> {
-        Ok(self.0.lock().expect("test store lock is never poisoned").clone())
+        Ok(self
+            .0
+            .lock()
+            .expect("test store lock is never poisoned")
+            .clone())
     }
 
     fn save(&self, recent: &RecentRepositories) -> Result<(), RepositoryError> {

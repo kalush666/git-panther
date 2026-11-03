@@ -80,7 +80,7 @@ mod tests {
             open.open(Path::new(FakeOpener::NOT_A_REPO)),
             Err(RepositoryError::NotARepository { .. })
         ));
-        assert!(recent.list().unwrap().is_empty());
+        assert_eq!(recent.list().unwrap(), Vec::<PathBuf>::new());
     }
 
     #[test]
@@ -94,6 +94,6 @@ mod tests {
     fn refresh_leaves_recent_list_alone() {
         let (open, recent) = use_case();
         open.refresh(Path::new("/repos/app")).unwrap();
-        assert!(recent.list().unwrap().is_empty());
+        assert_eq!(recent.list().unwrap(), Vec::<PathBuf>::new());
     }
 }

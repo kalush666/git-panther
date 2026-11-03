@@ -1,11 +1,12 @@
-//! Adapters that shell out to the system `git` executable.
+//! Detects the installed git version.
 
 use std::io;
 use std::path::PathBuf;
-use std::process::Command;
 
 use panther_domain::git_installation::GitVersion;
 use panther_domain::ports::{GitBinaryProbe, GitProbeError};
+
+use super::background_command;
 
 /// Probes a git executable by running `git --version`.
 #[derive(Debug, Clone)]
@@ -54,16 +55,4 @@ impl GitBinaryProbe for SystemGitProbe {
         let stdout = String::from_utf8_lossy(&output.stdout);
         Ok(Some(GitVersion::parse_cli_output(&stdout)?))
     }
-}
-
-/// Builds a command that never flashes a console window on Windows.
-fn background_command(executable: &PathBuf) -> Command {
-    let mut command = Command::new(executable);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        command.creation_flags(CREATE_NO_WINDOW);
-    }
-    command
 }
