@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Git Panther">
+  <defs>
+    <linearGradient id="gp-head" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#262036"/>
+      <stop offset="1" stop-color="#13111A"/>
+    </linearGradient>
+    <radialGradient id="gp-eye" cx="0.5" cy="0.5" r="0.6">
+      <stop offset="0" stop-color="#E4D9FF"/>
+      <stop offset="0.45" stop-color="#A78BFA"/>
+      <stop offset="1" stop-color="#7C4DEB"/>
+    </radialGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#0B0A10"/>
+  <path d="M48 74 L80 42 L106 74 Q128 66 150 74 L176 42 L208 74 L201 128 Q196 178 160 202 L128 218 L96 202 Q60 178 55 128 Z"
+        fill="url(#gp-head)" stroke="#8B5CF6" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M80 122 Q98 104 118 118 Q100 136 80 122 Z" fill="url(#gp-eye)"/>
+  <path d="M176 122 Q158 104 138 118 Q156 136 176 122 Z" fill="url(#gp-eye)"/>
+  <path d="M116 162 L140 162 L128 176 Z" fill="#8B5CF6"/>
+  <path d="M128 176 L128 188 M128 188 Q116 196 106 190 M128 188 Q140 196 150 190"
+        fill="none" stroke="#8B5CF6" stroke-width="5" stroke-linecap="round"/>
+</svg>

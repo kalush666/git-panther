@@ -1,0 +1,42 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+@import '@git-panther/design-tokens/tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--gp-bg-canvas);
+  color: var(--gp-text-primary);
+  font-family: var(--gp-font-ui);
+  font-size: var(--gp-text-md);
+  line-height: var(--gp-leading-ui);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+code,
+kbd,
+pre {
+  font-family: var(--gp-font-mono);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gp-focus-ring);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--gp-accent-subtle);
+}
