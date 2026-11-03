@@ -129,6 +129,20 @@ pub enum RepositoryError {
     IdentityMissing,
     #[error("The commit was not created: {details}")]
     CommitFailed { details: String },
+    #[error(transparent)]
+    InvalidBranchName(#[from] crate::branch::InvalidBranchName),
+    #[error("A branch named \"{name}\" already exists.")]
+    BranchExists { name: String },
+    #[error("There is no branch named \"{name}\".")]
+    BranchNotFound { name: String },
+    #[error(
+        "\"{name}\" has commits that are not merged anywhere else. Delete it anyway to lose them."
+    )]
+    BranchNotMerged { name: String },
+    #[error("\"{name}\" is checked out. Switch to another branch before deleting it.")]
+    CannotDeleteCurrentBranch { name: String },
+    #[error("Your uncommitted changes would be overwritten. Commit or stash them first. {details}")]
+    CheckoutConflict { details: String },
 }
 
 #[cfg(test)]
