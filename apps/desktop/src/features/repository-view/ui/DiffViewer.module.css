@@ -1,0 +1,177 @@
+.viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--gp-space-3);
+  height: var(--gp-titlebar-height);
+  padding: 0 var(--gp-space-3);
+  border-bottom: 1px solid var(--gp-border-subtle);
+}
+
+.file {
+  overflow: hidden;
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-sm);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.side {
+  flex-shrink: 0;
+  padding: 0 var(--gp-space-2);
+  border-radius: var(--gp-radius-sm);
+  background: var(--gp-bg-raised);
+  color: var(--gp-text-secondary);
+  font-size: var(--gp-text-xs);
+}
+
+.layoutToggle {
+  display: flex;
+  margin-left: auto;
+  padding: var(--gp-space-1);
+  border-radius: var(--gp-radius-md);
+  background: var(--gp-bg-raised);
+}
+
+.layoutButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gp-space-1);
+  height: var(--gp-control-height-sm);
+  padding: 0 var(--gp-space-2);
+  border: none;
+  border-radius: var(--gp-radius-sm);
+  background: transparent;
+  color: var(--gp-text-secondary);
+  font: inherit;
+  font-size: var(--gp-text-sm);
+  cursor: pointer;
+}
+
+.layoutButton[aria-checked='true'] {
+  background: var(--gp-bg-overlay);
+  color: var(--gp-text-primary);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--gp-space-3);
+  scrollbar-width: thin;
+}
+
+.notice {
+  margin: var(--gp-space-5) 0;
+  color: var(--gp-text-secondary);
+  text-align: center;
+}
+
+.hunk {
+  overflow: hidden;
+  margin-bottom: var(--gp-space-3);
+  border: 1px solid var(--gp-border-subtle);
+  border-radius: var(--gp-radius-md);
+}
+
+.hunkHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gp-space-3);
+  min-height: var(--gp-control-height-md);
+  padding: 0 var(--gp-space-2) 0 var(--gp-space-3);
+  background: var(--gp-bg-raised);
+}
+
+.hunkTitle {
+  overflow: hidden;
+  color: var(--gp-accent-text);
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-sm);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hunkActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--gp-space-1);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-sm);
+  line-height: var(--gp-leading-code);
+  table-layout: fixed;
+}
+
+.number {
+  width: var(--gp-space-7);
+  padding: 0 var(--gp-space-2);
+  color: var(--gp-text-muted);
+  text-align: right;
+  user-select: none;
+  vertical-align: top;
+}
+
+.sign {
+  width: var(--gp-space-4);
+  color: var(--gp-text-muted);
+  text-align: center;
+  user-select: none;
+}
+
+.code {
+  padding-right: var(--gp-space-3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.line[data-kind='added'],
+[data-kind='added'] {
+  background: var(--gp-diff-added-bg);
+}
+
+.line[data-kind='added'] .code,
+.code[data-kind='added'] {
+  color: var(--gp-diff-added-fg);
+}
+
+.line[data-kind='removed'],
+[data-kind='removed'] {
+  background: var(--gp-diff-removed-bg);
+}
+
+.line[data-kind='removed'] .code,
+.code[data-kind='removed'] {
+  color: var(--gp-diff-removed-fg);
+}
+
+[data-kind='empty'] {
+  background: var(--gp-bg-raised);
+}
+
+.line[data-kind='added'] .word,
+.code[data-kind='added'] .word {
+  border-radius: var(--gp-radius-sm);
+  background: var(--gp-diff-added-word);
+  color: inherit;
+}
+
+.line[data-kind='removed'] .word,
+.code[data-kind='removed'] .word {
+  border-radius: var(--gp-radius-sm);
+  background: var(--gp-diff-removed-word);
+  color: inherit;
+}

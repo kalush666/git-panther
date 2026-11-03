@@ -12,7 +12,20 @@ import type { AppError } from './bindings';
 import { mockBackend } from './mockBackend';
 import { tauriBackend } from './tauriBackend';
 
-export type { Backend, CloneOptions, CloneProgress, Result } from './backend';
+export type {
+  Backend,
+  ChangedFile,
+  CloneOptions,
+  CloneProgress,
+  DiffHunk,
+  DiffLine,
+  DiffSide,
+  FileDiff,
+  HunkAction,
+  HunkTarget,
+  Result,
+  WorkingTreeStatus,
+} from './backend';
 export type {
   AppError,
   AppErrorKind,

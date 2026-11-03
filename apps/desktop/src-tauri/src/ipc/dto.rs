@@ -5,7 +5,11 @@ use std::path::Path;
 use panther_application::commit_graph::{GraphEntry, GraphPage};
 use panther_domain::commit::{ChangeKind, CommitDetails, FileChange, Person, RefKind, RefLabel};
 use panther_domain::git_installation::{GitInstallation, GitVersion};
+use panther_domain::ports::HunkAction;
 use panther_domain::repository::{CloneProgress, HeadState, RepositorySummary, repository_name};
+use panther_domain::working_tree::{
+    ChangedFile, DiffLine, DiffSide, FileDiff, FileState, Hunk, LineKind, WorkingTreeStatus,
+};
 use panther_graph::{GraphRow, Segment};
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -308,6 +312,186 @@ impl From<CommitDetails> for CommitDetailsDto {
                 .into_iter()
                 .map(FileChangeDto::from)
                 .collect(),
+        }
+    }
+}
+
+/// A changed file in the working tree or index.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangedFileDto {
+    pub path: String,
+    pub kind: ChangedFileKindDto,
+    /// The previous path, for renames.
+    pub from: Option<String>,
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ChangedFileKindDto {
+    Added,
+    Modified,
+    Deleted,
+    Renamed,
+    TypeChanged,
+    Untracked,
+}
+
+impl From<ChangedFile> for ChangedFileDto {
+    fn from(file: ChangedFile) -> Self {
+        let (kind, from) = match file.state {
+            FileState::Added => (ChangedFileKindDto::Added, None),
+            FileState::Modified => (ChangedFileKindDto::Modified, None),
+            FileState::Deleted => (ChangedFileKindDto::Deleted, None),
+            FileState::Renamed { from } => (ChangedFileKindDto::Renamed, Some(from)),
+            FileState::TypeChanged => (ChangedFileKindDto::TypeChanged, None),
+            FileState::Untracked => (ChangedFileKindDto::Untracked, None),
+        };
+        Self {
+            path: file.path,
+            kind,
+            from,
+        }
+    }
+}
+
+/// Uncommitted changes of a repository.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkingTreeStatusDto {
+    pub staged: Vec<ChangedFileDto>,
+    pub unstaged: Vec<ChangedFileDto>,
+    pub conflicted: Vec<String>,
+}
+
+impl From<WorkingTreeStatus> for WorkingTreeStatusDto {
+    fn from(status: WorkingTreeStatus) -> Self {
+        Self {
+            staged: status
+                .staged
+                .into_iter()
+                .map(ChangedFileDto::from)
+                .collect(),
+            unstaged: status
+                .unstaged
+                .into_iter()
+                .map(ChangedFileDto::from)
+                .collect(),
+            conflicted: status.conflicted,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum LineKindDto {
+    Context,
+    Added,
+    Removed,
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffLineDto {
+    pub kind: LineKindDto,
+    pub old_number: Option<u32>,
+    pub new_number: Option<u32>,
+    pub content: String,
+}
+
+impl From<DiffLine> for DiffLineDto {
+    fn from(line: DiffLine) -> Self {
+        Self {
+            kind: match line.kind {
+                LineKind::Context => LineKindDto::Context,
+                LineKind::Added => LineKindDto::Added,
+                LineKind::Removed => LineKindDto::Removed,
+            },
+            old_number: line.old_number,
+            new_number: line.new_number,
+            content: line.content,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct HunkDto {
+    pub header: String,
+    pub old_start: u32,
+    pub old_lines: u32,
+    pub new_start: u32,
+    pub new_lines: u32,
+    pub lines: Vec<DiffLineDto>,
+}
+
+impl From<Hunk> for HunkDto {
+    fn from(hunk: Hunk) -> Self {
+        Self {
+            header: hunk.header,
+            old_start: hunk.old_start,
+            old_lines: hunk.old_lines,
+            new_start: hunk.new_start,
+            new_lines: hunk.new_lines,
+            lines: hunk.lines.into_iter().map(DiffLineDto::from).collect(),
+        }
+    }
+}
+
+/// The diff of one file.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FileDiffDto {
+    pub path: String,
+    pub old_path: Option<String>,
+    pub is_binary: bool,
+    pub is_truncated: bool,
+    pub hunks: Vec<HunkDto>,
+}
+
+impl From<FileDiff> for FileDiffDto {
+    fn from(diff: FileDiff) -> Self {
+        Self {
+            path: diff.path,
+            old_path: diff.old_path,
+            is_binary: diff.is_binary,
+            is_truncated: diff.is_truncated,
+            hunks: diff.hunks.into_iter().map(HunkDto::from).collect(),
+        }
+    }
+}
+
+/// Which side of the index a diff compares.
+#[derive(Debug, Clone, Copy, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum DiffSideDto {
+    Staged,
+    Unstaged,
+}
+
+impl From<DiffSideDto> for DiffSide {
+    fn from(side: DiffSideDto) -> Self {
+        match side {
+            DiffSideDto::Staged => Self::Staged,
+            DiffSideDto::Unstaged => Self::Unstaged,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum HunkActionDto {
+    Stage,
+    Unstage,
+    Discard,
+}
+
+impl From<HunkActionDto> for HunkAction {
+    fn from(action: HunkActionDto) -> Self {
+        match action {
+            HunkActionDto::Stage => Self::Stage,
+            HunkActionDto::Unstage => Self::Unstage,
+            HunkActionDto::Discard => Self::Discard,
         }
     }
 }

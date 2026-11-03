@@ -1,0 +1,38 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: var(--gp-scrim);
+}
+
+.content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 21;
+  width: min(var(--gp-dialog-width), calc(100vw - var(--gp-space-6)));
+  padding: var(--gp-space-5);
+  border-radius: var(--gp-radius-lg);
+  background: var(--gp-bg-overlay);
+  box-shadow: var(--gp-shadow-overlay);
+  transform: translate(-50%, -50%);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--gp-text-lg);
+  font-weight: var(--gp-weight-semibold);
+}
+
+.description {
+  margin: var(--gp-space-2) 0 0;
+  color: var(--gp-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--gp-space-2);
+  margin-top: var(--gp-space-5);
+}

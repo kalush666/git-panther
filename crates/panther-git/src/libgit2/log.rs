@@ -4,14 +4,18 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 
-use git2::{Commit, Delta, DiffFindOptions, ErrorCode, Oid, Reference, Repository, Sort};
+use git2::{
+    Commit, Delta, DiffFindOptions, DiffOptions, ErrorCode, Oid, Reference, Repository, Sort,
+};
 use panther_domain::commit::{
     ChangeKind, CommitDetails, CommitId, CommitNode, CommitSummary, FileChange, Person, RefKind,
     RefLabel, body_preview,
 };
 use panther_domain::ports::CommitLog;
 use panther_domain::repository::RepositoryError;
+use panther_domain::working_tree::FileDiff;
 
+use super::diff::file_diff;
 use super::git_error;
 
 /// Pure-libgit2 history reader. Correct everywhere, but its revwalk ignores
@@ -136,6 +140,28 @@ impl CommitLog for Git2CommitLog {
             committer: person(&commit.committer()),
             changes: changes(&repository, &commit)?,
         })
+    }
+
+    fn commit_file_diff(
+        &self,
+        repository: &Path,
+        id: &CommitId,
+        path: &str,
+    ) -> Result<FileDiff, RepositoryError> {
+        let repository = open(repository)?;
+        let commit = find_commit(&repository, id)?;
+        let tree = commit.tree().map_err(|error| git_error(&error))?;
+        let parent_tree = match commit.parent(0) {
+            Ok(parent) => Some(parent.tree().map_err(|error| git_error(&error))?),
+            Err(_) => None,
+        };
+        // Limited to one path, so a rename shows as the file being added.
+        let mut options = DiffOptions::new();
+        options.pathspec(path).disable_pathspec_match(true);
+        let diff = repository
+            .diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), Some(&mut options))
+            .map_err(|error| git_error(&error))?;
+        file_diff(&diff, path)
     }
 }
 

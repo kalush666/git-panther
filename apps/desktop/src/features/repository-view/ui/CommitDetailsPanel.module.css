@@ -76,7 +76,20 @@
   display: flex;
   align-items: center;
   gap: var(--gp-space-2);
+  width: 100%;
   min-height: var(--gp-row-height);
+  padding: 0 var(--gp-space-1);
+  border: none;
+  border-radius: var(--gp-radius-sm);
+  background: transparent;
+  color: var(--gp-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.change:hover {
+  background: var(--gp-bg-raised);
 }
 
 .changeKind {

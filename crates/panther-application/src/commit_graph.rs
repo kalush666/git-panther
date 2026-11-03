@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use panther_domain::commit::{CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
 use panther_domain::ports::CommitLog;
 use panther_domain::repository::RepositoryError;
+use panther_domain::working_tree::FileDiff;
 use panther_graph::{GraphLayout, GraphRow};
 
 /// Largest page a caller may request.
@@ -113,6 +114,19 @@ impl CommitGraph {
         id: &CommitId,
     ) -> Result<CommitDetails, RepositoryError> {
         self.log.details(repository, id)
+    }
+
+    /// How `path` changed in commit `id`.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] if `id` is unknown.
+    pub fn commit_file_diff(
+        &self,
+        repository: &Path,
+        id: &CommitId,
+        path: &str,
+    ) -> Result<FileDiff, RepositoryError> {
+        self.log.commit_file_diff(repository, id, path)
     }
 
     /// Drops cached history, e.g. when a repository tab closes.
@@ -241,6 +255,15 @@ mod tests {
         }
 
         fn details(&self, _: &Path, id: &CommitId) -> Result<CommitDetails, RepositoryError> {
+            Err(RepositoryError::CommitNotFound { id: id.to_string() })
+        }
+
+        fn commit_file_diff(
+            &self,
+            _: &Path,
+            id: &CommitId,
+            _: &str,
+        ) -> Result<FileDiff, RepositoryError> {
             Err(RepositoryError::CommitNotFound { id: id.to_string() })
         }
     }

@@ -21,10 +21,8 @@ test.describe('commit graph', () => {
 
   test('shows details for the selected commit and follows the keyboard', async ({ page }) => {
     const commits = page.getByRole('listbox', { name: 'Commits' });
-    const details = page.getByRole('complementary', { name: 'Commit details' });
-    await expect(details).toContainText('Select a commit');
-
     await commits.getByRole('option', { name: /Merge topic 5/ }).click();
+    const details = page.getByRole('complementary', { name: 'Commit details' });
     await expect(details.getByRole('heading', { name: 'Merge topic 5' })).toBeVisible();
 
     await commits.press('ArrowDown');

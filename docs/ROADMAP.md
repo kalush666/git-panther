@@ -41,9 +41,11 @@ Paged log, incremental lane layout (`panther-graph`) with benchmarks, canvas gra
 
 ![M2 commit graph](screenshots/m2-graph.png)
 
-### ⏳ M3 — Working tree & diffs
+### ✅ M3 — Working tree & diffs
 
 Status, stage/unstage file and hunk, discard, commit / amend, unified and split diff viewer with word highlights.
+
+**Demo:** a "// Working copy" row above the graph opens the staging panel; files open a unified or split diff with word highlights and per-hunk Stage / Unstage / Discard; commits run through the git CLI so hooks and signing apply; commit details open per-commit file diffs.
 
 ### ⏳ M4 — Branches
 

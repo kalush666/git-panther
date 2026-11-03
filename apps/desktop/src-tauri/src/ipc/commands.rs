@@ -4,13 +4,15 @@ use std::path::PathBuf;
 
 use panther_domain::commit::CommitId;
 use panther_domain::repository::{CloneRequest, RemoteUrl, RepositoryError};
+use panther_domain::working_tree::HunkRef;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
 use tauri_specta::Event;
 
 use super::dto::{
-    CloneProgressDto, CommitDetailsDto, GitInstallationDto, GraphPageDto, RecentRepositoryDto,
-    RepositoryChanged, RepositorySummaryDto,
+    CloneProgressDto, CommitDetailsDto, DiffSideDto, FileDiffDto, GitInstallationDto, GraphPageDto,
+    HunkActionDto, RecentRepositoryDto, RepositoryChanged, RepositorySummaryDto,
+    WorkingTreeStatusDto,
 };
 use super::error::{AppError, AppErrorKind};
 use crate::composition::AppServices;
@@ -199,11 +201,147 @@ pub async fn commit_details(
 ) -> Result<CommitDetailsDto, AppError> {
     let graph = services.commit_graph.clone();
     run_blocking(move || {
-        let id = CommitId::parse(&id)
-            .map_err(|error| RepositoryError::CommitNotFound { id: error.input })?;
+        let id = commit_id(&id)?;
         Ok(graph.details(&PathBuf::from(path), &id)?.into())
     })
     .await
+}
+
+/// Parses a commit id received over IPC.
+fn commit_id(id: &str) -> Result<CommitId, RepositoryError> {
+    CommitId::parse(id).map_err(|error| RepositoryError::CommitNotFound { id: error.input })
+}
+
+/// Staged, unstaged and conflicted files.
+#[tauri::command]
+#[specta::specta]
+pub async fn working_tree_status(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<WorkingTreeStatusDto, AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || Ok(copy.status(&PathBuf::from(path))?.into())).await
+}
+
+/// The staged or unstaged diff of `file`.
+#[tauri::command]
+#[specta::specta]
+pub async fn file_diff(
+    services: State<'_, AppServices>,
+    path: String,
+    file: String,
+    side: DiffSideDto,
+) -> Result<FileDiffDto, AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || Ok(copy.diff(&PathBuf::from(path), &file, side.into())?.into())).await
+}
+
+/// How `file` changed in commit `id`.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_file_diff(
+    services: State<'_, AppServices>,
+    path: String,
+    id: String,
+    file: String,
+) -> Result<FileDiffDto, AppError> {
+    let graph = services.commit_graph.clone();
+    run_blocking(move || {
+        let id = commit_id(&id)?;
+        Ok(graph
+            .commit_file_diff(&PathBuf::from(path), &id, &file)?
+            .into())
+    })
+    .await
+}
+
+/// Stages whole files.
+#[tauri::command]
+#[specta::specta]
+pub async fn stage_files(
+    services: State<'_, AppServices>,
+    path: String,
+    files: Vec<String>,
+) -> Result<(), AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || Ok(copy.stage(&PathBuf::from(path), &files)?)).await
+}
+
+/// Unstages whole files.
+#[tauri::command]
+#[specta::specta]
+pub async fn unstage_files(
+    services: State<'_, AppServices>,
+    path: String,
+    files: Vec<String>,
+) -> Result<(), AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || Ok(copy.unstage(&PathBuf::from(path), &files)?)).await
+}
+
+/// Throws away unstaged changes of `files`; untracked files are deleted.
+#[tauri::command]
+#[specta::specta]
+pub async fn discard_files(
+    services: State<'_, AppServices>,
+    path: String,
+    files: Vec<String>,
+) -> Result<(), AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || Ok(copy.discard(&PathBuf::from(path), &files)?)).await
+}
+
+/// Stages, unstages or discards hunk `index` of `file`, as long as its
+/// header still matches what the UI showed.
+#[tauri::command]
+#[specta::specta]
+pub async fn apply_hunk(
+    services: State<'_, AppServices>,
+    path: String,
+    file: String,
+    index: u32,
+    header: String,
+    action: HunkActionDto,
+) -> Result<(), AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || {
+        let hunk = HunkRef {
+            path: file,
+            index: widen(index),
+            header,
+        };
+        Ok(copy.apply_hunk(&PathBuf::from(path), &hunk, action.into())?)
+    })
+    .await
+}
+
+/// Commits staged changes (or amends HEAD) and returns the new commit id.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_changes(
+    services: State<'_, AppServices>,
+    path: String,
+    message: String,
+    amend: bool,
+) -> Result<String, AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || {
+        Ok(copy
+            .commit(&PathBuf::from(path), &message, amend)?
+            .to_string())
+    })
+    .await
+}
+
+/// The message of the HEAD commit, to prefill an amend.
+#[tauri::command]
+#[specta::specta]
+pub async fn head_message(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Option<String>, AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || Ok(copy.head_message(&PathBuf::from(path))?)).await
 }
 
 fn widen(value: u32) -> usize {

@@ -23,6 +23,16 @@ export const tauriBackend: Backend = {
   unwatchRepository: commands.unwatchRepository,
   loadGraphPage: commands.loadGraphPage,
   commitDetails: commands.commitDetails,
+  commitFileDiff: commands.commitFileDiff,
+  workingTreeStatus: commands.workingTreeStatus,
+  fileDiff: commands.fileDiff,
+  stageFiles: commands.stageFiles,
+  unstageFiles: commands.unstageFiles,
+  discardFiles: commands.discardFiles,
+  applyHunk: (path, { file, index, header }, action) =>
+    commands.applyHunk(path, file, index, header, action),
+  commitChanges: commands.commitChanges,
+  headMessage: commands.headMessage,
   onRepositoryChanged: (listener) =>
     events.repositoryChanged.listen((event) => {
       listener(event.payload.path);

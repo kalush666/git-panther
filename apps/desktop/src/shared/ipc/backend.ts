@@ -1,17 +1,38 @@
 import type {
   AppError,
   CloneProgressDto_Serialize,
+  ChangedFileDto_Serialize,
   CommitDetailsDto,
+  DiffLineDto_Serialize,
+  DiffSideDto,
+  FileDiffDto_Serialize,
   GitInstallationDto,
   GraphPageDto,
+  HunkActionDto,
+  HunkDto_Serialize,
   RecentRepositoryDto,
   RepositorySummaryDto,
+  WorkingTreeStatusDto_Serialize,
 } from './bindings';
 
 /** The shape every backend call resolves to. */
 export type Result<T> = { status: 'ok'; data: T } | { status: 'error'; error: AppError };
 
 export type CloneProgress = CloneProgressDto_Serialize;
+export type WorkingTreeStatus = WorkingTreeStatusDto_Serialize;
+export type ChangedFile = ChangedFileDto_Serialize;
+export type FileDiff = FileDiffDto_Serialize;
+export type DiffHunk = HunkDto_Serialize;
+export type DiffLine = DiffLineDto_Serialize;
+export type DiffSide = DiffSideDto;
+export type HunkAction = HunkActionDto;
+
+/** One hunk as the UI showed it; the backend refuses it if the file changed. */
+export interface HunkTarget {
+  file: string;
+  index: number;
+  header: string;
+}
 
 export interface CloneOptions {
   url: string;
@@ -44,6 +65,17 @@ export interface Backend {
   /** Up to `limit` rows of the commit graph starting at row `offset`. */
   loadGraphPage(path: string, offset: number, limit: number): Promise<Result<GraphPageDto>>;
   commitDetails(path: string, id: string): Promise<Result<CommitDetailsDto>>;
+  commitFileDiff(path: string, id: string, file: string): Promise<Result<FileDiff>>;
+  workingTreeStatus(path: string): Promise<Result<WorkingTreeStatus>>;
+  fileDiff(path: string, file: string, side: DiffSide): Promise<Result<FileDiff>>;
+  stageFiles(path: string, files: string[]): Promise<Result<null>>;
+  unstageFiles(path: string, files: string[]): Promise<Result<null>>;
+  /** Throws away unstaged changes; untracked files are deleted. */
+  discardFiles(path: string, files: string[]): Promise<Result<null>>;
+  applyHunk(path: string, hunk: HunkTarget, action: HunkAction): Promise<Result<null>>;
+  /** Resolves to the new commit id. */
+  commitChanges(path: string, message: string, amend: boolean): Promise<Result<string>>;
+  headMessage(path: string): Promise<Result<string | null>>;
   /** Shows the native folder picker; resolves to `null` if the user cancels. */
   pickFolder(title: string): Promise<string | null>;
 }

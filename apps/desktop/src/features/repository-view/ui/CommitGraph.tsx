@@ -7,6 +7,7 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type ReactNode,
 } from 'react';
 
 import type { GraphEntryDto } from '../../../shared/ipc';
@@ -29,6 +30,8 @@ interface CommitGraphProps {
   onSelectIndex: (index: number) => void;
   /** Reports the selected commit once its row has loaded. */
   onSelectedCommitChange: (commitId: string | null) => void;
+  /** Shown above the first commit, e.g. the working-copy row. */
+  leadingRow?: ReactNode;
 }
 
 /**
@@ -63,6 +66,7 @@ export function CommitGraph({
   selectedIndex,
   onSelectIndex,
   onSelectedCommitChange,
+  leadingRow,
 }: CommitGraphProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -171,6 +175,7 @@ export function CommitGraph({
           <ColumnMenu />
         </span>
       </div>
+      {leadingRow}
       <div
         ref={scrollRef}
         className={styles.scroller}

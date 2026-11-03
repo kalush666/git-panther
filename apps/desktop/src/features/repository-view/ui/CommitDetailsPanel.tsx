@@ -6,6 +6,8 @@ import styles from './CommitDetailsPanel.module.css';
 interface CommitDetailsPanelProps {
   path: string;
   commitId: string | null;
+  /** Opens the diff of `file` in this commit. */
+  onOpenFile: (file: string) => void;
 }
 
 const CHANGE_LABELS: Record<FileChangeDto['kind'], { letter: string; label: string }> = {
@@ -16,7 +18,7 @@ const CHANGE_LABELS: Record<FileChangeDto['kind'], { letter: string; label: stri
   typeChanged: { letter: 'T', label: 'Type changed' },
 };
 
-export function CommitDetailsPanel({ path, commitId }: CommitDetailsPanelProps) {
+export function CommitDetailsPanel({ path, commitId, onOpenFile }: CommitDetailsPanelProps) {
   const details = useCommitDetails(path, commitId);
 
   if (commitId === null) {
@@ -64,13 +66,21 @@ export function CommitDetailsPanel({ path, commitId }: CommitDetailsPanelProps) 
         {changes.map((change) => {
           const { letter, label } = CHANGE_LABELS[change.kind];
           return (
-            <li key={`${change.kind}:${change.path}`} className={styles.change}>
-              <span className={styles.changeKind} data-kind={change.kind} title={label}>
-                {letter}
-              </span>
-              <span className={styles.changePath}>
-                {change.kind === 'renamed' ? `${change.from} → ${change.path}` : change.path}
-              </span>
+            <li key={`${change.kind}:${change.path}`}>
+              <button
+                type="button"
+                className={styles.change}
+                onClick={() => {
+                  onOpenFile(change.path);
+                }}
+              >
+                <span className={styles.changeKind} data-kind={change.kind} title={label}>
+                  {letter}
+                </span>
+                <span className={styles.changePath}>
+                  {change.kind === 'renamed' ? `${change.from} → ${change.path}` : change.path}
+                </span>
+              </button>
             </li>
           );
         })}
