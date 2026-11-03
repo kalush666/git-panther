@@ -1,21 +1,24 @@
 import { Channel } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 
-import type { Backend } from './backend';
+import type { Backend, OnProgress } from './backend';
 import { commands, events, type CloneProgressDto_Deserialize } from './bindings';
+
+function progressChannel(onProgress: OnProgress) {
+  const channel = new Channel<CloneProgressDto_Deserialize>();
+  channel.onmessage = ({ phase, percent }) => {
+    onProgress({ phase, percent: percent ?? null });
+  };
+  return channel;
+}
 
 export const tauriBackend: Backend = {
   checkGitInstallation: commands.checkGitInstallation,
   openRepository: commands.openRepository,
   initRepository: commands.initRepository,
   refreshRepository: commands.refreshRepository,
-  cloneRepository: ({ url, destination, jobId }, onProgress) => {
-    const channel = new Channel<CloneProgressDto_Deserialize>();
-    channel.onmessage = ({ phase, percent }) => {
-      onProgress({ phase, percent: percent ?? null });
-    };
-    return commands.cloneRepository(url, destination, jobId, channel);
-  },
+  cloneRepository: ({ url, destination, jobId }, onProgress) =>
+    commands.cloneRepository(url, destination, jobId, progressChannel(onProgress)),
   cancelJob: commands.cancelJob,
   listRecentRepositories: commands.listRecentRepositories,
   removeRecentRepository: commands.removeRecentRepository,
@@ -38,6 +41,13 @@ export const tauriBackend: Backend = {
   checkoutBranch: commands.checkoutBranch,
   renameBranch: commands.renameBranch,
   deleteBranch: commands.deleteBranch,
+  listRemotes: commands.listRemotes,
+  fetchRemotes: (path, jobId, onProgress) =>
+    commands.fetchRemotes(path, jobId, progressChannel(onProgress)),
+  pullBranch: (path, strategy, jobId, onProgress) =>
+    commands.pullBranch(path, strategy, jobId, progressChannel(onProgress)),
+  pushBranch: (path, jobId, onProgress) =>
+    commands.pushBranch(path, jobId, progressChannel(onProgress)),
   onRepositoryChanged: (listener) =>
     events.repositoryChanged.listen((event) => {
       listener(event.payload.path);

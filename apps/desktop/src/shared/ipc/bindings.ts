@@ -64,6 +64,14 @@ export const commands = {
 	renameBranch: (path: string, from: string, to: string) => typedError<null, AppError>(__TAURI_INVOKE("rename_branch", { path, from, to })),
 	/**  Deletes a local branch; `force` deletes it even if unmerged. */
 	deleteBranch: (path: string, name: string, force: boolean) => typedError<null, AppError>(__TAURI_INVOKE("delete_branch", { path, name, force })),
+	/**  Configured remotes. */
+	listRemotes: (path: string) => typedError<RemoteDto[], AppError>(__TAURI_INVOKE("list_remotes", { path })),
+	/**  Fetches every remote. */
+	fetchRemotes: (path: string, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<null, AppError>(__TAURI_INVOKE("fetch_remotes", { path, jobId, onProgress })),
+	/**  Pulls the current branch's upstream with `strategy`. */
+	pullBranch: (path: string, strategy: PullStrategyDto, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<null, AppError>(__TAURI_INVOKE("pull_branch", { path, strategy, jobId, onProgress })),
+	/**  Pushes the current branch, setting its upstream on the first push. */
+	pushBranch: (path: string, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<null, AppError>(__TAURI_INVOKE("push_branch", { path, jobId, onProgress })),
 };
 
 /** Events */
@@ -80,7 +88,7 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "watchFailed" | "internal";
 
 /**  A branch shown in the sidebar. */
 export type BranchDto = BranchDto_Serialize | BranchDto_Deserialize;
@@ -267,6 +275,9 @@ export type PersonDto = {
 	time: number,
 };
 
+/**  How a pull combines fetched work with local commits. */
+export type PullStrategyDto = "fastForwardOnly" | "merge" | "rebase";
+
 /**  An entry in the recent-repositories list. */
 export type RecentRepositoryDto = {
 	path: string,
@@ -280,6 +291,12 @@ export type RefLabelDto = {
 	name: string,
 	kind: RefKindDto,
 	isHead: boolean,
+};
+
+/**  A configured remote. */
+export type RemoteDto = {
+	name: string,
+	url: string,
 };
 
 /**  Emitted when files inside a watched repository change. */

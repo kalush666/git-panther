@@ -30,6 +30,13 @@ pub enum AppErrorKind {
     BranchNotMerged,
     CannotDeleteCurrentBranch,
     CheckoutConflict,
+    AuthenticationFailed,
+    NetworkFailed,
+    PushRejected,
+    NoUpstream,
+    NotFastForward,
+    PullConflict,
+    NoRemote,
     WatchFailed,
     Internal,
 }
@@ -93,6 +100,13 @@ impl From<RepositoryError> for AppError {
                 AppErrorKind::CannotDeleteCurrentBranch
             }
             RepositoryError::CheckoutConflict { .. } => AppErrorKind::CheckoutConflict,
+            RepositoryError::AuthenticationFailed { .. } => AppErrorKind::AuthenticationFailed,
+            RepositoryError::NetworkFailed { .. } => AppErrorKind::NetworkFailed,
+            RepositoryError::PushRejected { .. } => AppErrorKind::PushRejected,
+            RepositoryError::NoUpstream { .. } => AppErrorKind::NoUpstream,
+            RepositoryError::NotFastForward => AppErrorKind::NotFastForward,
+            RepositoryError::PullConflict { .. } => AppErrorKind::PullConflict,
+            RepositoryError::NoRemote => AppErrorKind::NoRemote,
         };
         Self::new(kind, error.to_string())
     }

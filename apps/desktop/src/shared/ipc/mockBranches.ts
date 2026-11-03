@@ -1,5 +1,5 @@
 import type { AppErrorKind } from './bindings';
-import type { Branch, Result } from './backend';
+import type { Branch, PullStrategy, Result } from './backend';
 
 const TIP = 'a'.repeat(40);
 
@@ -32,6 +32,16 @@ const failure = (kind: AppErrorKind, message: string): Result<null> => ({
   error: { kind, message },
 });
 
+/** `?mockSync=offline` makes every network operation fail like an unreachable server. */
+function offline(): Result<null> | null {
+  return new URLSearchParams(window.location.search).get('mockSync') === 'offline'
+    ? failure(
+        'networkFailed',
+        'Could not reach the remote: could not resolve host git.example.internal.',
+      )
+    : null;
+}
+
 /** In-memory branches for the browser mock. */
 export function createMockBranches() {
   let branches = initialBranches();
@@ -51,6 +61,8 @@ export function createMockBranches() {
 
   return {
     list: (): Result<Branch[]> => ({ status: 'ok', data: sorted() }),
+
+    headName: (): string => branches.find((branch) => branch.isHead)?.name ?? 'main',
 
     create: (name: string, start: string, checkout: boolean): Result<null> => {
       if (/\s|\.\./.test(name) || name.trim() === '') {
@@ -94,6 +106,58 @@ export function createMockBranches() {
       if (!branch) return failure('branchNotFound', `There is no branch named "${from}".`);
       if (local(to)) return failure('branchExists', `A branch named "${to}" already exists.`);
       branch.name = to;
+      return ok();
+    },
+
+    fetch: (): Result<null> => offline() ?? ok(),
+
+    pull: (strategy: PullStrategy): Result<null> => {
+      const unreachable = offline();
+      if (unreachable) return unreachable;
+      const head = branches.find((branch) => branch.isHead);
+      if (!head?.upstream) {
+        return failure(
+          'noUpstream',
+          `${head?.name ?? 'HEAD'} has no upstream branch. Push it first to publish it.`,
+        );
+      }
+      if (head.behind === 0) return ok();
+      if (head.ahead > 0) {
+        if (strategy === 'fastForwardOnly') {
+          return failure(
+            'notFastForward',
+            'The branches have diverged, so they cannot be fast-forwarded. Pull with merge or rebase instead.',
+          );
+        }
+        // A merge adds one commit on top; a rebase only replays local ones.
+        if (strategy === 'merge') head.ahead += 1;
+      }
+      head.behind = 0;
+      return ok();
+    },
+
+    push: (): Result<null> => {
+      const unreachable = offline();
+      if (unreachable) return unreachable;
+      const head = branches.find((branch) => branch.isHead);
+      if (!head) return failure('gitFailed', 'Check out a branch first: HEAD is detached.');
+      if (head.behind > 0) {
+        return failure(
+          'pushRejected',
+          'The remote has commits you do not have yet. Pull first, then push again.',
+        );
+      }
+      if (!head.upstream) {
+        head.upstream = `origin/${head.name}`;
+        branches.push({
+          ...head,
+          name: head.upstream,
+          kind: 'remote',
+          upstream: null,
+          isHead: false,
+        });
+      }
+      head.ahead = 0;
       return ok();
     },
 

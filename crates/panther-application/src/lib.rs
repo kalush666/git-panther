@@ -9,6 +9,7 @@ pub mod clone_repository;
 pub mod commit_graph;
 pub mod open_repository;
 pub mod recent_repositories;
+pub mod sync;
 pub mod working_copy;
 
 #[cfg(test)]

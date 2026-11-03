@@ -1,4 +1,4 @@
-import type { Backend, CloneProgress, Result } from './backend';
+import type { Backend, CloneProgress, OnProgress, Result } from './backend';
 import type { GitInstallationDto, RecentRepositoryDto, RepositorySummaryDto } from './bindings';
 import { createMockBranches } from './mockBranches';
 import { mockCommitDetails, mockGraphPage } from './mockGraph';
@@ -7,13 +7,21 @@ import { createMockWorkingTree } from './mockWorkingTree';
 /** Folder the mock folder picker "selects". */
 export const MOCK_PICKED_FOLDER = 'C:\\repos\\demo';
 const NOT_A_REPO_MARKER = 'not-a-repo';
-const CLONE_STEP_MS = 150;
+const JOB_STEP_MS = 150;
 const CLONE_STEPS: readonly CloneProgress[] = [
   { phase: 'Counting objects', percent: 100 },
   { phase: 'Receiving objects', percent: 40 },
   { phase: 'Receiving objects', percent: 100 },
   { phase: 'Resolving deltas', percent: 100 },
 ];
+const SYNC_STEPS: readonly CloneProgress[] = [
+  { phase: 'Receiving objects', percent: 50 },
+  { phase: 'Receiving objects', percent: 100 },
+];
+const CANCELLED: Result<never> = {
+  status: 'error',
+  error: { kind: 'cancelled', message: 'The operation was cancelled.' },
+};
 
 function ok<T>(data: T): Result<T> {
   return { status: 'ok', data };
@@ -55,6 +63,21 @@ function createMockBackend(): Backend {
   const workingTree = createMockWorkingTree();
   const branchStore = createMockBranches();
 
+  /** Plays `steps` as progress, then runs `finish` unless the job was cancelled. */
+  const runJob = async <T>(
+    jobId: string,
+    steps: readonly CloneProgress[],
+    onProgress: OnProgress,
+    finish: () => Result<T>,
+  ): Promise<Result<T>> => {
+    for (const step of steps) {
+      await delay(JOB_STEP_MS);
+      if (cancelledJobs.delete(jobId)) return CANCELLED;
+      onProgress(step);
+    }
+    return finish();
+  };
+
   const remember = (repository: RepositorySummaryDto) => {
     repositories.set(repository.path, repository);
     recent = [
@@ -77,20 +100,19 @@ function createMockBackend(): Backend {
       ),
     initRepository: (path) =>
       Promise.resolve(remember({ ...summary(path), head: { kind: 'unborn', name: 'main' } })),
-    refreshRepository: (path) => Promise.resolve(ok(repositories.get(path) ?? summary(path))),
-    cloneRepository: async ({ destination, jobId }, onProgress) => {
-      for (const step of CLONE_STEPS) {
-        await delay(CLONE_STEP_MS);
-        if (cancelledJobs.delete(jobId)) {
-          return {
-            status: 'error',
-            error: { kind: 'cancelled', message: 'The operation was cancelled.' },
-          };
-        }
-        onProgress(step);
-      }
-      return remember(summary(destination));
+    refreshRepository: (path) => {
+      const repository = repositories.get(path) ?? summary(path);
+      // Follow checkouts made through the mock branch store.
+      return Promise.resolve(
+        ok(
+          repository.head.kind === 'branch'
+            ? { ...repository, head: { kind: 'branch', name: branchStore.headName() } }
+            : repository,
+        ),
+      );
     },
+    cloneRepository: ({ destination, jobId }, onProgress) =>
+      runJob(jobId, CLONE_STEPS, onProgress, () => remember(summary(destination))),
     cancelJob: (jobId) => {
       cancelledJobs.add(jobId);
       return Promise.resolve(ok(null));
@@ -135,6 +157,14 @@ function createMockBackend(): Backend {
     checkoutBranch: (_path, name) => Promise.resolve(branchStore.checkout(name)),
     renameBranch: (_path, from, to) => Promise.resolve(branchStore.rename(from, to)),
     deleteBranch: (_path, name, force) => Promise.resolve(branchStore.delete(name, force)),
+    listRemotes: () =>
+      Promise.resolve(ok([{ name: 'origin', url: 'git@git.example.internal:team/demo.git' }])),
+    fetchRemotes: (_path, jobId, onProgress) =>
+      runJob(jobId, SYNC_STEPS, onProgress, () => branchStore.fetch()),
+    pullBranch: (_path, strategy, jobId, onProgress) =>
+      runJob(jobId, SYNC_STEPS, onProgress, () => branchStore.pull(strategy)),
+    pushBranch: (_path, jobId, onProgress) =>
+      runJob(jobId, SYNC_STEPS, onProgress, () => branchStore.push()),
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
   };
 }
