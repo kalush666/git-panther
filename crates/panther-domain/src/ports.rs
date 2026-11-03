@@ -5,11 +5,51 @@
 
 use std::path::Path;
 
+use crate::commit::{CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
 use crate::git_installation::{GitVersion, GitVersionParseError};
 use crate::recent::RecentRepositories;
 use crate::repository::{
     CancellationToken, CloneProgress, CloneRequest, RepositoryError, RepositorySummary,
 };
+
+/// Reads commit history.
+pub trait CommitLog: Send + Sync {
+    /// A token that changes whenever any ref or HEAD moves, so callers can
+    /// cache history until it does.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn refs_fingerprint(&self, repository: &Path) -> Result<String, RepositoryError>;
+
+    /// Every commit reachable from HEAD, branches, remote branches and tags,
+    /// children before parents and newest first.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn history(&self, repository: &Path) -> Result<Vec<CommitNode>, RepositoryError>;
+
+    /// Summaries for `ids`, in the same order.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] if an id is unknown.
+    fn summaries(
+        &self,
+        repository: &Path,
+        ids: &[CommitId],
+    ) -> Result<Vec<CommitSummary>, RepositoryError>;
+
+    /// Branches and tags, each with the commit it points at.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn refs(&self, repository: &Path) -> Result<Vec<RefLabel>, RepositoryError>;
+
+    /// The full message, people and changed files of one commit.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] if `id` is unknown.
+    fn details(&self, repository: &Path, id: &CommitId) -> Result<CommitDetails, RepositoryError>;
+}
 
 /// Opens existing repositories and creates new ones on the local disk.
 pub trait RepositoryOpener: Send + Sync {
