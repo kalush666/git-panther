@@ -1,62 +1,102 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Git Panther">
   <defs>
-    <clipPath id="gp-badge">
-      <rect width="256" height="256" rx="56"/>
-    </clipPath>
-    <linearGradient id="gp-coat" x1="0.15" y1="0" x2="0.85" y2="1">
-      <stop offset="0" stop-color="#A585FA"/>
-      <stop offset="0.55" stop-color="#7C4DEB"/>
-      <stop offset="1" stop-color="#4A22B0"/>
+    <clipPath id="gp-badge"><rect width="256" height="256" rx="56"/></clipPath>
+    <radialGradient id="gp-bg" cx="0.75" cy="0.4" r="0.8">
+      <stop offset="0" stop-color="#170D2C"/>
+      <stop offset="1" stop-color="#040208"/>
+    </radialGradient>
+    <!-- Key light on the face; the body falls off into near-black -->
+    <radialGradient id="gp-coat" cx="0.84" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#8A60F2"/>
+      <stop offset="0.17" stop-color="#4E2AAE"/>
+      <stop offset="0.38" stop-color="#1B0E40"/>
+      <stop offset="0.7" stop-color="#0A0517"/>
+      <stop offset="1" stop-color="#04020A"/>
+    </radialGradient>
+    <linearGradient id="gp-mouth" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050309"/>
+      <stop offset="1" stop-color="#2A0D3D"/>
     </linearGradient>
+    <radialGradient id="gp-eye" cx="0.55" cy="0.5" r="0.6">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.45" stop-color="#DCCBFF"/>
+      <stop offset="1" stop-color="#9B6CF7"/>
+    </radialGradient>
+    <filter id="gp-blur2" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="gp-blur5" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="gp-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="3"/></filter>
+
+    <!-- Domed skull, short boxy muzzle, deep upper lip, dropped lower jaw -->
+    <path id="gp-head" d="M-6 256
+      C-4 170 22 96 76 50
+      C100 30 132 24 158 30
+      C178 34 190 42 198 54
+      C206 62 222 70 234 80
+      C241 86 243 96 241 104
+      C240 112 238 118 232 124
+      C226 130 216 132 206 132
+      L166 140
+      C182 152 202 164 216 172
+      C224 178 226 188 220 196
+      C206 208 176 214 148 212
+      C136 226 128 242 126 256 Z"/>
+    <clipPath id="gp-head-clip"><use href="#gp-head"/></clipPath>
   </defs>
-  <rect width="256" height="256" rx="56" fill="#0B0A10"/>
 
   <g clip-path="url(#gp-badge)">
-    <g transform="translate(-10 -22) scale(1.06)">
-      <!-- Silhouette: lunging, roaring panther in profile. The open jaw is negative space. -->
-      <path d="M22 262
-               Q26 154 70 112
-               L78 78
-               Q84 64 98 72
-               L112 90
-               Q142 72 174 82
-               L194 96
-               Q216 100 228 112
-               L234 118
-               L234 134
-               L229 153
-               L164 158
-               L220 193
-               L216 207
-               L186 221
-               L138 223
-               L124 262 Z"
-            fill="url(#gp-coat)"/>
+    <rect width="256" height="256" fill="url(#gp-bg)"/>
 
-      <!-- Facet cuts in the background colour -->
-      <g fill="#0B0A10">
-        <!-- inner ear -->
-        <path d="M84 98 L88 80 Q92 76 96 82 L102 94 Z"/>
-        <!-- heavy brow, angled toward the nose -->
-        <path d="M138 98 L200 101 L140 105 Z"/>
-        <!-- snarl wrinkles on the muzzle -->
-        <path d="M200 116 L218 124 L203 122 Z"/>
-        <path d="M204 129 L221 137 L206 135 Z"/>
-        <!-- cheek cut from eye toward the jaw -->
-        <path d="M126 124 L166 152 L150 158 Z"/>
-        <!-- neck muscle -->
-        <path d="M48 164 L92 216 L74 218 Z"/>
-        <!-- nose pad -->
-        <path d="M226 112 L236 118 L234 128 Z"/>
-      </g>
+    <!-- Open mouth, framed by the jaws -->
+    <path d="M206 130 L164 141 L216 174 L234 140 Z" fill="url(#gp-mouth)"/>
+    <path d="M178 150 C192 156 204 164 212 170 C204 170 190 164 178 150 Z" fill="#4A1A5C" opacity="0.8"/>
 
-      <!-- Eye: slanted almond with slit pupil -->
-      <path d="M158 112 Q178 103 200 110 Q178 124 158 112 Z" fill="#F1EAFF"/>
-      <path d="M180 106 L183 112 L180 119 L177 112 Z" fill="#0B0A10"/>
+    <!-- Ear, laid back on the skull -->
+    <path d="M84 52 C80 36 90 22 106 22 C116 22 124 30 124 40 Z" fill="#150B30"/>
+    <path d="M91 47 C89 36 96 28 106 28 C112 29 116 34 116 40 Z" fill="#05030A"/>
+    <path d="M84 52 C80 36 90 22 106 22" stroke="#7A52E0" stroke-width="1.8" fill="none" opacity="0.45"/>
 
-      <!-- Fangs -->
-      <path d="M225 153 L216 188 L207 156 Z" fill="#F1EAFF"/>
-      <path d="M211 192 L203 168 L196 189 Z" fill="#F1EAFF"/>
+    <use href="#gp-head" fill="url(#gp-coat)"/>
+
+    <g clip-path="url(#gp-head-clip)">
+      <!-- Highlights: brow, nose bridge, muzzle, lower lip -->
+      <path d="M150 34 C170 36 186 44 196 56" stroke="#B898FF" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.5" filter="url(#gp-blur5)"/>
+      <path d="M206 64 C218 70 228 76 236 86" stroke="#CDB6FF" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.7" filter="url(#gp-blur2)"/>
+      <ellipse cx="226" cy="108" rx="13" ry="16" fill="#A884FB" opacity="0.55" filter="url(#gp-blur5)"/>
+      <path d="M180 178 C196 186 208 186 218 182" stroke="#8E66F4" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.55" filter="url(#gp-blur2)"/>
+
+      <!-- Sculpted shadows -->
+      <!-- brow ridge over the eye -->
+      <path d="M160 56 C174 50 190 52 200 60 C188 58 174 60 160 66 Z" fill="#0A0616" opacity="0.9" filter="url(#gp-blur2)"/>
+      <!-- snarl wrinkles on the bridge -->
+      <path d="M210 76 C216 80 222 86 226 92" stroke="#130A2A" stroke-width="3" fill="none" stroke-linecap="round" filter="url(#gp-blur2)"/>
+      <path d="M206 86 C212 90 218 96 220 102" stroke="#130A2A" stroke-width="3" fill="none" stroke-linecap="round" filter="url(#gp-blur2)"/>
+      <!-- cheekbone sweeping from below the eye to the mouth corner -->
+      <path d="M150 84 C166 92 176 108 172 132 C166 116 156 102 140 94 Z" fill="#0B0618" opacity="0.85" filter="url(#gp-blur2)"/>
+      <!-- shadow under the upper lip -->
+      <path d="M204 128 C190 132 178 136 166 140 C180 140 196 136 210 132 Z" fill="#05030A" opacity="0.9" filter="url(#gp-blur2)"/>
+      <!-- jaw and neck in shadow -->
+      <path d="M126 150 C150 176 176 196 214 196" stroke="#05030A" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.6" filter="url(#gp-blur5)"/>
+      <path d="M30 110 C70 140 100 190 112 256" stroke="#030206" stroke-width="40" fill="none" opacity="0.85" filter="url(#gp-blur5)"/>
+      <!-- whisker pads -->
+      <g fill="#140A2C"><circle cx="216" cy="112" r="1.6"/><circle cx="222" cy="108" r="1.6"/><circle cx="222" cy="116" r="1.6"/><circle cx="210" cy="116" r="1.6"/></g>
     </g>
+
+    <!-- Rim light along the profile -->
+    <path d="M100 32 C132 24 158 30 178 36 C190 42 198 54 198 54 C206 62 222 70 234 80 C241 86 243 96 241 104" stroke="#D2BDFF" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.8"/>
+
+    <!-- Nose -->
+    <path d="M232 84 C239 85 243 92 241 99 C236 99 231 94 230 89 Z" fill="#07040E"/>
+
+    <!-- Teeth -->
+    <path d="M204 131 C205 144 203 156 198 166 C196 154 194 142 194 133 Z" fill="#F4EEFF"/>
+    <path d="M216 129 L213 138 L210 130 Z" fill="#DCD0F5"/>
+    <path d="M224 127 L222 134 L219 128 Z" fill="#DCD0F5"/>
+    <path d="M200 170 C197 162 195 155 194 148 C190 156 188 164 188 171 Z" fill="#E6DCFA"/>
+    <path d="M208 174 L206 166 L203 173 Z" fill="#CFC2EE"/>
+
+    <!-- Glowing eye with slit pupil -->
+    <path d="M172 66 Q186 57 202 64 Q187 75 172 66 Z" fill="#B596FF" filter="url(#gp-glow)"/>
+    <path d="M173 66 Q186 58 201 64 Q187 73 173 66 Z" fill="url(#gp-eye)"/>
+    <path d="M188 59.5 L190 65.5 L188 71.5 L186 65.5 Z" fill="#0B0614"/>
   </g>
 </svg>
