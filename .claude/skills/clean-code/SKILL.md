@@ -45,6 +45,10 @@ Code here is read far more often than it's written, and it outlives every milest
 
 Comments explain _why_, never _what_. If you need a comment to explain what code does, rename or restructure first. Public items in `panther-domain` and `panther-application` get doc comments (`///`) because they're the project's vocabulary.
 
+## Closed networks
+
+Git Panther must work without internet access (ADR 5). Never add runtime network calls, CDN assets, remote fonts, telemetry or public-service lookups. The only allowed traffic is to git remotes and self-hosted servers the user configures. `pnpm check:offline` and the E2E network guard enforce this.
+
 ## Before committing
 
 Run `pnpm check` (lint, typecheck, Rust fmt/clippy, all tests). Commit one logical change at a time with a Conventional Commit message (`feat(graph): …`, `fix(staging): …`, `refactor(domain): …`, `test: …`, `docs: …`, `chore: …`, `ci: …`).

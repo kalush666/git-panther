@@ -1,5 +1,7 @@
 # Git Panther — Roadmap
 
+Git Panther must work fully on closed networks ([ADR 5](adr/0005-closed-network-operation.md)); every item below respects that.
+
 Each milestone is developed on its own branch with small Conventional Commits, ends with a demo and your approval, and is merged to `main` only after that. Ship target for the MVP is **Windows**; CI builds on Windows, macOS and Linux.
 
 Status legend: ✅ done · 🚧 in progress · ⏳ planned
@@ -53,7 +55,7 @@ Stash save / apply / pop / drop; basic conflict view (take ours / theirs / mark 
 
 ### ⏳ M7 — Settings & release
 
-Settings screen (theme, git path, pull mode, fonts), E2E flows, Windows installer (NSIS/MSI) from CI.
+Settings screen (theme, git path, pull mode, fonts), E2E flows, self-contained Windows installer (NSIS/MSI, embedded WebView2 offline installer) from CI, verified on a machine without internet.
 
 ## Later (to be prioritised together)
 
@@ -63,7 +65,7 @@ Settings screen (theme, git path, pull mode, fonts), E2E flows, Windows installe
 - Blame and file history
 - Tags, submodules, Git LFS
 - SSH / GPG key management, in-app credentials
-- Pull-request integration (GitHub, GitLab, Bitbucket, Azure DevOps) via `HostingProvider`
+- Pull-request integration via `HostingProvider` for self-hosted servers (GitHub Enterprise Server, GitLab self-managed, Bitbucket Data Center, Azure DevOps Server) with configurable URLs and custom CA certificates
 - Workspaces, undo/redo of git actions
 - Command palette, configurable keyboard shortcuts
-- Auto-updates, macOS/Linux installers and signing
+- Updates from an internal update server (no public update checks), macOS/Linux installers and signing

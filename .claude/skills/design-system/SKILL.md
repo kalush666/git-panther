@@ -38,7 +38,7 @@ Contrast: text tokens must meet WCAG AA (4.5:1) on every background token in bot
 
 ## Typography
 
-- UI: `--gp-font-ui` = Inter Variable (bundled via `@fontsource-variable/inter`, the app must work offline), fallback `"Segoe UI Variable", system-ui, sans-serif`.
+- UI: `--gp-font-ui` = Inter Variable (bundled via `@fontsource-variable/inter`; the app must work on closed networks, so never load fonts, icons or images from a URL), fallback `"Segoe UI Variable", system-ui, sans-serif`.
 - Code, SHAs, diffs: `--gp-font-mono` = JetBrains Mono Variable (bundled), fallback `ui-monospace, Consolas, monospace`.
 - Scale (`--gp-text-xs … --gp-text-xl`): 11 / 12 / 13 / 15 / 18 px. Default UI text is 13px — this is a dense, desktop tool. Line height 1.45 for UI, 1.5 for diffs.
 - Weights: 400 body, 500 labels/buttons, 600 headings. Never 700+ in UI chrome.
