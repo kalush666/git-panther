@@ -9,6 +9,7 @@ use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::ports::HunkAction;
 use panther_domain::remote::{PullStrategy, Remote};
 use panther_domain::repository::{CloneProgress, HeadState, RepositorySummary, repository_name};
+use panther_domain::settings::Settings;
 use panther_domain::stash::{ConflictSide, Operation, Stash};
 use panther_domain::working_tree::{
     ChangedFile, DiffLine, DiffSide, FileDiff, FileState, Hunk, LineKind, WorkingTreeStatus,
@@ -626,6 +627,28 @@ impl From<ConflictSideDto> for ConflictSide {
         match side {
             ConflictSideDto::Mine => Self::Mine,
             ConflictSideDto::Incoming => Self::Incoming,
+        }
+    }
+}
+
+/// Settings kept by the Rust core. UI-only preferences live in the webview.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SettingsDto {
+    /// The configured git, or `None` for git from `PATH`.
+    pub git_executable: Option<String>,
+    /// The git this run uses; differs from the configured one until restart.
+    pub active_git_executable: String,
+}
+
+impl SettingsDto {
+    pub fn new(settings: &Settings, active: &std::path::Path) -> Self {
+        Self {
+            git_executable: settings
+                .git_executable
+                .as_ref()
+                .map(|path| path.display().to_string()),
+            active_git_executable: active.display().to_string(),
         }
     }
 }

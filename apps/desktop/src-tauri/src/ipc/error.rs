@@ -42,6 +42,7 @@ pub enum AppErrorKind {
     StashConflict,
     NoOperationInProgress,
     UnresolvedConflicts,
+    InvalidGitExecutable,
     WatchFailed,
     Internal,
 }
@@ -117,6 +118,7 @@ impl From<RepositoryError> for AppError {
             RepositoryError::StashConflict { .. } => AppErrorKind::StashConflict,
             RepositoryError::NoOperationInProgress => AppErrorKind::NoOperationInProgress,
             RepositoryError::UnresolvedConflicts => AppErrorKind::UnresolvedConflicts,
+            RepositoryError::InvalidGitExecutable { .. } => AppErrorKind::InvalidGitExecutable,
         };
         Self::new(kind, error.to_string())
     }

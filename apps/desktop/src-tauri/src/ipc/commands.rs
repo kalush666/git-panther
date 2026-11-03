@@ -6,6 +6,7 @@ use panther_domain::commit::CommitId;
 use panther_domain::repository::{
     CancellationToken, CloneProgress, CloneRequest, RemoteUrl, RepositoryError,
 };
+use panther_domain::settings::DEFAULT_GIT_EXECUTABLE;
 use panther_domain::working_tree::HunkRef;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
@@ -14,7 +15,7 @@ use tauri_specta::Event;
 use super::dto::{
     BranchDto, CloneProgressDto, CommitDetailsDto, ConflictSideDto, DiffSideDto, FileDiffDto,
     GitInstallationDto, GraphPageDto, HunkActionDto, OperationDto, PullStrategyDto,
-    RecentRepositoryDto, RemoteDto, RepositoryChanged, RepositorySummaryDto, StashDto,
+    RecentRepositoryDto, RemoteDto, RepositoryChanged, RepositorySummaryDto, SettingsDto, StashDto,
     WorkingTreeStatusDto,
 };
 use super::error::{AppError, AppErrorKind};
@@ -64,6 +65,49 @@ pub async fn check_git_installation(
 ) -> Result<GitInstallationDto, AppError> {
     let use_case = services.check_git_installation.clone();
     run_blocking(move || Ok(use_case.execute()?.into())).await
+}
+
+/// Reports whether `executable` (or git from `PATH` when `None`) is a
+/// supported git, without switching to it.
+#[tauri::command]
+#[specta::specta]
+pub async fn check_git_executable(
+    services: State<'_, AppServices>,
+    executable: Option<String>,
+) -> Result<GitInstallationDto, AppError> {
+    let use_case = services.check_git_installation.clone();
+    let executable =
+        executable.map_or_else(|| PathBuf::from(DEFAULT_GIT_EXECUTABLE), PathBuf::from);
+    run_blocking(move || Ok(use_case.check(&executable)?.into())).await
+}
+
+/// The saved settings and the git this run uses.
+#[tauri::command]
+#[specta::specta]
+pub async fn get_settings(services: State<'_, AppServices>) -> Result<SettingsDto, AppError> {
+    let settings = services.settings.clone();
+    let check = services.check_git_installation.clone();
+    run_blocking(move || Ok(SettingsDto::new(&settings.load()?, check.executable()))).await
+}
+
+/// Saves the git to use from the next start; `None` means git from `PATH`.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_git_executable(
+    services: State<'_, AppServices>,
+    executable: Option<String>,
+) -> Result<SettingsDto, AppError> {
+    let settings = services.settings.clone();
+    let check = services.check_git_installation.clone();
+    let executable = executable
+        .map(|path| path.trim().to_owned())
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from);
+    run_blocking(move || {
+        let saved = settings.set_git_executable(executable)?;
+        Ok(SettingsDto::new(&saved, check.executable()))
+    })
+    .await
 }
 
 /// Opens the repository containing `path` and adds it to the recent list.
@@ -128,6 +172,33 @@ pub async fn clone_repository(
 pub async fn cancel_job(jobs: State<'_, JobRegistry>, job_id: String) -> Result<(), AppError> {
     jobs.cancel(&job_id);
     Ok(())
+}
+
+/// Restarts the app, e.g. to use a newly configured git.
+#[tauri::command]
+#[specta::specta]
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Tauri injects command arguments by value"
+)]
+pub fn restart_app(app: tauri::AppHandle) {
+    app.restart();
+}
+
+/// Scales the whole interface, like a browser zoom.
+#[tauri::command]
+#[specta::specta]
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Tauri injects command arguments by value"
+)]
+pub fn set_zoom(webview: tauri::Webview, scale: f64) -> Result<(), AppError> {
+    webview.set_zoom(scale).map_err(|error| {
+        AppError::new(
+            AppErrorKind::Internal,
+            format!("The interface size could not be changed: {error}"),
+        )
+    })
 }
 
 /// Recently opened repositories, most recent first.

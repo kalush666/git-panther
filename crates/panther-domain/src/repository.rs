@@ -177,6 +177,8 @@ pub enum RepositoryError {
     NoOperationInProgress,
     #[error("Some files still have conflicts. Resolve every file before continuing.")]
     UnresolvedConflicts,
+    #[error("{path} cannot be used as git: {reason}")]
+    InvalidGitExecutable { path: PathBuf, reason: String },
 }
 
 #[cfg(test)]

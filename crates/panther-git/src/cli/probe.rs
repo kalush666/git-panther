@@ -1,7 +1,7 @@
 //! Detects the installed git version.
 
 use std::io;
-use std::path::PathBuf;
+use std::path::Path;
 
 use panther_domain::git_installation::GitVersion;
 use panther_domain::ports::{GitBinaryProbe, GitProbeError};
@@ -9,32 +9,12 @@ use panther_domain::ports::{GitBinaryProbe, GitProbeError};
 use super::background_command;
 
 /// Probes a git executable by running `git --version`.
-#[derive(Debug, Clone)]
-pub struct SystemGitProbe {
-    executable: PathBuf,
-}
-
-impl SystemGitProbe {
-    /// Probes the given executable path (or bare name resolved via `PATH`).
-    pub fn new(executable: impl Into<PathBuf>) -> Self {
-        Self {
-            executable: executable.into(),
-        }
-    }
-}
-
-impl Default for SystemGitProbe {
-    fn default() -> Self {
-        Self::new("git")
-    }
-}
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SystemGitProbe;
 
 impl GitBinaryProbe for SystemGitProbe {
-    fn installed_version(&self) -> Result<Option<GitVersion>, GitProbeError> {
-        let output = match background_command(&self.executable)
-            .arg("--version")
-            .output()
-        {
+    fn version_of(&self, executable: &Path) -> Result<Option<GitVersion>, GitProbeError> {
+        let output = match background_command(executable).arg("--version").output() {
             Ok(output) => output,
             Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
             Err(error) => {
