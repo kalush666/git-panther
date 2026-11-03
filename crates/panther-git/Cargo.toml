@@ -1,0 +1,13 @@
+[package]
+name = "panther-git"
+description = "Git Panther git adapters (libgit2 and system git CLI) implementing domain ports."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+panther-domain.workspace = true
+
+[lints]
+workspace = true
