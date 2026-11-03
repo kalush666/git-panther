@@ -3,6 +3,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use panther_application::branches::Branches;
 use panther_application::check_git_installation::CheckGitInstallation;
 use panther_application::clone_repository::CloneRepository;
 use panther_application::commit_graph::CommitGraph;
@@ -10,8 +11,8 @@ use panther_application::open_repository::OpenRepository;
 use panther_application::recent_repositories::RecentRepositoryList;
 use panther_application::working_copy::WorkingCopy;
 use panther_git::{
-    Git2RepositoryOpener, GitCliCloner, GitCommitLog, GitCommitWriter, GitWorkingTree,
-    SystemGitProbe,
+    Git2RepositoryOpener, GitBranchStore, GitCliCloner, GitCommitLog, GitCommitWriter,
+    GitWorkingTree, SystemGitProbe,
 };
 
 use crate::infra::recent_store::JsonRecentRepositoryStore;
@@ -26,6 +27,7 @@ pub struct AppServices {
     pub recent_repositories: Arc<RecentRepositoryList>,
     pub commit_graph: Arc<CommitGraph>,
     pub working_copy: Arc<WorkingCopy>,
+    pub branches: Arc<Branches>,
 }
 
 impl AppServices {
@@ -49,6 +51,7 @@ impl AppServices {
                 Arc::clone(&open_repository),
             )),
             commit_graph: Arc::new(CommitGraph::new(Arc::new(GitCommitLog::default()))),
+            branches: Arc::new(Branches::new(Arc::new(GitBranchStore::default()))),
             working_copy: Arc::new(WorkingCopy::new(
                 Arc::new(GitWorkingTree::default()),
                 Arc::new(GitCommitWriter::default()),

@@ -1,3 +1,4 @@
+import * as ContextMenu from '@radix-ui/react-context-menu';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Check, Cloud, Laptop, Tag } from 'lucide-react';
 import {
@@ -19,6 +20,7 @@ import { ROW_HEIGHT, graphColumnWidth, paletteIndex } from '../model/graphGeomet
 import { groupRefs, initialsOf, type RefPill } from '../model/refPills';
 import { ColumnMenu } from './ColumnMenu';
 import styles from './CommitGraph.module.css';
+import menuStyles from './menu.module.css';
 
 const OVERSCAN_ROWS = 20;
 /** Labels beyond this count collapse into a "+N" chip. */
@@ -32,6 +34,8 @@ interface CommitGraphProps {
   onSelectedCommitChange: (commitId: string | null) => void;
   /** Shown above the first commit, e.g. the working-copy row. */
   leadingRow?: ReactNode;
+  /** Context-menu items for a commit row (right-click). */
+  rowMenu?: (entry: GraphEntryDto) => ReactNode;
 }
 
 /**
@@ -67,6 +71,7 @@ export function CommitGraph({
   onSelectIndex,
   onSelectedCommitChange,
   leadingRow,
+  rowMenu,
 }: CommitGraphProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -205,6 +210,7 @@ export function CommitGraph({
               entry={graph.entryAt(item.index)}
               gridTemplateColumns={gridTemplateColumns}
               columns={columns}
+              menu={rowMenu}
               isSelected={item.index === selectedIndex}
               onSelect={select}
             />
@@ -223,6 +229,7 @@ interface CommitRowProps {
   entry: GraphEntryDto | undefined;
   gridTemplateColumns: string;
   columns: ColumnVisibility;
+  menu: CommitGraphProps['rowMenu'];
   isSelected: boolean;
   onSelect: (index: number) => void;
 }
@@ -233,10 +240,11 @@ function CommitRow({
   entry,
   gridTemplateColumns,
   columns,
+  menu,
   isSelected,
   onSelect,
 }: CommitRowProps) {
-  return (
+  const row = (
     <div
       id={rowId(index)}
       role="option"
@@ -272,6 +280,17 @@ function CommitRow({
         </>
       )}
     </div>
+  );
+  if (!menu || !entry) {
+    return row;
+  }
+  return (
+    <ContextMenu.Root>
+      <ContextMenu.Trigger asChild>{row}</ContextMenu.Trigger>
+      <ContextMenu.Portal>
+        <ContextMenu.Content className={menuStyles.content}>{menu(entry)}</ContextMenu.Content>
+      </ContextMenu.Portal>
+    </ContextMenu.Root>
   );
 }
 

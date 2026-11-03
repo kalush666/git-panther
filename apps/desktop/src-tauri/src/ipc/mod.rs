@@ -30,6 +30,11 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::apply_hunk,
             commands::commit_changes,
             commands::head_message,
+            commands::list_branches,
+            commands::create_branch,
+            commands::checkout_branch,
+            commands::rename_branch,
+            commands::delete_branch,
         ])
         .events(tauri_specta::collect_events![dto::RepositoryChanged])
 }

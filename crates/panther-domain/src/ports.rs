@@ -5,6 +5,7 @@
 
 use std::path::Path;
 
+use crate::branch::{Branch, BranchName};
 use crate::commit::{CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
 use crate::git_installation::{GitVersion, GitVersionParseError};
 use crate::recent::RecentRepositories;
@@ -68,6 +69,55 @@ pub trait WorkingTree: Send + Sync {
         repository: &Path,
         hunk: &HunkRef,
         action: HunkAction,
+    ) -> Result<(), RepositoryError>;
+}
+
+/// Lists and changes branches.
+pub trait BranchStore: Send + Sync {
+    /// Local branches first, then remote branches, each sorted by name.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn branches(&self, repository: &Path) -> Result<Vec<Branch>, RepositoryError>;
+
+    /// Creates `name` at `start`, optionally switching to it.
+    ///
+    /// # Errors
+    /// [`RepositoryError::BranchExists`] or a checkout error.
+    fn create(
+        &self,
+        repository: &Path,
+        name: &BranchName,
+        start: &CommitId,
+        checkout: bool,
+    ) -> Result<(), RepositoryError>;
+
+    /// Switches to a local branch. For a remote branch such as
+    /// `origin/topic`, creates and switches to a local `topic` tracking it.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CheckoutConflict`] if uncommitted changes would be lost.
+    fn checkout(&self, repository: &Path, name: &str) -> Result<(), RepositoryError>;
+
+    /// # Errors
+    /// [`RepositoryError::BranchExists`] or [`RepositoryError::BranchNotFound`].
+    fn rename(
+        &self,
+        repository: &Path,
+        from: &BranchName,
+        to: &BranchName,
+    ) -> Result<(), RepositoryError>;
+
+    /// Deletes a local branch; without `force`, only if it is merged.
+    ///
+    /// # Errors
+    /// [`RepositoryError::BranchNotMerged`] or
+    /// [`RepositoryError::CannotDeleteCurrentBranch`].
+    fn delete(
+        &self,
+        repository: &Path,
+        name: &BranchName,
+        force: bool,
     ) -> Result<(), RepositoryError>;
 }
 

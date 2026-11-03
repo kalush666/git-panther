@@ -1,16 +1,21 @@
+import * as ContextMenu from '@radix-ui/react-context-menu';
 import { ChevronRight, GitBranch, TriangleAlert } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
+import type { GraphEntryDto } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
 import { useRepository } from '../api/useRepository';
 import { useWorkingTreeStatus, type DiffSource } from '../api/useWorkingTree';
 import { describeHead } from '../model/describeHead';
+import { BranchSidebar } from './BranchSidebar';
 import { CommitDetailsPanel } from './CommitDetailsPanel';
 import { CommitGraph } from './CommitGraph';
 import { DiffViewer } from './DiffViewer';
 import { StagingPanel } from './StagingPanel';
 import { WorkingCopyRow } from './WorkingCopyRow';
+import menu from './menu.module.css';
 import styles from './RepositoryView.module.css';
+import { useBranchActions, type BranchActions } from './useBranchActions';
 
 interface RepositoryViewProps {
   path: string;
@@ -26,6 +31,7 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
   const [selection, setSelection] = useState<Selection | null>(null);
   const [selectedCommitId, setSelectedCommitId] = useState<string | null>(null);
   const [diff, setDiff] = useState<DiffSource | null>(null);
+  const branchActions = useBranchActions(path);
   const keepSelectedCommit = useCallback((commitId: string | null) => {
     setSelectedCommitId(commitId);
   }, []);
@@ -82,6 +88,7 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
         </div>
       </header>
       <div className={styles.body}>
+        <BranchSidebar path={path} actions={branchActions} />
         <div className={styles.graph}>
           {diff ? (
             <DiffViewer
@@ -99,6 +106,7 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
                 setSelection({ kind: 'commit', index });
               }}
               onSelectedCommitChange={keepSelectedCommit}
+              rowMenu={(entry) => <CommitMenu entry={entry} actions={branchActions} />}
               leadingRow={
                 changeCount > 0 ? (
                   <WorkingCopyRow
@@ -133,6 +141,44 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
           />
         )}
       </div>
+      {branchActions.dialogs}
     </section>
+  );
+}
+
+/** Right-click actions for a commit in the graph. */
+function CommitMenu({ entry, actions }: { entry: GraphEntryDto; actions: BranchActions }) {
+  const switchable = entry.refs.filter((ref) => ref.kind !== 'tag' && !ref.isHead);
+  return (
+    <>
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          actions.openCreate(entry.id, `commit ${entry.shortId}`);
+        }}
+      >
+        Create branch here…
+      </ContextMenu.Item>
+      {switchable.map((ref) => (
+        <ContextMenu.Item
+          key={ref.name}
+          className={menu.item}
+          onSelect={() => {
+            actions.checkout(ref.name);
+          }}
+        >
+          Check out {ref.name}
+        </ContextMenu.Item>
+      ))}
+      <ContextMenu.Separator className={menu.separator} />
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          void navigator.clipboard.writeText(entry.id);
+        }}
+      >
+        Copy commit SHA
+      </ContextMenu.Item>
+    </>
   );
 }

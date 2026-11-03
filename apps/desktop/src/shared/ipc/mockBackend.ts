@@ -1,5 +1,6 @@
 import type { Backend, CloneProgress, Result } from './backend';
 import type { GitInstallationDto, RecentRepositoryDto, RepositorySummaryDto } from './bindings';
+import { createMockBranches } from './mockBranches';
 import { mockCommitDetails, mockGraphPage } from './mockGraph';
 import { createMockWorkingTree } from './mockWorkingTree';
 
@@ -52,6 +53,7 @@ function createMockBackend(): Backend {
   const cancelledJobs = new Set<string>();
   const changeListeners = new Set<(path: string) => void>();
   const workingTree = createMockWorkingTree();
+  const branchStore = createMockBranches();
 
   const remember = (repository: RepositorySummaryDto) => {
     repositories.set(repository.path, repository);
@@ -127,6 +129,12 @@ function createMockBackend(): Backend {
     applyHunk: (_path, hunk, action) => Promise.resolve(workingTree.applyHunk(hunk, action)),
     commitChanges: (_path, message, amend) => Promise.resolve(workingTree.commit(message, amend)),
     headMessage: () => Promise.resolve(workingTree.headMessage()),
+    listBranches: () => Promise.resolve(branchStore.list()),
+    createBranch: (_path, name, start, checkout) =>
+      Promise.resolve(branchStore.create(name, start, checkout)),
+    checkoutBranch: (_path, name) => Promise.resolve(branchStore.checkout(name)),
+    renameBranch: (_path, from, to) => Promise.resolve(branchStore.rename(from, to)),
+    deleteBranch: (_path, name, force) => Promise.resolve(branchStore.delete(name, force)),
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
   };
 }

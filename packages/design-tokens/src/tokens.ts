@@ -88,6 +88,7 @@ export const scaleTokens = {
   'tab-max-width': '200px',
   'dialog-width': '480px',
   'details-width': '340px',
+  'sidebar-width': '232px',
   'col-author': '140px',
   'col-date': '150px',
   'col-sha': '64px',

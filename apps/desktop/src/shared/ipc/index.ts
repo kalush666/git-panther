@@ -14,6 +14,7 @@ import { tauriBackend } from './tauriBackend';
 
 export type {
   Backend,
+  Branch,
   ChangedFile,
   CloneOptions,
   CloneProgress,
