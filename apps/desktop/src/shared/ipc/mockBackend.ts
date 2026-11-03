@@ -46,10 +46,12 @@ const delay = (ms: number) =>
  */
 function createMockBackend(): Backend {
   let recent: RecentRepositoryDto[] = [];
+  const repositories = new Map<string, RepositorySummaryDto>();
   const cancelledJobs = new Set<string>();
   const changeListeners = new Set<(path: string) => void>();
 
   const remember = (repository: RepositorySummaryDto) => {
+    repositories.set(repository.path, repository);
     recent = [
       { path: repository.path, name: repository.name },
       ...recent.filter((entry) => entry.path !== repository.path),
@@ -70,7 +72,7 @@ function createMockBackend(): Backend {
       ),
     initRepository: (path) =>
       Promise.resolve(remember({ ...summary(path), head: { kind: 'unborn', name: 'main' } })),
-    refreshRepository: (path) => Promise.resolve(ok(summary(path))),
+    refreshRepository: (path) => Promise.resolve(ok(repositories.get(path) ?? summary(path))),
     cloneRepository: async ({ destination, jobId }, onProgress) => {
       for (const step of CLONE_STEPS) {
         await delay(CLONE_STEP_MS);
