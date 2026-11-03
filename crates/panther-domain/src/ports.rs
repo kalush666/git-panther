@@ -13,6 +13,7 @@ use crate::remote::{PullStrategy, Remote};
 use crate::repository::{
     CancellationToken, CloneProgress, CloneRequest, RepositoryError, RepositorySummary,
 };
+use crate::settings::Settings;
 use crate::stash::{ConflictSide, Operation, Stash};
 use crate::working_tree::{CommitMessage, DiffSide, FileDiff, HunkRef, WorkingTreeStatus};
 
@@ -358,14 +359,27 @@ pub trait RecentRepositoryStore: Send + Sync {
     fn save(&self, recent: &RecentRepositories) -> Result<(), RepositoryError>;
 }
 
-/// Detects the git executable installed on the user's system.
+/// Detects which git version an executable is.
 pub trait GitBinaryProbe: Send + Sync {
-    /// Returns the installed git version, or `Ok(None)` when no git
-    /// executable can be found.
+    /// The version of `executable` (a path, or a bare name resolved through
+    /// `PATH`), or `Ok(None)` when it does not exist.
     ///
     /// # Errors
-    /// Returns [`GitProbeError`] when git exists but cannot be queried.
-    fn installed_version(&self) -> Result<Option<GitVersion>, GitProbeError>;
+    /// Returns [`GitProbeError`] when it exists but cannot be queried.
+    fn version_of(&self, executable: &Path) -> Result<Option<GitVersion>, GitProbeError>;
+}
+
+/// Persists [`Settings`] between runs.
+pub trait SettingsStore: Send + Sync {
+    /// Defaults when nothing was saved yet.
+    ///
+    /// # Errors
+    /// [`RepositoryError::Storage`] when saved settings cannot be read.
+    fn load(&self) -> Result<Settings, RepositoryError>;
+
+    /// # Errors
+    /// [`RepositoryError::Storage`] when the settings cannot be written.
+    fn save(&self, settings: &Settings) -> Result<(), RepositoryError>;
 }
 
 /// Git was found but its version could not be determined.

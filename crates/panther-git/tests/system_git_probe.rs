@@ -1,12 +1,14 @@
 //! Integration tests for [`SystemGitProbe`] against the real system git.
 
+use std::path::Path;
+
 use panther_domain::ports::GitBinaryProbe;
 use panther_git::SystemGitProbe;
 
 #[test]
 fn detects_installed_git() {
-    let version = SystemGitProbe::default()
-        .installed_version()
+    let version = SystemGitProbe
+        .version_of(Path::new("git"))
         .expect("system git should be queryable on dev and CI machines");
     assert!(
         version.is_some(),
@@ -16,6 +18,6 @@ fn detects_installed_git() {
 
 #[test]
 fn reports_missing_executable_as_none() {
-    let probe = SystemGitProbe::new("git-panther-definitely-not-installed");
-    assert_eq!(probe.installed_version().unwrap(), None);
+    let missing = Path::new("git-panther-definitely-not-installed");
+    assert_eq!(SystemGitProbe.version_of(missing).unwrap(), None);
 }

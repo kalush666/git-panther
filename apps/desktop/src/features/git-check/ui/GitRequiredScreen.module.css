@@ -33,3 +33,8 @@
   font-size: var(--gp-text-sm);
   user-select: text;
 }
+
+.actions {
+  display: flex;
+  gap: var(--gp-space-2);
+}

@@ -16,7 +16,12 @@ function describeProblem(installation: GitInstallationDto | undefined): string {
   }
 }
 
-export function GitRequiredScreen() {
+interface GitRequiredScreenProps {
+  /** Lets the user point Git Panther at a git that is not on `PATH`. */
+  onOpenSettings: () => void;
+}
+
+export function GitRequiredScreen({ onOpenSettings }: GitRequiredScreenProps) {
   const installation = useGitInstallation();
   const details = installation.error?.message;
 
@@ -28,13 +33,16 @@ export function GitRequiredScreen() {
       </h1>
       <p className={styles.message}>{describeProblem(installation.data)}</p>
       {details && <p className={styles.details}>{details}</p>}
-      <Button
-        variant="primary"
-        onClick={() => void installation.refetch()}
-        disabled={installation.isFetching}
-      >
-        {installation.isFetching ? 'Checking…' : 'Retry'}
-      </Button>
+      <div className={styles.actions}>
+        <Button onClick={onOpenSettings}>Choose git…</Button>
+        <Button
+          variant="primary"
+          onClick={() => void installation.refetch()}
+          disabled={installation.isFetching}
+        >
+          {installation.isFetching ? 'Checking…' : 'Retry'}
+        </Button>
+      </div>
     </section>
   );
 }

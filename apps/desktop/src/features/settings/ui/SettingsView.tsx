@@ -1,0 +1,111 @@
+import { ArrowLeft } from 'lucide-react';
+import type { ReactNode } from 'react';
+
+import {
+  CODE_FONTS,
+  INTERFACE_SIZES,
+  useAppearanceStore,
+} from '../../../shared/preferences/appearance';
+import { PULL_STRATEGIES, usePullStrategyStore } from '../../../shared/preferences/pullStrategy';
+import { THEME_PREFERENCES, useThemeStore } from '../../../shared/preferences/theme';
+import { Button } from '../../../shared/ui/Button/Button';
+import { GitExecutableSetting } from './GitExecutableSetting';
+import { SegmentedControl } from './SegmentedControl';
+import styles from './SettingsView.module.css';
+
+interface SettingsViewProps {
+  onClose: () => void;
+}
+
+export function SettingsView({ onClose }: SettingsViewProps) {
+  const theme = useThemeStore((state) => state.preference);
+  const setTheme = useThemeStore((state) => state.setPreference);
+  const interfaceScale = useAppearanceStore((state) => state.interfaceScale);
+  const setInterfaceScale = useAppearanceStore((state) => state.setInterfaceScale);
+  const codeFont = useAppearanceStore((state) => state.codeFont);
+  const setCodeFont = useAppearanceStore((state) => state.setCodeFont);
+  const pullStrategy = usePullStrategyStore((state) => state.strategy);
+  const setPullStrategy = usePullStrategyStore((state) => state.setStrategy);
+
+  return (
+    <section className={styles.view} aria-labelledby="settings-title">
+      <header className={styles.header}>
+        <Button size="sm" variant="ghost" onClick={onClose}>
+          <ArrowLeft size={14} aria-hidden />
+          Back
+        </Button>
+        <h1 id="settings-title" className={styles.title}>
+          Settings
+        </h1>
+      </header>
+      <div className={styles.groups}>
+        <Group title="Appearance">
+          <Row label="Theme">
+            <SegmentedControl
+              label="Theme"
+              options={THEME_PREFERENCES}
+              value={theme}
+              onChange={setTheme}
+            />
+          </Row>
+          <Row label="Interface size">
+            <SegmentedControl
+              label="Interface size"
+              options={INTERFACE_SIZES.map(({ scale, label }) => ({ value: scale, label }))}
+              value={interfaceScale}
+              onChange={setInterfaceScale}
+            />
+          </Row>
+          <Row label="Code font" hint="Used for diffs, commit SHAs and file paths.">
+            <SegmentedControl
+              label="Code font"
+              options={CODE_FONTS.map(({ id, label }) => ({ value: id, label }))}
+              value={codeFont}
+              onChange={setCodeFont}
+            />
+          </Row>
+        </Group>
+        <Group title="Git">
+          <Row
+            label="Git executable"
+            hint="Git Panther runs your installed git, with your credentials and config."
+          >
+            <GitExecutableSetting />
+          </Row>
+          <Row
+            label="Pull"
+            hint={PULL_STRATEGIES.find(({ id }) => id === pullStrategy)?.hint ?? ''}
+          >
+            <SegmentedControl
+              label="Pull"
+              options={PULL_STRATEGIES.map(({ id, label }) => ({ value: id, label }))}
+              value={pullStrategy}
+              onChange={setPullStrategy}
+            />
+          </Row>
+        </Group>
+      </div>
+    </section>
+  );
+}
+
+function Group({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className={styles.group} aria-label={title}>
+      <h2 className={styles.groupTitle}>{title}</h2>
+      <div className={styles.rows}>{children}</div>
+    </section>
+  );
+}
+
+function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return (
+    <div className={styles.row}>
+      <div className={styles.rowLabel}>
+        <span className={styles.label}>{label}</span>
+        {hint && <span className={styles.hint}>{hint}</span>}
+      </div>
+      <div className={styles.control}>{children}</div>
+    </div>
+  );
+}

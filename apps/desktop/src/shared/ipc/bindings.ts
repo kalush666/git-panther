@@ -90,6 +90,19 @@ export const commands = {
 	continueOperation: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("continue_operation", { path })),
 	/**  Abandons the interrupted operation. */
 	abortOperation: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("abort_operation", { path })),
+	/**
+	 *  Reports whether `executable` (or git from `PATH` when `None`) is a
+	 *  supported git, without switching to it.
+	 */
+	checkGitExecutable: (executable: string | null) => typedError<GitInstallationDto, AppError>(__TAURI_INVOKE("check_git_executable", { executable })),
+	/**  The saved settings and the git this run uses. */
+	getSettings: () => typedError<SettingsDto_Serialize, AppError>(__TAURI_INVOKE("get_settings")),
+	/**  Saves the git to use from the next start; `None` means git from `PATH`. */
+	setGitExecutable: (executable: string | null) => typedError<SettingsDto_Serialize, AppError>(__TAURI_INVOKE("set_git_executable", { executable })),
+	/**  Restarts the app, e.g. to use a newly configured git. */
+	restartApp: () => __TAURI_INVOKE<void>("restart_app"),
+	/**  Scales the whole interface, like a browser zoom. */
+	setZoom: (scale: number | null) => typedError<null, AppError>(__TAURI_INVOKE("set_zoom", { scale })),
 };
 
 /** Events */
@@ -106,7 +119,7 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "watchFailed" | "internal";
 
 /**  A branch shown in the sidebar. */
 export type BranchDto = BranchDto_Serialize | BranchDto_Deserialize;
@@ -340,6 +353,25 @@ export type SegmentDto = {
 	from: number,
 	to: number,
 	color: number,
+};
+
+/**  Settings kept by the Rust core. UI-only preferences live in the webview. */
+export type SettingsDto = SettingsDto_Serialize | SettingsDto_Deserialize;
+
+/**  Settings kept by the Rust core. UI-only preferences live in the webview. */
+export type SettingsDto_Deserialize = {
+	/**  The configured git, or `None` for git from `PATH`. */
+	gitExecutable?: string | null,
+	/**  The git this run uses; differs from the configured one until restart. */
+	activeGitExecutable: string,
+};
+
+/**  Settings kept by the Rust core. UI-only preferences live in the webview. */
+export type SettingsDto_Serialize = {
+	/**  The configured git, or `None` for git from `PATH`. */
+	gitExecutable: string | null,
+	/**  The git this run uses; differs from the configured one until restart. */
+	activeGitExecutable: string,
 };
 
 /**  One stash entry, newest first. */

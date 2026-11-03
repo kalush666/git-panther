@@ -11,5 +11,6 @@ pub mod ports;
 pub mod recent;
 pub mod remote;
 pub mod repository;
+pub mod settings;
 pub mod stash;
 pub mod working_tree;

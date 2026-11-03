@@ -20,3 +20,4 @@ Git Panther must be fully usable on closed (air-gapped or internet-restricted) n
 - The Windows installer grows by roughly 130 MB.
 - Cloud-only conveniences (public avatars, cloud OAuth apps, public auto-update) are out of scope.
 - New dependencies must not fetch remote resources at runtime; the guards catch violations in CI.
+- Releases are checked as described in [Offline verification](../OFFLINE-VERIFICATION.md).

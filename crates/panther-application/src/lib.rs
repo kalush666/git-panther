@@ -10,6 +10,7 @@ pub mod commit_graph;
 pub mod conflicts;
 pub mod open_repository;
 pub mod recent_repositories;
+pub mod settings;
 pub mod stashes;
 pub mod sync;
 pub mod working_copy;

@@ -4,6 +4,16 @@ import { persist } from 'zustand/middleware';
 
 export type ThemePreference = 'system' | ThemeName;
 
+export const THEME_PREFERENCES: ReadonlyArray<{ value: ThemePreference; label: string }> = [
+  { value: 'system', label: 'System' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'light', label: 'Light' },
+];
+
+export function isThemePreference(value: string): value is ThemePreference {
+  return THEME_PREFERENCES.some((option) => option.value === value);
+}
+
 interface ThemeState {
   preference: ThemePreference;
   setPreference: (preference: ThemePreference) => void;

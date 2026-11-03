@@ -30,6 +30,7 @@ export type {
   PullStrategy,
   Remote,
   Result,
+  Settings,
   Stash,
   WorkingTreeStatus,
 } from './backend';
