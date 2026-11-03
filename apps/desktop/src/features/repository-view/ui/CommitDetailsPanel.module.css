@@ -1,0 +1,112 @@
+.panel {
+  flex-shrink: 0;
+  width: var(--gp-details-width);
+  height: 100%;
+  overflow: auto;
+  padding: var(--gp-space-4);
+  border-left: 1px solid var(--gp-border-subtle);
+  background: var(--gp-bg-surface);
+  user-select: text;
+}
+
+.empty {
+  margin: var(--gp-space-6) 0 0;
+  color: var(--gp-text-muted);
+  text-align: center;
+}
+
+.subject {
+  margin: 0;
+  font-size: var(--gp-text-lg);
+  font-weight: var(--gp-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.body {
+  margin: var(--gp-space-2) 0 0;
+  color: var(--gp-text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--gp-space-2) var(--gp-space-3);
+  margin: var(--gp-space-4) 0 0;
+}
+
+.factLabel {
+  color: var(--gp-text-muted);
+  font-size: var(--gp-text-sm);
+}
+
+.factValue,
+.factMono {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.factMono {
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-sm);
+}
+
+.email {
+  color: var(--gp-text-muted);
+  font-size: var(--gp-text-sm);
+}
+
+.sectionTitle {
+  margin: var(--gp-space-5) 0 var(--gp-space-2);
+  color: var(--gp-text-muted);
+  font-size: var(--gp-text-xs);
+  font-weight: var(--gp-weight-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.changes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.change {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-space-2);
+  min-height: var(--gp-row-height);
+}
+
+.changeKind {
+  flex-shrink: 0;
+  width: var(--gp-space-4);
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-sm);
+  font-weight: var(--gp-weight-semibold);
+  text-align: center;
+}
+
+.changeKind[data-kind='added'] {
+  color: var(--gp-success);
+}
+
+.changeKind[data-kind='deleted'] {
+  color: var(--gp-danger);
+}
+
+.changeKind[data-kind='modified'],
+.changeKind[data-kind='typeChanged'] {
+  color: var(--gp-warning);
+}
+
+.changeKind[data-kind='renamed'] {
+  color: var(--gp-info);
+}
+
+.changePath {
+  overflow-wrap: anywhere;
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-sm);
+}

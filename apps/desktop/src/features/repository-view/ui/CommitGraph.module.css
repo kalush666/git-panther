@@ -1,0 +1,141 @@
+.graph {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.header,
+.row {
+  display: grid;
+  align-items: center;
+  column-gap: var(--gp-space-3);
+  padding-right: var(--gp-space-3);
+}
+
+.header {
+  height: var(--gp-row-height);
+  border-bottom: 1px solid var(--gp-border-subtle);
+  color: var(--gp-text-muted);
+  font-size: var(--gp-text-xs);
+  font-weight: var(--gp-weight-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.headerCell:first-child {
+  padding-left: var(--gp-space-2);
+}
+
+.scroller {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  outline: none;
+}
+
+.scroller:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--gp-focus-ring);
+}
+
+.canvas {
+  position: relative;
+  width: 100%;
+}
+
+.lanes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--gp-row-height);
+  cursor: default;
+}
+
+.row:hover {
+  background: var(--gp-bg-raised);
+}
+
+.row[data-selected='true'] {
+  background: var(--gp-accent-subtle);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-space-1);
+  min-width: 0;
+}
+
+.summaryText {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.muted {
+  overflow: hidden;
+  color: var(--gp-text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sha {
+  color: var(--gp-text-muted);
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-sm);
+}
+
+.placeholder {
+  grid-column: 2 / -1;
+  height: var(--gp-space-2);
+  border-radius: var(--gp-radius-sm);
+  background: var(--gp-bg-raised);
+}
+
+.badge {
+  flex-shrink: 0;
+  max-width: var(--gp-badge-max-width);
+  overflow: hidden;
+  padding: 0 var(--gp-space-2);
+  border: 1px solid var(--gp-border-strong);
+  border-radius: var(--gp-radius-sm);
+  color: var(--gp-text-secondary);
+  font-size: var(--gp-text-xs);
+  line-height: var(--gp-badge-height);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.badge[data-kind='localBranch'] {
+  border-color: var(--gp-accent);
+  color: var(--gp-accent-text);
+}
+
+.badge[data-head='true'] {
+  background: var(--gp-accent);
+  color: var(--gp-on-accent);
+  font-weight: var(--gp-weight-semibold);
+}
+
+.badge[data-kind='tag'] {
+  border-color: var(--gp-warning);
+  color: var(--gp-warning);
+}
+
+.message {
+  margin: 0;
+  padding: var(--gp-space-6);
+  color: var(--gp-text-secondary);
+  text-align: center;
+}

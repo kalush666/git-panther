@@ -1,8 +1,11 @@
 import { GitBranch, TriangleAlert } from 'lucide-react';
+import { useCallback, useState } from 'react';
 
 import { Button } from '../../../shared/ui/Button/Button';
 import { useRepository } from '../api/useRepository';
 import { describeHead } from '../model/describeHead';
+import { CommitDetailsPanel } from './CommitDetailsPanel';
+import { CommitGraph } from './CommitGraph';
 import styles from './RepositoryView.module.css';
 
 interface RepositoryViewProps {
@@ -12,6 +15,11 @@ interface RepositoryViewProps {
 
 export function RepositoryView({ path, onClose }: RepositoryViewProps) {
   const repository = useRepository(path);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [selectedCommitId, setSelectedCommitId] = useState<string | null>(null);
+  const keepSelectedCommit = useCallback((commitId: string | null) => {
+    setSelectedCommitId(commitId);
+  }, []);
 
   if (repository.isPending) {
     return null;
@@ -45,13 +53,25 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
         <h1 id="repository-title" className={styles.title}>
           {name}
         </h1>
-        <p className={styles.path}>{repository.data.path}</p>
         <p className={styles.head}>
           <GitBranch size={14} strokeWidth={1.75} aria-hidden />
           {describeHead(head)}
         </p>
+        <p className={styles.path} title={repository.data.path}>
+          {repository.data.path}
+        </p>
       </header>
-      <p className={styles.placeholder}>The commit graph arrives in the next milestone.</p>
+      <div className={styles.body}>
+        <div className={styles.graph}>
+          <CommitGraph
+            path={path}
+            selectedIndex={selectedIndex}
+            onSelectIndex={setSelectedIndex}
+            onSelectedCommitChange={keepSelectedCommit}
+          />
+        </div>
+        <CommitDetailsPanel path={path} commitId={selectedCommitId} />
+      </div>
     </section>
   );
 }
