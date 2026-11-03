@@ -1,6 +1,7 @@
 //! Adapters that shell out to the system `git` executable.
 
 mod clone;
+mod history;
 mod probe;
 mod progress;
 
@@ -8,6 +9,7 @@ use std::path::Path;
 use std::process::Command;
 
 pub use clone::GitCliCloner;
+pub use history::read_history;
 pub use probe::SystemGitProbe;
 
 /// Builds a git command that never flashes a console window on Windows and

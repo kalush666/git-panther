@@ -5,9 +5,10 @@ use std::sync::Arc;
 
 use panther_application::check_git_installation::CheckGitInstallation;
 use panther_application::clone_repository::CloneRepository;
+use panther_application::commit_graph::CommitGraph;
 use panther_application::open_repository::OpenRepository;
 use panther_application::recent_repositories::RecentRepositoryList;
-use panther_git::{Git2RepositoryOpener, GitCliCloner, SystemGitProbe};
+use panther_git::{Git2RepositoryOpener, GitCliCloner, GitCommitLog, SystemGitProbe};
 
 use crate::infra::recent_store::JsonRecentRepositoryStore;
 
@@ -19,6 +20,7 @@ pub struct AppServices {
     pub open_repository: Arc<OpenRepository>,
     pub clone_repository: Arc<CloneRepository>,
     pub recent_repositories: Arc<RecentRepositoryList>,
+    pub commit_graph: Arc<CommitGraph>,
 }
 
 impl AppServices {
@@ -41,6 +43,7 @@ impl AppServices {
                 Arc::new(GitCliCloner::default()),
                 Arc::clone(&open_repository),
             )),
+            commit_graph: Arc::new(CommitGraph::new(Arc::new(GitCommitLog::default()))),
             open_repository,
             recent_repositories,
         }

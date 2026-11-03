@@ -1,5 +1,6 @@
 import type { Backend, CloneProgress, Result } from './backend';
 import type { GitInstallationDto, RecentRepositoryDto, RepositorySummaryDto } from './bindings';
+import { mockCommitDetails, mockGraphPage } from './mockGraph';
 
 /** Folder the mock folder picker "selects". */
 export const MOCK_PICKED_FOLDER = 'C:\\repos\\demo';
@@ -102,6 +103,18 @@ function createMockBackend(): Backend {
       return Promise.resolve(() => {
         changeListeners.delete(listener);
       });
+    },
+    loadGraphPage: (_path, offset, limit) => Promise.resolve(ok(mockGraphPage(offset, limit))),
+    commitDetails: (_path, id) => {
+      const details = mockCommitDetails(id);
+      return Promise.resolve(
+        details
+          ? ok(details)
+          : {
+              status: 'error',
+              error: { kind: 'commitNotFound', message: `Commit ${id} does not exist.` },
+            },
+      );
     },
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
   };

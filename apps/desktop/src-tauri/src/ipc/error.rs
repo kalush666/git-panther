@@ -19,6 +19,7 @@ pub enum AppErrorKind {
     Cancelled,
     GitFailed,
     StorageFailed,
+    CommitNotFound,
     WatchFailed,
     Internal,
 }
@@ -69,6 +70,7 @@ impl From<RepositoryError> for AppError {
             RepositoryError::Cancelled => AppErrorKind::Cancelled,
             RepositoryError::Git { .. } => AppErrorKind::GitFailed,
             RepositoryError::Storage { .. } => AppErrorKind::StorageFailed,
+            RepositoryError::CommitNotFound { .. } => AppErrorKind::CommitNotFound,
         };
         Self::new(kind, error.to_string())
     }

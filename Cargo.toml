@@ -12,6 +12,7 @@ publish = false
 panther-domain = { path = "crates/panther-domain" }
 panther-application = { path = "crates/panther-application" }
 panther-git = { path = "crates/panther-git" }
+panther-graph = { path = "crates/panther-graph" }
 thiserror = "2"
 
 [workspace.lints.rust]

@@ -119,6 +119,8 @@ pub enum RepositoryError {
     Git { details: String },
     #[error("Could not save or load recent repositories: {details}")]
     Storage { details: String },
+    #[error("Commit {id} does not exist in this repository.")]
+    CommitNotFound { id: String },
 }
 
 #[cfg(test)]

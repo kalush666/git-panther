@@ -1,45 +1,68 @@
 .view {
   display: flex;
   flex-direction: column;
-  gap: var(--gp-space-5);
-  padding: var(--gp-space-5) var(--gp-space-6);
+  height: 100%;
 }
 
 .header {
   display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  gap: var(--gp-space-3);
+  min-width: 0;
+  padding: var(--gp-space-2) var(--gp-space-4) var(--gp-space-3);
+  border-bottom: 1px solid var(--gp-border-subtle);
+  background: var(--gp-bg-surface);
+}
+
+.crumb {
+  display: flex;
   flex-direction: column;
   gap: var(--gp-space-1);
+  min-width: 0;
+}
+
+.crumbLabel {
+  color: var(--gp-text-muted);
+  font-size: var(--gp-text-xs);
+  letter-spacing: 0.04em;
+}
+
+.crumbSeparator {
+  flex-shrink: 0;
+  margin-bottom: var(--gp-space-1);
+  color: var(--gp-text-muted);
 }
 
 .title {
   margin: 0;
-  font-size: var(--gp-text-xl);
+  overflow: hidden;
+  font-size: var(--gp-text-lg);
   font-weight: var(--gp-weight-semibold);
-}
-
-.path {
-  margin: 0;
-  color: var(--gp-text-muted);
-  font-family: var(--gp-font-mono);
-  font-size: var(--gp-text-sm);
-  user-select: text;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .head {
   display: inline-flex;
   align-items: center;
-  gap: var(--gp-space-2);
-  margin: var(--gp-space-2) 0 0;
+  gap: var(--gp-space-1);
+  margin: 0;
+  overflow: hidden;
   color: var(--gp-accent-text);
+  font-size: var(--gp-text-lg);
+  white-space: nowrap;
 }
 
-.placeholder {
-  margin: 0;
-  padding: var(--gp-space-6);
-  border: 1px dashed var(--gp-border-strong);
-  border-radius: var(--gp-radius-lg);
-  color: var(--gp-text-muted);
-  text-align: center;
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.graph {
+  flex: 1;
+  min-width: 0;
 }
 
 .problem {

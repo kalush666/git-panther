@@ -48,11 +48,13 @@ fn summarize(repository: &Repository) -> Result<RepositorySummary, RepositoryErr
     ))
 }
 
-/// libgit2 reports work trees with forward slashes and a trailing separator;
-/// rebuilding from components gives the platform's canonical spelling, which
-/// keeps the recent list free of duplicates.
+/// One spelling per folder, so the recent list and tabs never show the same
+/// repository twice: symlinks (e.g. macOS `/var` → `/private/var`) and Windows
+/// 8.3 short names (`RUNNER~1`) are resolved, without Windows' `\\?\` prefix.
+/// Falls back to tidying libgit2's forward slashes and trailing separator if
+/// the folder cannot be resolved.
 fn normalize(path: &Path) -> PathBuf {
-    path.components().collect()
+    dunce::canonicalize(path).unwrap_or_else(|_| path.components().collect())
 }
 
 fn head_state(repository: &Repository) -> Result<HeadState, RepositoryError> {

@@ -33,9 +33,13 @@ Open / init / clone (with progress, cancellable), repo tabs, recent repositories
 
 ![M1 start page](screenshots/m1-start.png)
 
-### ⏳ M2 — Commit graph
+### ✅ M2 — Commit graph
 
 Paged log, incremental lane layout (`panther-graph`) with benchmarks, canvas graph + virtualized list, commit details panel, 100k-commit fixture.
+
+**Demo:** history renders as a lane graph with author-initial nodes, a Branch / Tag column joined to each commit, body previews, keyboard navigation and a details panel; optional columns (Author, Date / Time, SHA) are chosen from the column menu. On a generated 100k-commit repository the first page appears in ~0.4 s (~0.63 s without a commit-graph file) and later pages in ~22 ms.
+
+![M2 commit graph](screenshots/m2-graph.png)
 
 ### ⏳ M3 — Working tree & diffs
 
