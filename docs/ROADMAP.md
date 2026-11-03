@@ -25,7 +25,7 @@ Open items carried forward: the `tauri-driver` smoke test of the real window mov
 
 ![M0 shell, dark theme](screenshots/m0-dark.png)
 
-### 🚧 M1 — Repositories
+### ✅ M1 — Repositories
 
 Open / init / clone (with progress, cancellable), repo tabs, recent repositories, file watcher.
 
