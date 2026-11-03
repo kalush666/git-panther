@@ -19,6 +19,8 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::remove_recent_repository,
             commands::watch_repository,
             commands::unwatch_repository,
+            commands::load_graph_page,
+            commands::commit_details,
         ])
         .events(tauri_specta::collect_events![dto::RepositoryChanged])
 }

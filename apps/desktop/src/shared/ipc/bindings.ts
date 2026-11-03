@@ -28,8 +28,12 @@ export const commands = {
 	removeRecentRepository: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("remove_recent_repository", { path })),
 	/**  Emits `repositoryChanged` whenever files in `path` change. */
 	watchRepository: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("watch_repository", { path })),
-	/**  Stops watching `path`. */
+	/**  Stops watching `path` and releases its cached history. */
 	unwatchRepository: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("unwatch_repository", { path })),
+	/**  Up to `limit` rows of the commit graph starting at row `offset`. */
+	loadGraphPage: (path: string, offset: number, limit: number) => typedError<GraphPageDto, AppError>(__TAURI_INVOKE("load_graph_page", { path, offset, limit })),
+	/**  Full message, people and changed files of commit `id`. */
+	commitDetails: (path: string, id: string) => typedError<CommitDetailsDto, AppError>(__TAURI_INVOKE("commit_details", { path, id })),
 };
 
 /** Events */
@@ -46,7 +50,7 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "watchFailed" | "internal";
 
 /**  One progress update while cloning. */
 export type CloneProgressDto = CloneProgressDto_Serialize | CloneProgressDto_Deserialize;
@@ -63,16 +67,75 @@ export type CloneProgressDto_Serialize = {
 	percent: number | null,
 };
 
+/**  Everything the details panel shows for one commit. */
+export type CommitDetailsDto = {
+	id: string,
+	parents: string[],
+	message: string,
+	author: PersonDto,
+	committer: PersonDto,
+	changes: FileChangeDto[],
+};
+
+/**  How a file changed in a commit. */
+export type FileChangeDto = { kind: "added"; path: string } | { kind: "modified"; path: string } | { kind: "deleted"; path: string } | { kind: "renamed"; path: string; from: string } | { kind: "typeChanged"; path: string };
+
 /**  The system git status, as shown by the UI. */
 export type GitInstallationDto = { status: "supported"; version: string } | { status: "unsupported"; found: string; minimum: string } | { status: "missing"; minimum: string };
 
+/**  One row of the commit list. */
+export type GraphEntryDto = {
+	id: string,
+	shortId: string,
+	summary: string,
+	author: PersonDto,
+	refs: RefLabelDto[],
+	graph: GraphRowDto,
+};
+
+/**  A window of the commit graph. */
+export type GraphPageDto = {
+	/**  Commits in the whole history. */
+	total: number,
+	offset: number,
+	entries: GraphEntryDto[],
+};
+
+/**  How to draw one row of the commit graph. */
+export type GraphRowDto = {
+	lane: number,
+	color: number,
+	width: number,
+	top: SegmentDto[],
+	bottom: SegmentDto[],
+};
+
 /**  Where HEAD points, as shown in a repository tab. */
 export type HeadDto = { kind: "branch"; name: string } | { kind: "detached"; commit: string } | { kind: "unborn"; name: string };
+
+export type PersonDto = {
+	name: string,
+	email: string,
+	/**
+	 *  Seconds since the Unix epoch. Exported as a plain number: timestamps
+	 *  fit a JS number exactly, so no `BigInt` is needed.
+	 */
+	time: number,
+};
 
 /**  An entry in the recent-repositories list. */
 export type RecentRepositoryDto = {
 	path: string,
 	name: string,
+};
+
+export type RefKindDto = "localBranch" | "remoteBranch" | "tag";
+
+/**  A branch or tag label shown next to a commit. */
+export type RefLabelDto = {
+	name: string,
+	kind: RefKindDto,
+	isHead: boolean,
 };
 
 /**  Emitted when files inside a watched repository change. */
@@ -85,6 +148,13 @@ export type RepositorySummaryDto = {
 	path: string,
 	name: string,
 	head: HeadDto,
+};
+
+/**  A line within half a graph row. */
+export type SegmentDto = {
+	from: number,
+	to: number,
+	color: number,
 };
 
 /* Tauri Specta runtime */

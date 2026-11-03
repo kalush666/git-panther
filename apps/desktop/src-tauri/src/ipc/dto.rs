@@ -2,8 +2,11 @@
 
 use std::path::Path;
 
+use panther_application::commit_graph::{GraphEntry, GraphPage};
+use panther_domain::commit::{ChangeKind, CommitDetails, FileChange, Person, RefKind, RefLabel};
 use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::repository::{CloneProgress, HeadState, RepositorySummary, repository_name};
+use panther_graph::{GraphRow, Segment};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -108,4 +111,200 @@ impl From<CloneProgress> for CloneProgressDto {
 #[serde(rename_all = "camelCase")]
 pub struct RepositoryChanged {
     pub path: String,
+}
+
+/// A line within half a graph row.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SegmentDto {
+    pub from: u32,
+    pub to: u32,
+    pub color: u32,
+}
+
+/// How to draw one row of the commit graph.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphRowDto {
+    pub lane: u32,
+    pub color: u32,
+    pub width: u32,
+    pub top: Vec<SegmentDto>,
+    pub bottom: Vec<SegmentDto>,
+}
+
+impl From<GraphRow> for GraphRowDto {
+    fn from(row: GraphRow) -> Self {
+        let segments = |segments: Vec<Segment>| {
+            segments
+                .into_iter()
+                .map(|segment| SegmentDto {
+                    from: segment.from,
+                    to: segment.to,
+                    color: segment.color,
+                })
+                .collect()
+        };
+        Self {
+            lane: row.lane,
+            color: row.color,
+            width: row.width,
+            top: segments(row.top),
+            bottom: segments(row.bottom),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum RefKindDto {
+    LocalBranch,
+    RemoteBranch,
+    Tag,
+}
+
+/// A branch or tag label shown next to a commit.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RefLabelDto {
+    pub name: String,
+    pub kind: RefKindDto,
+    pub is_head: bool,
+}
+
+impl From<RefLabel> for RefLabelDto {
+    fn from(label: RefLabel) -> Self {
+        Self {
+            name: label.name,
+            kind: match label.kind {
+                RefKind::LocalBranch => RefKindDto::LocalBranch,
+                RefKind::RemoteBranch => RefKindDto::RemoteBranch,
+                RefKind::Tag => RefKindDto::Tag,
+            },
+            is_head: label.is_head,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PersonDto {
+    pub name: String,
+    pub email: String,
+    /// Seconds since the Unix epoch. Exported as a plain number: timestamps
+    /// fit a JS number exactly, so no `BigInt` is needed.
+    #[specta(type = u32)]
+    pub time: i64,
+}
+
+impl From<Person> for PersonDto {
+    fn from(person: Person) -> Self {
+        Self {
+            name: person.name,
+            email: person.email,
+            time: person.time,
+        }
+    }
+}
+
+/// One row of the commit list.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphEntryDto {
+    pub id: String,
+    pub short_id: String,
+    pub summary: String,
+    pub author: PersonDto,
+    pub refs: Vec<RefLabelDto>,
+    pub graph: GraphRowDto,
+}
+
+impl From<GraphEntry> for GraphEntryDto {
+    fn from(entry: GraphEntry) -> Self {
+        Self {
+            short_id: entry.commit.id.short().to_owned(),
+            id: entry.commit.id.to_string(),
+            summary: entry.commit.summary,
+            author: entry.commit.author.into(),
+            refs: entry.refs.into_iter().map(RefLabelDto::from).collect(),
+            graph: entry.row.into(),
+        }
+    }
+}
+
+/// A window of the commit graph.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphPageDto {
+    /// Commits in the whole history.
+    pub total: u32,
+    pub offset: u32,
+    pub entries: Vec<GraphEntryDto>,
+}
+
+impl From<GraphPage> for GraphPageDto {
+    fn from(page: GraphPage) -> Self {
+        Self {
+            total: saturating_u32(page.total),
+            offset: saturating_u32(page.offset),
+            entries: page.entries.into_iter().map(GraphEntryDto::from).collect(),
+        }
+    }
+}
+
+fn saturating_u32(value: usize) -> u32 {
+    u32::try_from(value).unwrap_or(u32::MAX)
+}
+
+/// How a file changed in a commit.
+#[derive(Debug, Serialize, Type)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum FileChangeDto {
+    Added { path: String },
+    Modified { path: String },
+    Deleted { path: String },
+    Renamed { path: String, from: String },
+    TypeChanged { path: String },
+}
+
+impl From<FileChange> for FileChangeDto {
+    fn from(change: FileChange) -> Self {
+        let path = change.path;
+        match change.kind {
+            ChangeKind::Added => Self::Added { path },
+            ChangeKind::Modified => Self::Modified { path },
+            ChangeKind::Deleted => Self::Deleted { path },
+            ChangeKind::Renamed { from } => Self::Renamed { path, from },
+            ChangeKind::TypeChanged => Self::TypeChanged { path },
+        }
+    }
+}
+
+/// Everything the details panel shows for one commit.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitDetailsDto {
+    pub id: String,
+    pub parents: Vec<String>,
+    pub message: String,
+    pub author: PersonDto,
+    pub committer: PersonDto,
+    pub changes: Vec<FileChangeDto>,
+}
+
+impl From<CommitDetails> for CommitDetailsDto {
+    fn from(details: CommitDetails) -> Self {
+        Self {
+            id: details.id.to_string(),
+            parents: details.parents.iter().map(ToString::to_string).collect(),
+            message: details.message,
+            author: details.author.into(),
+            committer: details.committer.into(),
+            changes: details
+                .changes
+                .into_iter()
+                .map(FileChangeDto::from)
+                .collect(),
+        }
+    }
 }

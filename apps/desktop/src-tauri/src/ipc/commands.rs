@@ -2,14 +2,15 @@
 
 use std::path::PathBuf;
 
-use panther_domain::repository::{CloneRequest, RemoteUrl};
+use panther_domain::commit::CommitId;
+use panther_domain::repository::{CloneRequest, RemoteUrl, RepositoryError};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
 use tauri_specta::Event;
 
 use super::dto::{
-    CloneProgressDto, GitInstallationDto, RecentRepositoryDto, RepositoryChanged,
-    RepositorySummaryDto,
+    CloneProgressDto, CommitDetailsDto, GitInstallationDto, GraphPageDto, RecentRepositoryDto,
+    RepositoryChanged, RepositorySummaryDto,
 };
 use super::error::{AppError, AppErrorKind};
 use crate::composition::AppServices;
@@ -157,13 +158,54 @@ pub async fn watch_repository(
         })
 }
 
-/// Stops watching `path`.
+/// Stops watching `path` and releases its cached history.
 #[tauri::command]
 #[specta::specta]
 pub async fn unwatch_repository(
+    services: State<'_, AppServices>,
     watcher: State<'_, RepositoryWatcher>,
     path: String,
 ) -> Result<(), AppError> {
-    watcher.unwatch(&PathBuf::from(path));
+    let path = PathBuf::from(path);
+    watcher.unwatch(&path);
+    services.commit_graph.forget(&path);
     Ok(())
+}
+
+/// Up to `limit` rows of the commit graph starting at row `offset`.
+#[tauri::command]
+#[specta::specta]
+pub async fn load_graph_page(
+    services: State<'_, AppServices>,
+    path: String,
+    offset: u32,
+    limit: u32,
+) -> Result<GraphPageDto, AppError> {
+    let graph = services.commit_graph.clone();
+    run_blocking(move || {
+        let page = graph.page(&PathBuf::from(path), widen(offset), widen(limit))?;
+        Ok(page.into())
+    })
+    .await
+}
+
+/// Full message, people and changed files of commit `id`.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_details(
+    services: State<'_, AppServices>,
+    path: String,
+    id: String,
+) -> Result<CommitDetailsDto, AppError> {
+    let graph = services.commit_graph.clone();
+    run_blocking(move || {
+        let id = CommitId::parse(&id)
+            .map_err(|error| RepositoryError::CommitNotFound { id: error.input })?;
+        Ok(graph.details(&PathBuf::from(path), &id)?.into())
+    })
+    .await
+}
+
+fn widen(value: u32) -> usize {
+    usize::try_from(value).expect("usize is at least 32 bits on supported platforms")
 }

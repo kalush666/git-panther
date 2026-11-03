@@ -5,7 +5,7 @@
 
 use std::collections::{BTreeSet, HashMap};
 
-use cargo_metadata::{MetadataCommand, Package, PackageId};
+use cargo_metadata::{DependencyKind, MetadataCommand, NodeDep, Package, PackageId};
 
 /// Workspace crates each inner-layer crate may depend on (directly or transitively).
 const LAYER_RULES: &[(&str, &[&str])] = &[
@@ -56,7 +56,10 @@ fn core_layers_are_free_of_frameworks() {
     let nodes: HashMap<&PackageId, Vec<&PackageId>> = resolve
         .nodes
         .iter()
-        .map(|node| (&node.id, node.deps.iter().map(|dep| &dep.pkg).collect()))
+        .map(|node| {
+            let shipped = node.deps.iter().filter(|dep| is_shipped(dep));
+            (&node.id, shipped.map(|dep| &dep.pkg).collect())
+        })
         .collect();
     let names: HashMap<&PackageId, &str> = metadata
         .packages
@@ -78,6 +81,15 @@ fn core_layers_are_free_of_frameworks() {
             );
         }
     }
+}
+
+/// Only normal dependencies end up in the built crate; dev-dependencies such
+/// as benchmark harnesses never ship.
+fn is_shipped(dependency: &NodeDep) -> bool {
+    dependency
+        .dep_kinds
+        .iter()
+        .any(|info| info.kind == DependencyKind::Normal)
 }
 
 fn transitive_dependency_names<'a>(
