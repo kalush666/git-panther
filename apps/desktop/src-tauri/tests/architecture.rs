@@ -10,13 +10,14 @@ use cargo_metadata::{MetadataCommand, Package, PackageId};
 /// Workspace crates each inner-layer crate may depend on (directly or transitively).
 const LAYER_RULES: &[(&str, &[&str])] = &[
     ("panther-domain", &[]),
-    ("panther-application", &["panther-domain"]),
+    ("panther-graph", &["panther-domain"]),
+    ("panther-application", &["panther-domain", "panther-graph"]),
     ("panther-git", &["panther-domain"]),
 ];
 
 /// External crates that must never leak into the domain or application layers.
 const FORBIDDEN_IN_CORE: &[&str] = &["git2", "tauri", "tokio", "serde", "specta"];
-const CORE_CRATES: &[&str] = &["panther-domain", "panther-application"];
+const CORE_CRATES: &[&str] = &["panther-domain", "panther-graph", "panther-application"];
 
 #[test]
 fn inner_layers_only_depend_inward() {

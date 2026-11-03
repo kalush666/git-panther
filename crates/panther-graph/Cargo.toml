@@ -1,0 +1,20 @@
+[package]
+name = "panther-graph"
+description = "Git Panther commit-graph lane layout: pure, incremental and fast."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+panther-domain.workspace = true
+
+[dev-dependencies]
+criterion = { version = "0.7", default-features = false }
+
+[[bench]]
+name = "layout"
+harness = false
+
+[lints]
+workspace = true
