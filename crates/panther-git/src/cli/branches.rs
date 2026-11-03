@@ -5,7 +5,7 @@ use std::path::Path;
 
 use panther_domain::repository::RepositoryError;
 
-use super::background_command;
+use super::run_git;
 
 /// Runs `git -C <repository> <args>`, mapping failures to domain errors.
 ///
@@ -17,23 +17,9 @@ pub fn run_branch_command(
     args: &[&str],
     subject: &str,
 ) -> Result<(), RepositoryError> {
-    let output = background_command(executable)
-        .arg("-C")
-        .arg(repository)
-        .args(args)
-        .output()
-        .map_err(|error| RepositoryError::Git {
-            details: format!("could not start git: {error}"),
-        })?;
-    if output.status.success() {
-        return Ok(());
-    }
-    let message = format!(
-        "{}\n{}",
-        String::from_utf8_lossy(&output.stderr),
-        String::from_utf8_lossy(&output.stdout)
-    );
-    Err(classify(message.trim(), subject))
+    run_git(executable, repository, args)
+        .map(drop)
+        .map_err(|message| classify(&message, subject))
 }
 
 /// Maps git's wording to the errors the UI explains specifically.
