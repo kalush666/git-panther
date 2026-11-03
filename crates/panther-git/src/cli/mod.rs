@@ -1,6 +1,8 @@
 //! Adapters that shell out to the system `git` executable.
 
+mod apply;
 mod clone;
+mod commit;
 mod history;
 mod probe;
 mod progress;
@@ -8,7 +10,9 @@ mod progress;
 use std::path::Path;
 use std::process::Command;
 
+pub use apply::{PatchTarget, apply_patch};
 pub use clone::GitCliCloner;
+pub use commit::commit;
 pub use history::read_history;
 pub use probe::SystemGitProbe;
 

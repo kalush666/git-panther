@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use panther_domain::commit::{CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
 use panther_domain::ports::CommitLog;
 use panther_domain::repository::RepositoryError;
+use panther_domain::working_tree::FileDiff;
 
 use crate::cli::read_history;
 use crate::libgit2::{Git2CommitLog, history_tips};
@@ -55,5 +56,14 @@ impl CommitLog for GitCommitLog {
 
     fn details(&self, repository: &Path, id: &CommitId) -> Result<CommitDetails, RepositoryError> {
         self.libgit2.details(repository, id)
+    }
+
+    fn commit_file_diff(
+        &self,
+        repository: &Path,
+        id: &CommitId,
+        path: &str,
+    ) -> Result<FileDiff, RepositoryError> {
+        self.libgit2.commit_file_diff(repository, id, path)
     }
 }

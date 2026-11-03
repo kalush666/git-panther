@@ -6,7 +6,9 @@
 mod cli;
 mod commit_log;
 mod libgit2;
+mod working_tree;
 
 pub use cli::{GitCliCloner, SystemGitProbe};
 pub use commit_log::GitCommitLog;
 pub use libgit2::{Git2CommitLog, Git2RepositoryOpener};
+pub use working_tree::{GitCommitWriter, GitWorkingTree};
