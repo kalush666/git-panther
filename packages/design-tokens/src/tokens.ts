@@ -86,6 +86,12 @@ export const scaleTokens = {
   'content-max-width': '560px',
   'tab-max-width': '200px',
   'dialog-width': '480px',
+  'details-width': '380px',
+  'col-author': '160px',
+  'col-date': '160px',
+  'col-sha': '72px',
+  'badge-max-width': '180px',
+  'badge-height': '18px',
   'titlebar-height': '40px',
   'statusbar-height': '24px',
 
