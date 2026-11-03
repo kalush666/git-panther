@@ -53,9 +53,11 @@ Create, checkout, rename, delete; sidebar tree; graph context menus.
 
 **Demo:** the sidebar groups local and remote branches into folders with a filter, ahead/behind badges and the checked-out branch; double-click switches (remote branches get a tracking branch); right-click on branches or commits creates, renames, deletes or checks out. Changes run through `git switch` / `git branch`, so hooks and git's safety checks apply.
 
-### ⏳ M5 — Remotes
+### ✅ M5 — Remotes
 
 Fetch, pull (ff / merge / rebase setting), push with progress; ahead/behind badges; clear auth error surfaces.
+
+**Demo:** the repository header has Fetch, Pull (fast-forward only, merge or rebase; the choice is remembered) and Push with live progress, Cancel, and the current branch's to-pull / to-push counts. The first push of a branch sets its upstream. Network operations run through the git CLI with the user's own credential helpers and SSH keys; authentication, network, rejected-push, diverged-pull, conflict and missing-upstream failures each get their own explanation.
 
 ### ⏳ M6 — Stash & conflicts
 

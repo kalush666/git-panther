@@ -12,6 +12,7 @@ import { CommitDetailsPanel } from './CommitDetailsPanel';
 import { CommitGraph } from './CommitGraph';
 import { DiffViewer } from './DiffViewer';
 import { StagingPanel } from './StagingPanel';
+import { SyncToolbar } from './SyncToolbar';
 import { WorkingCopyRow } from './WorkingCopyRow';
 import menu from './menu.module.css';
 import styles from './RepositoryView.module.css';
@@ -86,6 +87,7 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
             {describeHead(head)}
           </p>
         </div>
+        <SyncToolbar path={path} />
       </header>
       <div className={styles.body}>
         <BranchSidebar path={path} actions={branchActions} />
