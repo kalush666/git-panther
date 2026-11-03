@@ -1,65 +1,62 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Git Panther">
   <defs>
-    <linearGradient id="gp-head" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#2A2340"/>
-      <stop offset="1" stop-color="#110F18"/>
+    <clipPath id="gp-badge">
+      <rect width="256" height="256" rx="56"/>
+    </clipPath>
+    <linearGradient id="gp-coat" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#A585FA"/>
+      <stop offset="0.55" stop-color="#7C4DEB"/>
+      <stop offset="1" stop-color="#4A22B0"/>
     </linearGradient>
-    <radialGradient id="gp-eye" cx="0.5" cy="0.5" r="0.6">
-      <stop offset="0" stop-color="#F1EAFF"/>
-      <stop offset="0.5" stop-color="#B9A2FB"/>
-      <stop offset="1" stop-color="#7C4DEB"/>
-    </radialGradient>
   </defs>
   <rect width="256" height="256" rx="56" fill="#0B0A10"/>
 
-  <!-- Head: pointed cat ears set wide, broad cheekbones tapering to a narrow chin -->
-  <path d="M128 60
-           C110 60 96 63 86 69
-           C80 56 66 44 54 44
-           C48 58 50 78 60 92
-           C46 108 40 130 46 150
-           C52 172 72 190 94 202
-           C106 209 117 212 128 212
-           C139 212 150 209 162 202
-           C184 190 204 172 210 150
-           C216 130 210 108 196 92
-           C206 78 208 58 202 44
-           C190 44 176 56 170 69
-           C160 63 146 60 128 60 Z"
-        fill="url(#gp-head)" stroke="#8B5CF6" stroke-width="6" stroke-linejoin="round"/>
+  <g clip-path="url(#gp-badge)">
+    <g transform="translate(-10 -22) scale(1.06)">
+      <!-- Silhouette: lunging, roaring panther in profile. The open jaw is negative space. -->
+      <path d="M22 262
+               Q26 154 70 112
+               L78 78
+               Q84 64 98 72
+               L112 90
+               Q142 72 174 82
+               L194 96
+               Q216 100 228 112
+               L234 118
+               L234 134
+               L229 153
+               L164 158
+               L220 193
+               L216 207
+               L186 221
+               L138 223
+               L124 262 Z"
+            fill="url(#gp-coat)"/>
 
-  <!-- Inner ears -->
-  <path d="M60 56 C62 68 68 76 78 74" fill="none" stroke="#5B3BB8" stroke-width="5" stroke-linecap="round"/>
-  <path d="M196 56 C194 68 188 76 178 74" fill="none" stroke="#5B3BB8" stroke-width="5" stroke-linecap="round"/>
+      <!-- Facet cuts in the background colour -->
+      <g fill="#0B0A10">
+        <!-- inner ear -->
+        <path d="M84 98 L88 80 Q92 76 96 82 L102 94 Z"/>
+        <!-- heavy brow, angled toward the nose -->
+        <path d="M138 98 L200 101 L140 105 Z"/>
+        <!-- snarl wrinkles on the muzzle -->
+        <path d="M200 116 L218 124 L203 122 Z"/>
+        <path d="M204 129 L221 137 L206 135 Z"/>
+        <!-- cheek cut from eye toward the jaw -->
+        <path d="M126 124 L166 152 L150 158 Z"/>
+        <!-- neck muscle -->
+        <path d="M48 164 L92 216 L74 218 Z"/>
+        <!-- nose pad -->
+        <path d="M226 112 L236 118 L234 128 Z"/>
+      </g>
 
-  <!-- Snout -->
-  <path d="M102 150 C108 138 148 138 154 150 C164 172 150 196 128 198 C106 196 92 172 102 150 Z" fill="#1D1830"/>
+      <!-- Eye: slanted almond with slit pupil -->
+      <path d="M158 112 Q178 103 200 110 Q178 124 158 112 Z" fill="#F1EAFF"/>
+      <path d="M180 106 L183 112 L180 119 L177 112 Z" fill="#0B0A10"/>
 
-  <!-- Heavy brows angled toward the nose -->
-  <path d="M70 104 L114 118" stroke="#8B5CF6" stroke-width="6" stroke-linecap="round"/>
-  <path d="M186 104 L142 118" stroke="#8B5CF6" stroke-width="6" stroke-linecap="round"/>
-
-  <!-- Slanted eyes with slit pupils -->
-  <path d="M74 114 Q96 106 114 126 Q92 132 74 114 Z" fill="url(#gp-eye)"/>
-  <path d="M182 114 Q160 106 142 126 Q164 132 182 114 Z" fill="url(#gp-eye)"/>
-  <ellipse cx="97" cy="119" rx="2.6" ry="7" fill="#0B0A10" transform="rotate(20 97 119)"/>
-  <ellipse cx="159" cy="119" rx="2.6" ry="7" fill="#0B0A10" transform="rotate(-20 159 119)"/>
-
-  <!-- Nose bridge -->
-  <path d="M116 128 Q120 144 114 156 M140 128 Q136 144 142 156" fill="none" stroke="#3A2E5C" stroke-width="4" stroke-linecap="round"/>
-
-  <!-- Wide nose -->
-  <path d="M110 156 Q128 148 146 156 Q140 170 128 174 Q116 170 110 156 Z" fill="#8B5CF6"/>
-
-  <!-- Snarling mouth with fangs -->
-  <path d="M128 174 L128 182" stroke="#8B5CF6" stroke-width="5" stroke-linecap="round"/>
-  <path d="M128 182 Q114 195 98 187 M128 182 Q142 195 158 187" fill="none" stroke="#8B5CF6" stroke-width="5" stroke-linecap="round"/>
-  <path d="M108 189 L114 207 L119 192 Z" fill="#EEEBF6"/>
-  <path d="M148 189 L142 207 L137 192 Z" fill="#EEEBF6"/>
-
-  <!-- Whisker pads -->
-  <g fill="#6A48C9">
-    <circle cx="100" cy="168" r="2.4"/><circle cx="94" cy="176" r="2.4"/><circle cx="104" cy="178" r="2.4"/>
-    <circle cx="156" cy="168" r="2.4"/><circle cx="162" cy="176" r="2.4"/><circle cx="152" cy="178" r="2.4"/>
+      <!-- Fangs -->
+      <path d="M225 153 L216 188 L207 156 Z" fill="#F1EAFF"/>
+      <path d="M211 192 L203 168 L196 189 Z" fill="#F1EAFF"/>
+    </g>
   </g>
 </svg>
