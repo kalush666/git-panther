@@ -1,6 +1,7 @@
 import type { Backend, CloneProgress, Result } from './backend';
 import type { GitInstallationDto, RecentRepositoryDto, RepositorySummaryDto } from './bindings';
 import { mockCommitDetails, mockGraphPage } from './mockGraph';
+import { createMockWorkingTree } from './mockWorkingTree';
 
 /** Folder the mock folder picker "selects". */
 export const MOCK_PICKED_FOLDER = 'C:\\repos\\demo';
@@ -50,6 +51,7 @@ function createMockBackend(): Backend {
   const repositories = new Map<string, RepositorySummaryDto>();
   const cancelledJobs = new Set<string>();
   const changeListeners = new Set<(path: string) => void>();
+  const workingTree = createMockWorkingTree();
 
   const remember = (repository: RepositorySummaryDto) => {
     repositories.set(repository.path, repository);
@@ -116,6 +118,15 @@ function createMockBackend(): Backend {
             },
       );
     },
+    commitFileDiff: (_path, _id, file) => Promise.resolve(workingTree.diff(file, 'unstaged')),
+    workingTreeStatus: () => Promise.resolve(workingTree.status()),
+    fileDiff: (_path, file, side) => Promise.resolve(workingTree.diff(file, side)),
+    stageFiles: (_path, files) => Promise.resolve(workingTree.stage(files)),
+    unstageFiles: (_path, files) => Promise.resolve(workingTree.unstage(files)),
+    discardFiles: (_path, files) => Promise.resolve(workingTree.discard(files)),
+    applyHunk: (_path, hunk, action) => Promise.resolve(workingTree.applyHunk(hunk, action)),
+    commitChanges: (_path, message, amend) => Promise.resolve(workingTree.commit(message, amend)),
+    headMessage: () => Promise.resolve(workingTree.headMessage()),
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
   };
 }

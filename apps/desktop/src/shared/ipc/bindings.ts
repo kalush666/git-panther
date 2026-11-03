@@ -34,6 +34,27 @@ export const commands = {
 	loadGraphPage: (path: string, offset: number, limit: number) => typedError<GraphPageDto, AppError>(__TAURI_INVOKE("load_graph_page", { path, offset, limit })),
 	/**  Full message, people and changed files of commit `id`. */
 	commitDetails: (path: string, id: string) => typedError<CommitDetailsDto, AppError>(__TAURI_INVOKE("commit_details", { path, id })),
+	/**  Staged, unstaged and conflicted files. */
+	workingTreeStatus: (path: string) => typedError<WorkingTreeStatusDto_Serialize, AppError>(__TAURI_INVOKE("working_tree_status", { path })),
+	/**  The staged or unstaged diff of `file`. */
+	fileDiff: (path: string, file: string, side: DiffSideDto) => typedError<FileDiffDto_Serialize, AppError>(__TAURI_INVOKE("file_diff", { path, file, side })),
+	/**  How `file` changed in commit `id`. */
+	commitFileDiff: (path: string, id: string, file: string) => typedError<FileDiffDto_Serialize, AppError>(__TAURI_INVOKE("commit_file_diff", { path, id, file })),
+	/**  Stages whole files. */
+	stageFiles: (path: string, files: string[]) => typedError<null, AppError>(__TAURI_INVOKE("stage_files", { path, files })),
+	/**  Unstages whole files. */
+	unstageFiles: (path: string, files: string[]) => typedError<null, AppError>(__TAURI_INVOKE("unstage_files", { path, files })),
+	/**  Throws away unstaged changes of `files`; untracked files are deleted. */
+	discardFiles: (path: string, files: string[]) => typedError<null, AppError>(__TAURI_INVOKE("discard_files", { path, files })),
+	/**
+	 *  Stages, unstages or discards hunk `index` of `file`, as long as its
+	 *  header still matches what the UI showed.
+	 */
+	applyHunk: (path: string, file: string, index: number, header: string, action: HunkActionDto) => typedError<null, AppError>(__TAURI_INVOKE("apply_hunk", { path, file, index, header, action })),
+	/**  Commits staged changes (or amends HEAD) and returns the new commit id. */
+	commitChanges: (path: string, message: string, amend: boolean) => typedError<string, AppError>(__TAURI_INVOKE("commit_changes", { path, message, amend })),
+	/**  The message of the HEAD commit, to prefill an amend. */
+	headMessage: (path: string) => typedError<string | null, AppError>(__TAURI_INVOKE("head_message", { path })),
 };
 
 /** Events */
@@ -50,7 +71,28 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "watchFailed" | "internal";
+
+/**  A changed file in the working tree or index. */
+export type ChangedFileDto = ChangedFileDto_Serialize | ChangedFileDto_Deserialize;
+
+/**  A changed file in the working tree or index. */
+export type ChangedFileDto_Deserialize = {
+	path: string,
+	kind: ChangedFileKindDto,
+	/**  The previous path, for renames. */
+	from?: string | null,
+};
+
+/**  A changed file in the working tree or index. */
+export type ChangedFileDto_Serialize = {
+	path: string,
+	kind: ChangedFileKindDto,
+	/**  The previous path, for renames. */
+	from: string | null,
+};
+
+export type ChangedFileKindDto = "added" | "modified" | "deleted" | "renamed" | "typeChanged" | "untracked";
 
 /**  One progress update while cloning. */
 export type CloneProgressDto = CloneProgressDto_Serialize | CloneProgressDto_Deserialize;
@@ -77,8 +119,48 @@ export type CommitDetailsDto = {
 	changes: FileChangeDto[],
 };
 
+export type DiffLineDto = DiffLineDto_Serialize | DiffLineDto_Deserialize;
+
+export type DiffLineDto_Deserialize = {
+	kind: LineKindDto,
+	oldNumber?: number | null,
+	newNumber?: number | null,
+	content: string,
+};
+
+export type DiffLineDto_Serialize = {
+	kind: LineKindDto,
+	oldNumber: number | null,
+	newNumber: number | null,
+	content: string,
+};
+
+/**  Which side of the index a diff compares. */
+export type DiffSideDto = "staged" | "unstaged";
+
 /**  How a file changed in a commit. */
 export type FileChangeDto = { kind: "added"; path: string } | { kind: "modified"; path: string } | { kind: "deleted"; path: string } | { kind: "renamed"; path: string; from: string } | { kind: "typeChanged"; path: string };
+
+/**  The diff of one file. */
+export type FileDiffDto = FileDiffDto_Serialize | FileDiffDto_Deserialize;
+
+/**  The diff of one file. */
+export type FileDiffDto_Deserialize = {
+	path: string,
+	oldPath?: string | null,
+	isBinary: boolean,
+	isTruncated: boolean,
+	hunks: HunkDto_Deserialize[],
+};
+
+/**  The diff of one file. */
+export type FileDiffDto_Serialize = {
+	path: string,
+	oldPath: string | null,
+	isBinary: boolean,
+	isTruncated: boolean,
+	hunks: HunkDto_Serialize[],
+};
 
 /**  The system git status, as shown by the UI. */
 export type GitInstallationDto = { status: "supported"; version: string } | { status: "unsupported"; found: string; minimum: string } | { status: "missing"; minimum: string };
@@ -114,6 +196,30 @@ export type GraphRowDto = {
 
 /**  Where HEAD points, as shown in a repository tab. */
 export type HeadDto = { kind: "branch"; name: string } | { kind: "detached"; commit: string } | { kind: "unborn"; name: string };
+
+export type HunkActionDto = "stage" | "unstage" | "discard";
+
+export type HunkDto = HunkDto_Serialize | HunkDto_Deserialize;
+
+export type HunkDto_Deserialize = {
+	header: string,
+	oldStart: number,
+	oldLines: number,
+	newStart: number,
+	newLines: number,
+	lines: DiffLineDto_Deserialize[],
+};
+
+export type HunkDto_Serialize = {
+	header: string,
+	oldStart: number,
+	oldLines: number,
+	newStart: number,
+	newLines: number,
+	lines: DiffLineDto_Serialize[],
+};
+
+export type LineKindDto = "context" | "added" | "removed";
 
 export type PersonDto = {
 	name: string,
@@ -157,6 +263,23 @@ export type SegmentDto = {
 	from: number,
 	to: number,
 	color: number,
+};
+
+/**  Uncommitted changes of a repository. */
+export type WorkingTreeStatusDto = WorkingTreeStatusDto_Serialize | WorkingTreeStatusDto_Deserialize;
+
+/**  Uncommitted changes of a repository. */
+export type WorkingTreeStatusDto_Deserialize = {
+	staged: ChangedFileDto_Deserialize[],
+	unstaged: ChangedFileDto_Deserialize[],
+	conflicted: string[],
+};
+
+/**  Uncommitted changes of a repository. */
+export type WorkingTreeStatusDto_Serialize = {
+	staged: ChangedFileDto_Serialize[],
+	unstaged: ChangedFileDto_Serialize[],
+	conflicted: string[],
 };
 
 /* Tauri Specta runtime */
