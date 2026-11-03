@@ -7,13 +7,15 @@ use panther_application::branches::Branches;
 use panther_application::check_git_installation::CheckGitInstallation;
 use panther_application::clone_repository::CloneRepository;
 use panther_application::commit_graph::CommitGraph;
+use panther_application::conflicts::Conflicts;
 use panther_application::open_repository::OpenRepository;
 use panther_application::recent_repositories::RecentRepositoryList;
+use panther_application::stashes::Stashes;
 use panther_application::sync::Sync;
 use panther_application::working_copy::WorkingCopy;
 use panther_git::{
     Git2RepositoryOpener, GitBranchStore, GitCliCloner, GitCommitLog, GitCommitWriter,
-    GitRemoteSync, GitWorkingTree, SystemGitProbe,
+    GitConflictResolver, GitRemoteSync, GitStashStore, GitWorkingTree, SystemGitProbe,
 };
 
 use crate::infra::recent_store::JsonRecentRepositoryStore;
@@ -30,6 +32,8 @@ pub struct AppServices {
     pub working_copy: Arc<WorkingCopy>,
     pub branches: Arc<Branches>,
     pub sync: Arc<Sync>,
+    pub stashes: Arc<Stashes>,
+    pub conflicts: Arc<Conflicts>,
 }
 
 impl AppServices {
@@ -55,6 +59,8 @@ impl AppServices {
             commit_graph: Arc::new(CommitGraph::new(Arc::new(GitCommitLog::default()))),
             branches: Arc::new(Branches::new(Arc::new(GitBranchStore::default()))),
             sync: Arc::new(Sync::new(Arc::new(GitRemoteSync::default()))),
+            stashes: Arc::new(Stashes::new(Arc::new(GitStashStore::default()))),
+            conflicts: Arc::new(Conflicts::new(Arc::new(GitConflictResolver::default()))),
             working_copy: Arc::new(WorkingCopy::new(
                 Arc::new(GitWorkingTree::default()),
                 Arc::new(GitCommitWriter::default()),

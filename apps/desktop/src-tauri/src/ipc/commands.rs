@@ -12,9 +12,10 @@ use tauri::{AppHandle, State};
 use tauri_specta::Event;
 
 use super::dto::{
-    BranchDto, CloneProgressDto, CommitDetailsDto, DiffSideDto, FileDiffDto, GitInstallationDto,
-    GraphPageDto, HunkActionDto, PullStrategyDto, RecentRepositoryDto, RemoteDto,
-    RepositoryChanged, RepositorySummaryDto, WorkingTreeStatusDto,
+    BranchDto, CloneProgressDto, CommitDetailsDto, ConflictSideDto, DiffSideDto, FileDiffDto,
+    GitInstallationDto, GraphPageDto, HunkActionDto, OperationDto, PullStrategyDto,
+    RecentRepositoryDto, RemoteDto, RepositoryChanged, RepositorySummaryDto, StashDto,
+    WorkingTreeStatusDto,
 };
 use super::error::{AppError, AppErrorKind};
 use crate::composition::AppServices;
@@ -500,6 +501,137 @@ pub async fn push_branch(
         Ok(sync.push(&PathBuf::from(path), report, cancel)?)
     })
     .await
+}
+
+/// Stash entries, newest first.
+#[tauri::command]
+#[specta::specta]
+pub async fn list_stashes(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Vec<StashDto>, AppError> {
+    let stashes = services.stashes.clone();
+    run_blocking(move || {
+        Ok(stashes
+            .list(&PathBuf::from(path))?
+            .into_iter()
+            .map(StashDto::from)
+            .collect())
+    })
+    .await
+}
+
+/// Stashes uncommitted changes, and untracked files if asked.
+#[tauri::command]
+#[specta::specta]
+pub async fn save_stash(
+    services: State<'_, AppServices>,
+    path: String,
+    message: Option<String>,
+    include_untracked: bool,
+) -> Result<(), AppError> {
+    let stashes = services.stashes.clone();
+    run_blocking(move || {
+        Ok(stashes.save(&PathBuf::from(path), message.as_deref(), include_untracked)?)
+    })
+    .await
+}
+
+/// Applies a stash entry; with `pop`, removes it once it applied cleanly.
+#[tauri::command]
+#[specta::specta]
+pub async fn apply_stash(
+    services: State<'_, AppServices>,
+    path: String,
+    index: u32,
+    pop: bool,
+) -> Result<(), AppError> {
+    let stashes = services.stashes.clone();
+    run_blocking(move || {
+        let path = PathBuf::from(path);
+        let index = widen(index);
+        Ok(if pop {
+            stashes.pop(&path, index)
+        } else {
+            stashes.apply(&path, index)
+        }?)
+    })
+    .await
+}
+
+/// Deletes a stash entry.
+#[tauri::command]
+#[specta::specta]
+pub async fn drop_stash(
+    services: State<'_, AppServices>,
+    path: String,
+    index: u32,
+) -> Result<(), AppError> {
+    let stashes = services.stashes.clone();
+    run_blocking(move || Ok(stashes.remove(&PathBuf::from(path), widen(index))?)).await
+}
+
+/// The merge, rebase, cherry-pick or revert waiting for the user, if any.
+#[tauri::command]
+#[specta::specta]
+pub async fn repository_operation(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Option<OperationDto>, AppError> {
+    let conflicts = services.conflicts.clone();
+    run_blocking(move || {
+        Ok(conflicts
+            .operation(&PathBuf::from(path))?
+            .map(OperationDto::from))
+    })
+    .await
+}
+
+/// Resolves a conflicted file by keeping one side.
+#[tauri::command]
+#[specta::specta]
+pub async fn resolve_conflict(
+    services: State<'_, AppServices>,
+    path: String,
+    file: String,
+    side: ConflictSideDto,
+) -> Result<(), AppError> {
+    let conflicts = services.conflicts.clone();
+    run_blocking(move || Ok(conflicts.take(&PathBuf::from(path), &file, side.into())?)).await
+}
+
+/// Stages conflicted files the user resolved by hand.
+#[tauri::command]
+#[specta::specta]
+pub async fn mark_resolved(
+    services: State<'_, AppServices>,
+    path: String,
+    files: Vec<String>,
+) -> Result<(), AppError> {
+    let conflicts = services.conflicts.clone();
+    run_blocking(move || Ok(conflicts.mark_resolved(&PathBuf::from(path), &files)?)).await
+}
+
+/// Concludes the interrupted operation.
+#[tauri::command]
+#[specta::specta]
+pub async fn continue_operation(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<(), AppError> {
+    let conflicts = services.conflicts.clone();
+    run_blocking(move || Ok(conflicts.continue_operation(&PathBuf::from(path))?)).await
+}
+
+/// Abandons the interrupted operation.
+#[tauri::command]
+#[specta::specta]
+pub async fn abort_operation(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<(), AppError> {
+    let conflicts = services.conflicts.clone();
+    run_blocking(move || Ok(conflicts.abort(&PathBuf::from(path))?)).await
 }
 
 fn widen(value: u32) -> usize {

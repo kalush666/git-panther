@@ -72,6 +72,24 @@ export const commands = {
 	pullBranch: (path: string, strategy: PullStrategyDto, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<null, AppError>(__TAURI_INVOKE("pull_branch", { path, strategy, jobId, onProgress })),
 	/**  Pushes the current branch, setting its upstream on the first push. */
 	pushBranch: (path: string, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<null, AppError>(__TAURI_INVOKE("push_branch", { path, jobId, onProgress })),
+	/**  Stash entries, newest first. */
+	listStashes: (path: string) => typedError<StashDto[], AppError>(__TAURI_INVOKE("list_stashes", { path })),
+	/**  Stashes uncommitted changes, and untracked files if asked. */
+	saveStash: (path: string, message: string | null, includeUntracked: boolean) => typedError<null, AppError>(__TAURI_INVOKE("save_stash", { path, message, includeUntracked })),
+	/**  Applies a stash entry; with `pop`, removes it once it applied cleanly. */
+	applyStash: (path: string, index: number, pop: boolean) => typedError<null, AppError>(__TAURI_INVOKE("apply_stash", { path, index, pop })),
+	/**  Deletes a stash entry. */
+	dropStash: (path: string, index: number) => typedError<null, AppError>(__TAURI_INVOKE("drop_stash", { path, index })),
+	/**  The merge, rebase, cherry-pick or revert waiting for the user, if any. */
+	repositoryOperation: (path: string) => typedError<OperationDto | null, AppError>(__TAURI_INVOKE("repository_operation", { path })),
+	/**  Resolves a conflicted file by keeping one side. */
+	resolveConflict: (path: string, file: string, side: ConflictSideDto) => typedError<null, AppError>(__TAURI_INVOKE("resolve_conflict", { path, file, side })),
+	/**  Stages conflicted files the user resolved by hand. */
+	markResolved: (path: string, files: string[]) => typedError<null, AppError>(__TAURI_INVOKE("mark_resolved", { path, files })),
+	/**  Concludes the interrupted operation. */
+	continueOperation: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("continue_operation", { path })),
+	/**  Abandons the interrupted operation. */
+	abortOperation: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("abort_operation", { path })),
 };
 
 /** Events */
@@ -88,7 +106,7 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "watchFailed" | "internal";
 
 /**  A branch shown in the sidebar. */
 export type BranchDto = BranchDto_Serialize | BranchDto_Deserialize;
@@ -162,6 +180,9 @@ export type CommitDetailsDto = {
 	committer: PersonDto,
 	changes: FileChangeDto[],
 };
+
+/**  Which version of a conflicted file to keep. */
+export type ConflictSideDto = "mine" | "incoming";
 
 export type DiffLineDto = DiffLineDto_Serialize | DiffLineDto_Deserialize;
 
@@ -265,6 +286,9 @@ export type HunkDto_Serialize = {
 
 export type LineKindDto = "context" | "added" | "removed";
 
+/**  An operation waiting for conflicts to be resolved. */
+export type OperationDto = "merge" | "rebase" | "cherryPick" | "revert";
+
 export type PersonDto = {
 	name: string,
 	email: string,
@@ -316,6 +340,13 @@ export type SegmentDto = {
 	from: number,
 	to: number,
 	color: number,
+};
+
+/**  One stash entry, newest first. */
+export type StashDto = {
+	index: number,
+	message: string,
+	id: string,
 };
 
 /**  Uncommitted changes of a repository. */

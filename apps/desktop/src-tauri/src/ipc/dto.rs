@@ -9,6 +9,7 @@ use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::ports::HunkAction;
 use panther_domain::remote::{PullStrategy, Remote};
 use panther_domain::repository::{CloneProgress, HeadState, RepositorySummary, repository_name};
+use panther_domain::stash::{ConflictSide, Operation, Stash};
 use panther_domain::working_tree::{
     ChangedFile, DiffLine, DiffSide, FileDiff, FileState, Hunk, LineKind, WorkingTreeStatus,
 };
@@ -567,6 +568,64 @@ impl From<PullStrategyDto> for PullStrategy {
             PullStrategyDto::FastForwardOnly => Self::FastForwardOnly,
             PullStrategyDto::Merge => Self::Merge,
             PullStrategyDto::Rebase => Self::Rebase,
+        }
+    }
+}
+
+/// One stash entry, newest first.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct StashDto {
+    pub index: u32,
+    pub message: String,
+    pub id: String,
+}
+
+impl From<Stash> for StashDto {
+    fn from(stash: Stash) -> Self {
+        Self {
+            // Nobody keeps four billion stashes; saturate rather than fail.
+            index: u32::try_from(stash.index).unwrap_or(u32::MAX),
+            message: stash.message,
+            id: stash.id.to_string(),
+        }
+    }
+}
+
+/// An operation waiting for conflicts to be resolved.
+#[derive(Debug, Clone, Copy, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum OperationDto {
+    Merge,
+    Rebase,
+    CherryPick,
+    Revert,
+}
+
+impl From<Operation> for OperationDto {
+    fn from(operation: Operation) -> Self {
+        match operation {
+            Operation::Merge => Self::Merge,
+            Operation::Rebase => Self::Rebase,
+            Operation::CherryPick => Self::CherryPick,
+            Operation::Revert => Self::Revert,
+        }
+    }
+}
+
+/// Which version of a conflicted file to keep.
+#[derive(Debug, Clone, Copy, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ConflictSideDto {
+    Mine,
+    Incoming,
+}
+
+impl From<ConflictSideDto> for ConflictSide {
+    fn from(side: ConflictSideDto) -> Self {
+        match side {
+            ConflictSideDto::Mine => Self::Mine,
+            ConflictSideDto::Incoming => Self::Incoming,
         }
     }
 }

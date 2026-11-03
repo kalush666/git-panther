@@ -39,6 +39,15 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::fetch_remotes,
             commands::pull_branch,
             commands::push_branch,
+            commands::list_stashes,
+            commands::save_stash,
+            commands::apply_stash,
+            commands::drop_stash,
+            commands::repository_operation,
+            commands::resolve_conflict,
+            commands::mark_resolved,
+            commands::continue_operation,
+            commands::abort_operation,
         ])
         .events(tauri_specta::collect_events![dto::RepositoryChanged])
 }
