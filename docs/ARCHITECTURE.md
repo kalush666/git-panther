@@ -35,16 +35,16 @@ Git Panther is a desktop Git client built as a **Tauri 2** application: a Rust c
 
 Dependencies point **inward only**. The domain knows nothing about git2, Tauri, Tokio, or the filesystem.
 
-| Unit | Layer | Responsibility | Allowed dependencies |
-|---|---|---|---|
-| `crates/panther-domain` | domain | Entities (`Commit`, `Branch`, `Repository`), value objects (`CommitId`, `BranchName`), domain errors, **ports** (traits) | `serde`, `thiserror` |
-| `crates/panther-graph` | domain | Pure, incremental commit-graph lane layout | `panther-domain` |
-| `crates/panther-application` | application | Use cases orchestrating ports | `panther-domain`, `panther-graph` |
-| `crates/panther-git` | infrastructure | `Git2Repository` (libgit2) and `GitCli` adapters | domain, `git2` |
-| `crates/panther-hosting` *(later)* | infrastructure | `HostingProvider` adapters | domain, HTTP client |
-| `apps/desktop/src-tauri` | composition root | Builds the object graph, exposes commands/events, runs jobs off the UI thread | everything |
-| `apps/desktop/src` | presentation | React UI, Zustand UI state, TanStack Query cache | generated bindings |
-| `packages/design-tokens` | presentation support | Design tokens → CSS variables | none |
+| Unit                               | Layer                | Responsibility                                                                                                           | Allowed dependencies              |
+| ---------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| `crates/panther-domain`            | domain               | Entities (`Commit`, `Branch`, `Repository`), value objects (`CommitId`, `BranchName`), domain errors, **ports** (traits) | `serde`, `thiserror`              |
+| `crates/panther-graph`             | domain               | Pure, incremental commit-graph lane layout                                                                               | `panther-domain`                  |
+| `crates/panther-application`       | application          | Use cases orchestrating ports                                                                                            | `panther-domain`, `panther-graph` |
+| `crates/panther-git`               | infrastructure       | `Git2Repository` (libgit2) and `GitCli` adapters                                                                         | domain, `git2`                    |
+| `crates/panther-hosting` _(later)_ | infrastructure       | `HostingProvider` adapters                                                                                               | domain, HTTP client               |
+| `apps/desktop/src-tauri`           | composition root     | Builds the object graph, exposes commands/events, runs jobs off the UI thread                                            | everything                        |
+| `apps/desktop/src`                 | presentation         | React UI, Zustand UI state, TanStack Query cache                                                                         | generated bindings                |
+| `packages/design-tokens`           | presentation support | Design tokens → CSS variables                                                                                            | none                              |
 
 ### Enforcement
 
@@ -56,18 +56,18 @@ Dependencies point **inward only**. The domain knows nothing about git2, Tauri, 
 
 Ports are small, capability-based traits declared in `panther-domain::ports` (see the `solid` skill for rationale):
 
-| Port | Capability |
-|---|---|
-| `RepositoryOpener` | open / init / discover a repository |
-| `CommitLog` | paged history walk, commit details |
-| `WorkingTree` | status, stage/unstage file & hunk, discard |
-| `RefStore` | branches, tags, HEAD, checkout |
-| `CommitWriter` | create / amend commits |
-| `RemoteSync` | clone, fetch, pull, push (progress-reporting, cancellable) |
-| `StashStore` | stash list / save / apply / pop / drop |
-| `DiffProvider` | file and hunk diffs, word-level highlights |
-| `HostingProvider` *(later)* | pull requests, avatars, repo metadata |
-| `Clock`, `FileSystem`, `ProcessRunner` | deterministic seams for tests |
+| Port                                   | Capability                                                 |
+| -------------------------------------- | ---------------------------------------------------------- |
+| `RepositoryOpener`                     | open / init / discover a repository                        |
+| `CommitLog`                            | paged history walk, commit details                         |
+| `WorkingTree`                          | status, stage/unstage file & hunk, discard                 |
+| `RefStore`                             | branches, tags, HEAD, checkout                             |
+| `CommitWriter`                         | create / amend commits                                     |
+| `RemoteSync`                           | clone, fetch, pull, push (progress-reporting, cancellable) |
+| `StashStore`                           | stash list / save / apply / pop / drop                     |
+| `DiffProvider`                         | file and hunk diffs, word-level highlights                 |
+| `HostingProvider` _(later)_            | pull requests, avatars, repo metadata                      |
+| `Clock`, `FileSystem`, `ProcessRunner` | deterministic seams for tests                              |
 
 `GitRepository` is a supertrait combining the git ports for convenient wiring; use cases depend only on the ports they need.
 
@@ -119,14 +119,14 @@ apps/desktop/src/
 
 ## Testing strategy
 
-| Level | Tooling | What |
-|---|---|---|
-| Domain / application unit | `cargo test` | value-object rules, graph layout, use cases with in-memory fakes |
-| Adapter contract + integration | `cargo test` + `tempfile` repos | every port behaviour against real temp repositories, both engines |
-| UI unit | Vitest + Testing Library | components, stores, query hooks with mocked IPC |
-| E2E | Playwright against the Vite build with a mocked IPC backend; one `tauri-driver` smoke test on Windows | key user flows |
-| Architecture | `tests/architecture.rs`, ESLint boundaries | layer rules |
-| Performance | `criterion` | graph layout and log paging budgets |
+| Level                          | Tooling                                                                                               | What                                                              |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Domain / application unit      | `cargo test`                                                                                          | value-object rules, graph layout, use cases with in-memory fakes  |
+| Adapter contract + integration | `cargo test` + `tempfile` repos                                                                       | every port behaviour against real temp repositories, both engines |
+| UI unit                        | Vitest + Testing Library                                                                              | components, stores, query hooks with mocked IPC                   |
+| E2E                            | Playwright against the Vite build with a mocked IPC backend; one `tauri-driver` smoke test on Windows | key user flows                                                    |
+| Architecture                   | `tests/architecture.rs`, ESLint boundaries                                                            | layer rules                                                       |
+| Performance                    | `criterion`                                                                                           | graph layout and log paging budgets                               |
 
 ## Cross-cutting
 

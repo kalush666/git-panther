@@ -30,7 +30,7 @@ Code here is read far more often than it's written, and it outlives every milest
 
 ## Errors
 
-- Rust: every crate has its own `thiserror` error enum with variants that name *what went wrong in domain terms* (`GitError::BranchAlreadyExists { name }`, not `Error::Other(String)`). Use `anyhow` only in the binary's composition root and tests. Never `unwrap()`/`expect()` in non-test code unless an invariant makes failure impossible — and then the `expect` message states that invariant.
+- Rust: every crate has its own `thiserror` error enum with variants that name _what went wrong in domain terms_ (`GitError::BranchAlreadyExists { name }`, not `Error::Other(String)`). Use `anyhow` only in the binary's composition root and tests. Never `unwrap()`/`expect()` in non-test code unless an invariant makes failure impossible — and then the `expect` message states that invariant.
 - Errors crossing IPC are serialized as `AppError { kind, message, details? }` where `kind` is a stable machine-readable code the UI can switch on, and `message` is human-readable and actionable ("Branch 'main' already exists. Choose another name.").
 - TS: never swallow errors (`catch {}`). Surface them via the notification system or rethrow with context. Don't use exceptions for expected control flow — return a discriminated union.
 - Wrap low-level errors with context at layer boundaries (`.map_err(|e| GitError::Open { path, source: e })`) so a log line explains itself without a debugger.
@@ -43,7 +43,7 @@ Code here is read far more often than it's written, and it outlives every milest
 
 ## Comments
 
-Comments explain *why*, never *what*. If you need a comment to explain what code does, rename or restructure first. Public items in `panther-domain` and `panther-application` get doc comments (`///`) because they're the project's vocabulary.
+Comments explain _why_, never _what_. If you need a comment to explain what code does, rename or restructure first. Public items in `panther-domain` and `panther-application` get doc comments (`///`) because they're the project's vocabulary.
 
 ## Before committing
 
