@@ -23,9 +23,13 @@ Open items carried forward: the `tauri-driver` smoke test of the real window mov
 
 ![M0 shell, dark theme](screenshots/m0-dark.png)
 
-### ⏳ M1 — Repositories
+### 🚧 M1 — Repositories
 
 Open / init / clone (with progress, cancellable), repo tabs, recent repositories, file watcher.
+
+**Demo:** open, init or clone from the start page; each repository opens in a persisted tab showing its current branch; recent repositories are remembered across restarts; external changes refresh the tab.
+
+![M1 start page](screenshots/m1-start.png)
 
 ### ⏳ M2 — Commit graph
 
