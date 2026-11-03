@@ -1,17 +1,13 @@
 import { GitRequiredScreen, GitVersionBadge, useGitInstallation } from '../features/git-check';
 import { ThemeMenu } from '../features/theme';
 import { WelcomeScreen } from '../features/welcome';
-import { Logo } from '../shared/ui/Logo';
 import styles from './AppShell.module.css';
 
 export function AppShell() {
   return (
     <div className={styles.shell}>
       <header className={styles.titleBar}>
-        <div className={styles.brand}>
-          <Logo size={20} />
-          <span className={styles.productName}>Git Panther</span>
-        </div>
+        <span className={styles.productName}>Git Panther</span>
         <div className={styles.titleBarActions}>
           <ThemeMenu />
         </div>

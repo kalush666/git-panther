@@ -1,6 +1,5 @@
 import { Download, FolderOpen, FolderPlus, type LucideIcon } from 'lucide-react';
 
-import { Logo } from '../../../shared/ui/Logo';
 import styles from './WelcomeScreen.module.css';
 
 interface StartAction {
@@ -19,7 +18,6 @@ const START_ACTIONS: readonly StartAction[] = [
 export function WelcomeScreen() {
   return (
     <section className={styles.screen} aria-labelledby="welcome-title">
-      <Logo size={88} />
       <h1 id="welcome-title" className={styles.title}>
         Welcome to Git Panther
       </h1>

@@ -56,7 +56,7 @@ Contrast: text tokens must meet WCAG AA (4.5:1) on every background token in bot
 - Shared components live in `apps/desktop/src/shared/ui/<Component>/` with `<Component>.tsx`, `<Component>.module.css`, and a test. Feature-specific UI stays inside its feature folder until a second feature needs it.
 - Variants are props (`<Button variant="primary" | "secondary" | "ghost" | "danger" size="sm" | "md">`), implemented with `data-variant` attributes in CSS — no inline style objects for theming.
 - Every interactive element: visible `:focus-visible` ring (`2px solid var(--gp-focus-ring)`, offset 2px), hover state, disabled state, and a keyboard path.
-- Icons: `lucide-react` at 16px (stroke 1.75) in chrome, 14px in dense rows. The Git Panther logo is our own SVG in `apps/desktop/src/assets/` — never use another product's marks.
+- Icons: `lucide-react` at 16px (stroke 1.75) in chrome, 14px in dense rows. The UI currently carries no logo (the product name is text only); never use another product's marks.
 
 ## Layout conventions
 

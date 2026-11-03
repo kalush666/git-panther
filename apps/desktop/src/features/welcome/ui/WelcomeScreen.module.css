@@ -9,7 +9,7 @@
 }
 
 .title {
-  margin: var(--gp-space-3) 0 0;
+  margin: 0;
   font-size: var(--gp-text-display);
   font-weight: var(--gp-weight-semibold);
 }
