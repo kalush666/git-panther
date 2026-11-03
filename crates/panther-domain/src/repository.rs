@@ -163,6 +163,20 @@ pub enum RepositoryError {
     PullConflict { details: String },
     #[error("This repository has no remote to push to.")]
     NoRemote,
+    #[error("There are no local changes to stash.")]
+    NothingToStash,
+    #[error(
+        "Stash entry {index} does not exist. The stash may have changed; refresh and try again."
+    )]
+    StashNotFound { index: usize },
+    #[error(
+        "The stash was applied with conflicts. Resolve them; the stash entry was kept so nothing is lost."
+    )]
+    StashConflict { details: String },
+    #[error("No merge, rebase, cherry-pick or revert is in progress.")]
+    NoOperationInProgress,
+    #[error("Some files still have conflicts. Resolve every file before continuing.")]
+    UnresolvedConflicts,
 }
 
 #[cfg(test)]

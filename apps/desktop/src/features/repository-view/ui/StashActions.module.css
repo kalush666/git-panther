@@ -1,0 +1,20 @@
+.actions {
+  display: flex;
+  flex-shrink: 1;
+  align-items: center;
+  gap: var(--gp-space-1);
+  min-width: 0;
+  margin-left: auto;
+  padding-right: var(--gp-space-3);
+  border-right: 1px solid var(--gp-border-subtle);
+}
+
+.error {
+  max-width: var(--gp-details-width);
+  margin: 0;
+  overflow: hidden;
+  color: var(--gp-danger);
+  font-size: var(--gp-text-sm);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

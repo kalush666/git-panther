@@ -1,4 +1,4 @@
-import { Minus, Plus, Trash2, TriangleAlert } from 'lucide-react';
+import { Minus, Plus, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
 import type { ChangedFile, DiffSide } from '../../../shared/ipc';
@@ -13,6 +13,7 @@ import {
   useWorkingTreeStatus,
 } from '../api/useWorkingTree';
 import { CHANGE_LETTERS } from '../model/changeLetters';
+import { ConflictSection } from './ConflictSection';
 import styles from './StagingPanel.module.css';
 
 /** Git's convention for a readable one-line summary. */
@@ -47,13 +48,13 @@ export function StagingPanel({ path, openFile, onOpenFile }: StagingPanelProps) 
   return (
     <aside className={styles.panel} aria-label="Working copy">
       <div className={styles.lists}>
-        {conflicted.length > 0 && (
-          <p className={styles.conflicts} role="status">
-            <TriangleAlert size={14} aria-hidden />
-            {conflicted.length} conflicted {conflicted.length === 1 ? 'file' : 'files'}:{' '}
-            {conflicted.join(', ')}
-          </p>
-        )}
+        <ConflictSection
+          path={path}
+          conflicted={conflicted}
+          onOpenFile={(file) => {
+            onOpenFile(file, 'unstaged');
+          }}
+        />
         <FileSection
           title="Unstaged files"
           files={unstaged}

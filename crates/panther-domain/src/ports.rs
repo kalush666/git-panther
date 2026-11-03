@@ -13,6 +13,7 @@ use crate::remote::{PullStrategy, Remote};
 use crate::repository::{
     CancellationToken, CloneProgress, CloneRequest, RepositoryError, RepositorySummary,
 };
+use crate::stash::{ConflictSide, Operation, Stash};
 use crate::working_tree::{CommitMessage, DiffSide, FileDiff, HunkRef, WorkingTreeStatus};
 
 /// What to do with a single hunk.
@@ -120,6 +121,82 @@ pub trait BranchStore: Send + Sync {
         name: &BranchName,
         force: bool,
     ) -> Result<(), RepositoryError>;
+}
+
+/// Saves uncommitted work aside and brings it back.
+pub trait StashStore: Send + Sync {
+    /// Newest first.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn stashes(&self, repository: &Path) -> Result<Vec<Stash>, RepositoryError>;
+
+    /// Stashes staged and unstaged changes, and untracked files if asked.
+    ///
+    /// # Errors
+    /// [`RepositoryError::NothingToStash`] for a clean work tree.
+    fn save(
+        &self,
+        repository: &Path,
+        message: Option<&str>,
+        include_untracked: bool,
+    ) -> Result<(), RepositoryError>;
+
+    /// Applies entry `index`; with `drop_after` (a pop) the entry is removed
+    /// once it applied cleanly.
+    ///
+    /// # Errors
+    /// [`RepositoryError::StashConflict`], [`RepositoryError::StashNotFound`]
+    /// or [`RepositoryError::CheckoutConflict`].
+    fn apply(
+        &self,
+        repository: &Path,
+        index: usize,
+        drop_after: bool,
+    ) -> Result<(), RepositoryError>;
+
+    /// # Errors
+    /// [`RepositoryError::StashNotFound`].
+    fn remove(&self, repository: &Path, index: usize) -> Result<(), RepositoryError>;
+}
+
+/// Finishes or abandons an operation that stopped with conflicts.
+pub trait ConflictResolver: Send + Sync {
+    /// The interrupted operation, if any.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn operation(&self, repository: &Path) -> Result<Option<Operation>, RepositoryError>;
+
+    /// Resolves `path` by keeping one side entirely, and stages the result.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when git cannot check out that side.
+    fn take(
+        &self,
+        repository: &Path,
+        path: &str,
+        side: ConflictSide,
+    ) -> Result<(), RepositoryError>;
+
+    /// Stages files the user resolved by hand.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the files cannot be staged.
+    fn mark_resolved(&self, repository: &Path, paths: &[String]) -> Result<(), RepositoryError>;
+
+    /// Concludes the operation once every conflict is resolved.
+    ///
+    /// # Errors
+    /// [`RepositoryError::UnresolvedConflicts`] or
+    /// [`RepositoryError::NoOperationInProgress`].
+    fn continue_operation(&self, repository: &Path) -> Result<(), RepositoryError>;
+
+    /// Returns the repository to how it was before the operation.
+    ///
+    /// # Errors
+    /// [`RepositoryError::NoOperationInProgress`].
+    fn abort(&self, repository: &Path) -> Result<(), RepositoryError>;
 }
 
 /// Exchanges commits with remotes. Every operation reports progress and can

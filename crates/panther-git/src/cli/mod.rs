@@ -7,6 +7,7 @@ mod commit;
 mod history;
 mod probe;
 mod progress;
+mod run;
 mod sync;
 mod transfer;
 
@@ -19,6 +20,7 @@ pub use clone::GitCliCloner;
 pub use commit::commit;
 pub use history::read_history;
 pub use probe::SystemGitProbe;
+pub use run::run_git;
 pub use sync::{pull_args, run_sync};
 
 /// Builds a git command that never flashes a console window on Windows and

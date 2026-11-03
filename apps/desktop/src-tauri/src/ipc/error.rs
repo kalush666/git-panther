@@ -37,6 +37,11 @@ pub enum AppErrorKind {
     NotFastForward,
     PullConflict,
     NoRemote,
+    NothingToStash,
+    StashNotFound,
+    StashConflict,
+    NoOperationInProgress,
+    UnresolvedConflicts,
     WatchFailed,
     Internal,
 }
@@ -107,6 +112,11 @@ impl From<RepositoryError> for AppError {
             RepositoryError::NotFastForward => AppErrorKind::NotFastForward,
             RepositoryError::PullConflict { .. } => AppErrorKind::PullConflict,
             RepositoryError::NoRemote => AppErrorKind::NoRemote,
+            RepositoryError::NothingToStash => AppErrorKind::NothingToStash,
+            RepositoryError::StashNotFound { .. } => AppErrorKind::StashNotFound,
+            RepositoryError::StashConflict { .. } => AppErrorKind::StashConflict,
+            RepositoryError::NoOperationInProgress => AppErrorKind::NoOperationInProgress,
+            RepositoryError::UnresolvedConflicts => AppErrorKind::UnresolvedConflicts,
         };
         Self::new(kind, error.to_string())
     }

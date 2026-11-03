@@ -12,6 +12,7 @@ import { CommitDetailsPanel } from './CommitDetailsPanel';
 import { CommitGraph } from './CommitGraph';
 import { DiffViewer } from './DiffViewer';
 import { StagingPanel } from './StagingPanel';
+import { StashActions } from './StashActions';
 import { SyncToolbar } from './SyncToolbar';
 import { WorkingCopyRow } from './WorkingCopyRow';
 import menu from './menu.module.css';
@@ -87,6 +88,7 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
             {describeHead(head)}
           </p>
         </div>
+        <StashActions path={path} />
         <SyncToolbar path={path} />
       </header>
       <div className={styles.body}>

@@ -1,6 +1,7 @@
 import type { Backend, CloneProgress, OnProgress, Result } from './backend';
 import type { GitInstallationDto, RecentRepositoryDto, RepositorySummaryDto } from './bindings';
 import { createMockBranches } from './mockBranches';
+import { createMockStashes } from './mockStashes';
 import { mockCommitDetails, mockGraphPage } from './mockGraph';
 import { createMockWorkingTree } from './mockWorkingTree';
 
@@ -62,6 +63,7 @@ function createMockBackend(): Backend {
   const changeListeners = new Set<(path: string) => void>();
   const workingTree = createMockWorkingTree();
   const branchStore = createMockBranches();
+  const stashes = createMockStashes(workingTree);
 
   /** Plays `steps` as progress, then runs `finish` unless the job was cancelled. */
   const runJob = async <T>(
@@ -165,6 +167,16 @@ function createMockBackend(): Backend {
       runJob(jobId, SYNC_STEPS, onProgress, () => branchStore.pull(strategy)),
     pushBranch: (_path, jobId, onProgress) =>
       runJob(jobId, SYNC_STEPS, onProgress, () => branchStore.push()),
+    listStashes: () => Promise.resolve(stashes.list()),
+    saveStash: (_path, message, includeUntracked) =>
+      Promise.resolve(stashes.save(message, includeUntracked, branchStore.headName())),
+    applyStash: (_path, index, pop) => Promise.resolve(stashes.apply(index, pop)),
+    dropStash: (_path, index) => Promise.resolve(stashes.drop(index)),
+    repositoryOperation: () => Promise.resolve(workingTree.operation()),
+    resolveConflict: (_path, file) => Promise.resolve(workingTree.resolve([file])),
+    markResolved: (_path, files) => Promise.resolve(workingTree.resolve(files)),
+    continueOperation: () => Promise.resolve(workingTree.continueOperation()),
+    abortOperation: () => Promise.resolve(workingTree.abortOperation()),
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
   };
 }

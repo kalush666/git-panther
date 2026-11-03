@@ -7,6 +7,7 @@ import { useBranches } from '../api/useBranches';
 import { buildBranchTree, filterBranches, type BranchNode } from '../model/branchTree';
 import menu from './menu.module.css';
 import styles from './BranchSidebar.module.css';
+import { StashList } from './StashList';
 import type { BranchActions } from './useBranchActions';
 
 interface BranchSidebarProps {
@@ -48,6 +49,7 @@ export function BranchSidebar({ path, actions }: BranchSidebarProps) {
           branches={remote}
           actions={actions}
         />
+        <StashList path={path} />
       </div>
       {(branches.error ?? actions.checkoutError) && (
         <p className={styles.error} role="alert">

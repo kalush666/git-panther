@@ -18,6 +18,7 @@ export type {
   ChangedFile,
   CloneOptions,
   CloneProgress,
+  ConflictSide,
   DiffHunk,
   DiffLine,
   DiffSide,
@@ -25,9 +26,11 @@ export type {
   HunkAction,
   HunkTarget,
   OnProgress,
+  Operation,
   PullStrategy,
   Remote,
   Result,
+  Stash,
   WorkingTreeStatus,
 } from './backend';
 export type {
