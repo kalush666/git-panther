@@ -2498,6 +2498,7 @@ dependencies = [
 name = "panther-git"
 version = "0.1.0"
 dependencies = [
+ "dunce",
  "git2",
  "panther-domain",
  "tempfile",

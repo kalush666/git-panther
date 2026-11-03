@@ -9,6 +9,11 @@ use panther_domain::repository::{HeadState, RepositoryError};
 use panther_git::Git2RepositoryOpener;
 use tempfile::TempDir;
 
+/// The single spelling the opener reports for a folder.
+fn canonical(path: &std::path::Path) -> std::path::PathBuf {
+    dunce::canonicalize(path).unwrap()
+}
+
 #[test]
 fn opens_repository_on_its_branch() {
     let dir = TempDir::new().unwrap();
@@ -17,10 +22,7 @@ fn opens_repository_on_its_branch() {
     let summary = Git2RepositoryOpener.open(dir.path()).unwrap();
 
     assert_eq!(summary.head, HeadState::Branch("main".into()));
-    assert_eq!(
-        summary.path,
-        dir.path().components().collect::<std::path::PathBuf>()
-    );
+    assert_eq!(summary.path, canonical(dir.path()));
 }
 
 #[test]
@@ -32,10 +34,7 @@ fn opening_a_subfolder_finds_the_repository_root() {
 
     let summary = Git2RepositoryOpener.open(&nested).unwrap();
 
-    assert_eq!(
-        summary.path,
-        dir.path().components().collect::<std::path::PathBuf>()
-    );
+    assert_eq!(summary.path, canonical(dir.path()));
 }
 
 #[test]
@@ -92,4 +91,34 @@ fn init_refuses_an_existing_repository() {
         Git2RepositoryOpener.init(dir.path()),
         Err(RepositoryError::AlreadyARepository { .. })
     ));
+}
+
+/// Windows can spell one folder two ways (`C:\PROGRA~1` vs `C:\Program Files`);
+/// GitHub's runners put temp folders under such a short name.
+#[cfg(windows)]
+#[test]
+fn reports_the_long_spelling_when_opened_through_a_short_name() {
+    let dir = TempDir::new().unwrap();
+    let long = dir
+        .path()
+        .join("a-folder-name-longer-than-eight-characters");
+    support::repository_with_commit(&long);
+    // `raw_arg`: cmd needs the quotes verbatim, not Rust's argument escaping.
+    let output = {
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new("cmd")
+            .arg("/c")
+            .raw_arg(format!("for %I in (\"{}\") do @echo %~sI", long.display()))
+            .output()
+            .unwrap()
+    };
+    let short = std::path::PathBuf::from(String::from_utf8_lossy(&output.stdout).trim());
+    assert_ne!(
+        short, long,
+        "8.3 short names must be enabled on this volume"
+    );
+
+    let summary = Git2RepositoryOpener.open(&short).unwrap();
+
+    assert_eq!(summary.path, canonical(&long));
 }
