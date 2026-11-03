@@ -42,6 +42,15 @@ export const tauriBackend: Backend = {
   renameBranch: commands.renameBranch,
   deleteBranch: commands.deleteBranch,
   listRemotes: commands.listRemotes,
+  listStashes: commands.listStashes,
+  saveStash: commands.saveStash,
+  applyStash: commands.applyStash,
+  dropStash: commands.dropStash,
+  repositoryOperation: commands.repositoryOperation,
+  resolveConflict: commands.resolveConflict,
+  markResolved: commands.markResolved,
+  continueOperation: commands.continueOperation,
+  abortOperation: commands.abortOperation,
   fetchRemotes: (path, jobId, onProgress) =>
     commands.fetchRemotes(path, jobId, progressChannel(onProgress)),
   pullBranch: (path, strategy, jobId, onProgress) =>

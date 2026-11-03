@@ -4,6 +4,7 @@ import type {
   CloneProgressDto_Serialize,
   ChangedFileDto_Serialize,
   CommitDetailsDto,
+  ConflictSideDto,
   DiffLineDto_Serialize,
   DiffSideDto,
   FileDiffDto_Serialize,
@@ -11,10 +12,12 @@ import type {
   GraphPageDto,
   HunkActionDto,
   HunkDto_Serialize,
+  OperationDto,
   PullStrategyDto,
   RecentRepositoryDto,
   RemoteDto,
   RepositorySummaryDto,
+  StashDto,
   WorkingTreeStatusDto_Serialize,
 } from './bindings';
 
@@ -32,6 +35,9 @@ export type HunkAction = HunkActionDto;
 export type Branch = BranchDto_Serialize;
 export type Remote = RemoteDto;
 export type PullStrategy = PullStrategyDto;
+export type Stash = StashDto;
+export type Operation = OperationDto;
+export type ConflictSide = ConflictSideDto;
 
 /** Receives progress of a long-running network job. */
 export type OnProgress = (progress: CloneProgress) => void;
@@ -102,6 +108,19 @@ export interface Backend {
   ): Promise<Result<null>>;
   /** Pushes the current branch, setting its upstream on the first push. */
   pushBranch(path: string, jobId: string, onProgress: OnProgress): Promise<Result<null>>;
+  /** Newest first. */
+  listStashes(path: string): Promise<Result<Stash[]>>;
+  saveStash(path: string, message: string | null, includeUntracked: boolean): Promise<Result<null>>;
+  /** With `pop`, the entry is removed once it applied cleanly. */
+  applyStash(path: string, index: number, pop: boolean): Promise<Result<null>>;
+  dropStash(path: string, index: number): Promise<Result<null>>;
+  /** The merge, rebase, cherry-pick or revert waiting on conflicts, if any. */
+  repositoryOperation(path: string): Promise<Result<Operation | null>>;
+  /** Resolves a conflicted file by keeping one side, and stages it. */
+  resolveConflict(path: string, file: string, side: ConflictSide): Promise<Result<null>>;
+  markResolved(path: string, files: string[]): Promise<Result<null>>;
+  continueOperation(path: string): Promise<Result<null>>;
+  abortOperation(path: string): Promise<Result<null>>;
   /** Shows the native folder picker; resolves to `null` if the user cancels. */
   pickFolder(title: string): Promise<string | null>;
 }

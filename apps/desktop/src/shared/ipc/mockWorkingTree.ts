@@ -5,13 +5,15 @@ import type {
   FileDiff,
   HunkAction,
   HunkTarget,
+  Operation,
   Result,
   WorkingTreeStatus,
 } from './backend';
+import type { AppErrorKind } from './bindings';
 
 type Kind = ChangedFile['kind'];
 
-interface MockFile {
+export interface MockFile {
   path: string;
   kind: Kind;
   staged: DiffHunk[];
@@ -78,10 +80,18 @@ function initialFiles(): MockFile[] {
 }
 
 const ok = <T>(data: T): Result<T> => ({ status: 'ok', data });
-const failure = (kind: 'nothingToCommit' | 'hunkOutdated', message: string): Result<never> => ({
+const failure = (kind: AppErrorKind, message: string): Result<never> => ({
   status: 'error',
   error: { kind, message },
 });
+
+/** `?mockConflict=merge` (or `rebase`) starts in the middle of that operation. */
+function initialOperation(): Operation | null {
+  const value = new URLSearchParams(window.location.search).get('mockConflict');
+  return value === 'merge' || value === 'rebase' ? value : null;
+}
+
+const CONFLICTED_FILES = ['src/panther.ts', 'docs/guide.md'];
 
 /**
  * In-memory working tree for the browser mock: three changed files that can
@@ -90,6 +100,8 @@ const failure = (kind: 'nothingToCommit' | 'hunkOutdated', message: string): Res
 export function createMockWorkingTree() {
   let files = initialFiles();
   let headMessage = 'Merge topic 0';
+  let operation = initialOperation();
+  let conflicted = operation ? [...CONFLICTED_FILES] : [];
 
   const sideOf = (file: MockFile, side: DiffSide) =>
     side === 'staged' ? file.staged : file.unstaged;
@@ -112,7 +124,7 @@ export function createMockWorkingTree() {
 
   return {
     status: (): Result<WorkingTreeStatus> =>
-      ok({ staged: entries('staged'), unstaged: entries('unstaged'), conflicted: [] }),
+      ok({ staged: entries('staged'), unstaged: entries('unstaged'), conflicted }),
 
     diff: (path: string, side: DiffSide): Result<FileDiff> => {
       const file = files.find((candidate) => candidate.path === path);
@@ -166,5 +178,64 @@ export function createMockWorkingTree() {
     },
 
     headMessage: (): Result<string | null> => ok(`${headMessage}\n`),
+
+    /** Removes and returns the changes a stash would take, or `null` if there are none. */
+    takeChanges: (includeUntracked: boolean): MockFile[] | null => {
+      const taken = files.filter(
+        (file) =>
+          (includeUntracked || file.kind !== 'untracked') &&
+          (file.staged.length > 0 || file.unstaged.length > 0),
+      );
+      if (taken.length === 0) return null;
+      files = files.filter((file) => !taken.includes(file));
+      return taken;
+    },
+
+    restoreChanges: (restored: readonly MockFile[]): Result<null> => {
+      if (restored.some((file) => files.some((existing) => existing.path === file.path))) {
+        return failure(
+          'checkoutConflict',
+          'Your uncommitted changes would be overwritten. Commit or stash them first.',
+        );
+      }
+      files.push(...structuredClone(restored));
+      return ok(null);
+    },
+
+    operation: (): Result<Operation | null> => ok(operation),
+
+    resolve: (paths: readonly string[]): Result<null> => {
+      conflicted = conflicted.filter((path) => !paths.includes(path));
+      return ok(null);
+    },
+
+    continueOperation: (): Result<null> => {
+      if (!operation) {
+        return failure(
+          'noOperationInProgress',
+          'No merge, rebase, cherry-pick or revert is in progress.',
+        );
+      }
+      if (conflicted.length > 0) {
+        return failure(
+          'unresolvedConflicts',
+          'Some files still have conflicts. Resolve every file before continuing.',
+        );
+      }
+      operation = null;
+      return ok(null);
+    },
+
+    abortOperation: (): Result<null> => {
+      if (!operation) {
+        return failure(
+          'noOperationInProgress',
+          'No merge, rebase, cherry-pick or revert is in progress.',
+        );
+      }
+      operation = null;
+      conflicted = [];
+      return ok(null);
+    },
   };
 }

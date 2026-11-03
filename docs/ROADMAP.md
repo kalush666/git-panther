@@ -59,9 +59,11 @@ Fetch, pull (ff / merge / rebase setting), push with progress; ahead/behind badg
 
 **Demo:** the repository header has Fetch, Pull (fast-forward only, merge or rebase; the choice is remembered) and Push with live progress, Cancel, and the current branch's to-pull / to-push counts. The first push of a branch sets its upstream. Network operations run through the git CLI with the user's own credential helpers and SSH keys; authentication, network, rejected-push, diverged-pull, conflict and missing-upstream failures each get their own explanation.
 
-### ⏳ M6 — Stash & conflicts
+### ✅ M6 — Stash & conflicts
 
 Stash save / apply / pop / drop; basic conflict view (take ours / theirs / mark resolved).
+
+**Demo:** Stash and Pop sit in the repository header; the stash dialog takes an optional message and can leave new files behind. The sidebar lists stashes with Apply / Pop / Drop (confirmed); a conflicting pop keeps its entry. When a merge, rebase, cherry-pick or revert stops on conflicts, the working-copy panel lists each file with Keep mine / Take incoming / Mark resolved, then Continue or Abort (confirmed). "Mine" and "incoming" stay correct during a rebase, where git's ours and theirs swap.
 
 ### ⏳ M7 — Settings & release
 
