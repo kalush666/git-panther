@@ -1,5 +1,6 @@
 //! Adapters backed by libgit2 (via `git2`), used for fast in-process access.
 
+pub mod branches;
 mod diff;
 mod log;
 mod opener;
