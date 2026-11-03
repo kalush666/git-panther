@@ -30,12 +30,17 @@
   list-style: none;
 }
 
+.actions > li {
+  display: flex;
+}
+
 .action {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--gp-space-1);
   width: 100%;
+  height: 100%;
   padding: var(--gp-space-4);
   border: 1px solid var(--gp-border-subtle);
   border-radius: var(--gp-radius-lg);
