@@ -1,0 +1,40 @@
+/* Shared look for context and dropdown menus in the repository view. */
+.content {
+  z-index: 10;
+  min-width: var(--gp-menu-min-width);
+  padding: var(--gp-space-1);
+  border-radius: var(--gp-radius-md);
+  background: var(--gp-bg-overlay);
+  box-shadow: var(--gp-shadow-overlay);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-space-2);
+  height: var(--gp-row-height);
+  padding: 0 var(--gp-space-3) 0 var(--gp-space-2);
+  border-radius: var(--gp-radius-sm);
+  color: var(--gp-text-primary);
+  outline: none;
+  cursor: pointer;
+}
+
+.item[data-highlighted] {
+  background: var(--gp-accent-subtle);
+}
+
+.item[data-disabled] {
+  color: var(--gp-text-muted);
+  cursor: default;
+}
+
+.danger {
+  color: var(--gp-danger);
+}
+
+.separator {
+  height: 1px;
+  margin: var(--gp-space-1) 0;
+  background: var(--gp-border-subtle);
+}

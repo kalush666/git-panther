@@ -1,14 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
-import {
-  ipc,
-  unwrap,
-  type DiffSide,
-  type HunkAction,
-  type HunkTarget,
-  type Result,
-} from '../../../shared/ipc';
+import { ipc, unwrap, type DiffSide, type HunkAction, type HunkTarget } from '../../../shared/ipc';
 import { repositoryQueryKey } from './useRepository';
+import { useRepositoryMutation } from './useRepositoryMutation';
 
 /** What a diff shows: uncommitted work on one side of the index, or a commit. */
 export type DiffSource =
@@ -47,21 +41,6 @@ export function useFileDiff(path: string, source: DiffSource | null) {
       );
     },
     enabled: source !== null,
-  });
-}
-
-/**
- * A working-tree change that refreshes everything about the repository
- * afterwards: status, diffs and (after commits) the graph.
- */
-function useRepositoryMutation<Input, Output>(
-  path: string,
-  run: (input: Input) => Promise<Result<Output>>,
-) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: Input) => unwrap(await run(input)),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: repositoryQueryKey(path) }),
   });
 }
 
