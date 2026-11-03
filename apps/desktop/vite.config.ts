@@ -2,13 +2,17 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+const DEV_HOST = '127.0.0.1';
 const DEV_PORT = 1420;
 
-// Tauri expects a fixed dev port and must not have its own files watched.
+// Tauri expects a fixed dev address and must not have its own files watched.
+// Binding to IPv4 explicitly: `localhost` may resolve to ::1 only, which
+// browsers and tools reaching 127.0.0.1 cannot connect to.
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,
   server: {
+    host: DEV_HOST,
     port: DEV_PORT,
     strictPort: true,
     watch: { ignored: ['**/src-tauri/**'] },

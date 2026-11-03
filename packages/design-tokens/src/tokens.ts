@@ -48,6 +48,8 @@ export const themedTokens = {
   'lane-6': { dark: '#60A5FA', light: '#1D4ED8' },
   'lane-7': { dark: '#E879F9', light: '#A21CAF' },
 
+  scrim: { dark: 'rgb(0 0 0 / 0.6)', light: 'rgb(22 19 31 / 0.35)' },
+
   'shadow-overlay': {
     dark: '0 12px 32px rgb(0 0 0 / 0.55), 0 0 0 1px #262131',
     light: '0 12px 32px rgb(22 19 31 / 0.14), 0 0 0 1px #E6E2EF',
@@ -82,6 +84,8 @@ export const scaleTokens = {
   'control-height-md': '32px',
   'menu-min-width': '160px',
   'content-max-width': '560px',
+  'tab-max-width': '200px',
+  'dialog-width': '480px',
   'titlebar-height': '40px',
   'statusbar-height': '24px',
 

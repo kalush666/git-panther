@@ -4,3 +4,9 @@
 //! ports, which the composition root fills with concrete adapters.
 
 pub mod check_git_installation;
+pub mod clone_repository;
+pub mod open_repository;
+pub mod recent_repositories;
+
+#[cfg(test)]
+mod test_support;

@@ -8,6 +8,12 @@ publish.workspace = true
 
 [dependencies]
 panther-domain.workspace = true
+# Network access goes through the git CLI, so libgit2's HTTPS/SSH support is
+# not needed; vendoring avoids depending on a system libgit2.
+git2 = { version = "0.21", default-features = false, features = ["vendored-libgit2"] }
+
+[dev-dependencies]
+tempfile = "3"
 
 [lints]
 workspace = true

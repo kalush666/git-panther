@@ -6,8 +6,9 @@ Git Panther is a desktop Git client built as a **Tauri 2** application: a Rust c
 
 1. **Replaceable git engine.** libgit2 today, the git CLI where libgit2 is weak, possibly gitoxide tomorrow — without touching use cases or UI.
 2. **Scale.** Repositories with 100k+ commits must open fast and scroll at 60 fps.
-3. **Pluggable integrations.** GitHub, GitLab, Bitbucket and Azure DevOps are adapters behind one interface.
+3. **Pluggable integrations.** Self-hosted GitHub Enterprise Server, GitLab, Bitbucket Data Center and Azure DevOps Server are adapters behind one interface.
 4. **Testability.** Domain and use cases are tested without a real repo or a window.
+5. **Closed networks.** The app works fully without internet access ([ADR 5](adr/0005-closed-network-operation.md)).
 
 ## Layers (hexagonal / clean architecture)
 
@@ -132,6 +133,7 @@ apps/desktop/src/
 
 - **Logging:** `tracing` in Rust, written to a rotating file in the app log dir; UI errors forwarded to the same sink.
 - **Settings:** stored as JSON in the OS app-config dir, versioned with migrations.
-- **Security:** Tauri capabilities restrict the UI to our own commands; no shell or filesystem plugins exposed to the webview. Credentials are never handled in-app in the MVP — they stay with system git.
+- **Security:** Tauri capabilities restrict the UI to our own commands and the folder picker; no shell or filesystem plugins exposed to the webview. Credentials are never handled in-app in the MVP — they stay with system git.
+- **Closed-network operation:** no runtime traffic except to user-configured git remotes (and, later, user-configured self-hosted servers). All assets are bundled, the CSP allows only `'self'`, and the Windows installer embeds the WebView2 offline installer. Enforced by the E2E network guard (`apps/desktop/e2e/fixtures.ts`) and `pnpm check:offline`.
 
 Decisions are recorded in [docs/adr](adr/).

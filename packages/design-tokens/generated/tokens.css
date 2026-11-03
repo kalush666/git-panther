@@ -26,6 +26,8 @@
   --gp-control-height-md: 32px;
   --gp-menu-min-width: 160px;
   --gp-content-max-width: 560px;
+  --gp-tab-max-width: 200px;
+  --gp-dialog-width: 480px;
   --gp-titlebar-height: 40px;
   --gp-statusbar-height: 24px;
   --gp-radius-sm: 4px;
@@ -72,6 +74,7 @@
   --gp-lane-5: #FB7185;
   --gp-lane-6: #60A5FA;
   --gp-lane-7: #E879F9;
+  --gp-scrim: rgb(0 0 0 / 0.6);
   --gp-shadow-overlay: 0 12px 32px rgb(0 0 0 / 0.55), 0 0 0 1px #262131;
 }
 
@@ -110,6 +113,7 @@
   --gp-lane-5: #BE123C;
   --gp-lane-6: #1D4ED8;
   --gp-lane-7: #A21CAF;
+  --gp-scrim: rgb(22 19 31 / 0.35);
   --gp-shadow-overlay: 0 12px 32px rgb(22 19 31 / 0.14), 0 0 0 1px #E6E2EF;
 }
 

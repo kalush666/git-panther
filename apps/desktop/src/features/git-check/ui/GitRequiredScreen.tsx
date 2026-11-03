@@ -8,9 +8,9 @@ import styles from './GitRequiredScreen.module.css';
 function describeProblem(installation: GitInstallationDto | undefined): string {
   switch (installation?.status) {
     case 'missing':
-      return `Git Panther uses the git installed on your computer, but none was found on your PATH. Install git ${installation.minimum} or newer from git-scm.com, then retry.`;
+      return `Git Panther uses the git installed on your computer, but none was found on your PATH. Install git ${installation.minimum} or newer (from your organization's software catalog or git-scm.com), then retry.`;
     case 'unsupported':
-      return `Git ${installation.found} is installed, but Git Panther needs ${installation.minimum} or newer. Update git from git-scm.com, then retry.`;
+      return `Git ${installation.found} is installed, but Git Panther needs ${installation.minimum} or newer. Update git (from your organization's software catalog or git-scm.com), then retry.`;
     default:
       return 'Git Panther could not check your git installation.';
   }

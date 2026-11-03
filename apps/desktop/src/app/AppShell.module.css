@@ -7,15 +7,22 @@
 .titleBar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 var(--gp-space-3);
   background: var(--gp-bg-surface);
   border-bottom: 1px solid var(--gp-border-subtle);
 }
 
 .productName {
+  flex-shrink: 0;
   font-weight: var(--gp-weight-semibold);
   letter-spacing: 0.01em;
+}
+
+.tabs {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  margin: 0 var(--gp-space-4);
 }
 
 .titleBarActions {

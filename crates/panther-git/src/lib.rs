@@ -1,7 +1,10 @@
 //! Git Panther git adapters.
 //!
-//! Implements domain ports on top of the system git CLI (and, from M1, libgit2).
+//! Implements domain ports with libgit2 for fast local access and with the
+//! system git CLI for network operations.
 
 mod cli;
+mod libgit2;
 
-pub use cli::SystemGitProbe;
+pub use cli::{GitCliCloner, SystemGitProbe};
+pub use libgit2::Git2RepositoryOpener;

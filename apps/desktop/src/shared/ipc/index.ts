@@ -1,23 +1,28 @@
 /**
  * The UI's only gateway to the Rust core. Nothing outside `shared/ipc` may
- * import `@tauri-apps/api` (enforced by ESLint).
+ * import `@tauri-apps/*` (enforced by ESLint).
  *
- * Outside the Tauri webview (plain browser, Playwright) a mock backend is used
- * so the UI can be developed and tested without the native shell.
+ * Outside the Tauri webview (plain browser, Playwright) an in-memory mock is
+ * used so the UI can be developed and tested without the native shell.
  */
 import { isTauri } from '@tauri-apps/api/core';
 
-import { commands, type AppError } from './bindings';
-import { mockCommands } from './mockCommands';
+import type { Backend, Result } from './backend';
+import type { AppError } from './bindings';
+import { mockBackend } from './mockBackend';
+import { tauriBackend } from './tauriBackend';
 
-export type { AppError, GitInstallationDto } from './bindings';
+export type { Backend, CloneOptions, CloneProgress, Result } from './backend';
+export type {
+  AppError,
+  AppErrorKind,
+  GitInstallationDto,
+  HeadDto,
+  RecentRepositoryDto,
+  RepositorySummaryDto,
+} from './bindings';
 
-export type IpcCommands = typeof commands;
-
-/** The shape every generated command resolves to. */
-export type Result<T, E> = { status: 'ok'; data: T } | { status: 'error'; error: E };
-
-export const ipc: IpcCommands = isTauri() ? commands : mockCommands;
+export const ipc: Backend = isTauri() ? tauriBackend : mockBackend;
 
 /** Raised when a command returns an `AppError`; lets TanStack Query treat it as a failure. */
 export class IpcError extends Error {
@@ -30,9 +35,13 @@ export class IpcError extends Error {
   }
 }
 
-export function unwrap<T>(result: Result<T, AppError>): T {
+export function unwrap<T>(result: Result<T>): T {
   if (result.status === 'error') {
     throw new IpcError(result.error);
   }
   return result.data;
+}
+
+export function isIpcError(error: unknown, kind?: AppError['kind']): error is IpcError {
+  return error instanceof IpcError && (kind === undefined || error.kind === kind);
 }
