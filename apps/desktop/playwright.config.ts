@@ -14,6 +14,8 @@ const PREVIEW_URL = `http://${PREVIEW_HOST}:${PREVIEW_PORT}`;
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  // Locally, more workers overload the static server on slower machines.
+  workers: process.env.CI ? undefined : 2,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',

@@ -3,9 +3,13 @@ import { useCallback, useState } from 'react';
 
 import { Button } from '../../../shared/ui/Button/Button';
 import { useRepository } from '../api/useRepository';
+import { useWorkingTreeStatus, type DiffSource } from '../api/useWorkingTree';
 import { describeHead } from '../model/describeHead';
 import { CommitDetailsPanel } from './CommitDetailsPanel';
 import { CommitGraph } from './CommitGraph';
+import { DiffViewer } from './DiffViewer';
+import { StagingPanel } from './StagingPanel';
+import { WorkingCopyRow } from './WorkingCopyRow';
 import styles from './RepositoryView.module.css';
 
 interface RepositoryViewProps {
@@ -13,13 +17,22 @@ interface RepositoryViewProps {
   onClose: () => void;
 }
 
+/** What the right-hand panel shows. */
+type Selection = { kind: 'workingCopy' } | { kind: 'commit'; index: number };
+
 export function RepositoryView({ path, onClose }: RepositoryViewProps) {
   const repository = useRepository(path);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const status = useWorkingTreeStatus(path);
+  const [selection, setSelection] = useState<Selection | null>(null);
   const [selectedCommitId, setSelectedCommitId] = useState<string | null>(null);
+  const [diff, setDiff] = useState<DiffSource | null>(null);
   const keepSelectedCommit = useCallback((commitId: string | null) => {
     setSelectedCommitId(commitId);
   }, []);
+
+  const changeCount = status.data
+    ? status.data.staged.length + status.data.unstaged.length + status.data.conflicted.length
+    : 0;
 
   if (repository.isPending) {
     return null;
@@ -47,6 +60,9 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
   }
 
   const { name, head } = repository.data;
+  // Until the user picks something, open on uncommitted work when there is some.
+  const current: Selection | null = selection ?? (changeCount > 0 ? { kind: 'workingCopy' } : null);
+  const isWorkingCopy = current?.kind === 'workingCopy';
   return (
     <section className={styles.view} aria-labelledby="repository-title">
       <header className={styles.header}>
@@ -67,14 +83,55 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
       </header>
       <div className={styles.body}>
         <div className={styles.graph}>
-          <CommitGraph
-            path={path}
-            selectedIndex={selectedIndex}
-            onSelectIndex={setSelectedIndex}
-            onSelectedCommitChange={keepSelectedCommit}
-          />
+          {diff ? (
+            <DiffViewer
+              path={path}
+              source={diff}
+              onClose={() => {
+                setDiff(null);
+              }}
+            />
+          ) : (
+            <CommitGraph
+              path={path}
+              selectedIndex={current?.kind === 'commit' ? current.index : null}
+              onSelectIndex={(index) => {
+                setSelection({ kind: 'commit', index });
+              }}
+              onSelectedCommitChange={keepSelectedCommit}
+              leadingRow={
+                changeCount > 0 ? (
+                  <WorkingCopyRow
+                    changeCount={changeCount}
+                    isSelected={isWorkingCopy}
+                    onSelect={() => {
+                      setSelection({ kind: 'workingCopy' });
+                    }}
+                  />
+                ) : null
+              }
+            />
+          )}
         </div>
-        <CommitDetailsPanel path={path} commitId={selectedCommitId} />
+        {isWorkingCopy ? (
+          <StagingPanel
+            path={path}
+            openFile={diff?.kind === 'workingTree' ? { file: diff.file, side: diff.side } : null}
+            onOpenFile={(file, side) => {
+              setDiff({ kind: 'workingTree', file, side });
+            }}
+          />
+        ) : (
+          <CommitDetailsPanel
+            path={path}
+            commitId={current?.kind === 'commit' ? selectedCommitId : null}
+            onOpenFile={(file) => {
+              if (selectedCommitId) {
+                setDiff({ kind: 'commit', file, commitId: selectedCommitId });
+              }
+            }}
+          />
+        )}
       </div>
     </section>
   );

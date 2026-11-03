@@ -1,0 +1,39 @@
+.row {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--gp-space-2);
+  width: 100%;
+  height: var(--gp-commit-row-height);
+  padding: 0 var(--gp-space-3) 0 calc(var(--gp-refs-col-width) + var(--gp-space-3));
+  border: none;
+  border-bottom: 1px dashed var(--gp-border-strong);
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--gp-text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--gp-bg-raised);
+}
+
+.row[data-selected='true'] {
+  border-left-color: var(--gp-accent);
+  background: var(--gp-accent-subtle);
+  color: var(--gp-text-primary);
+}
+
+.label {
+  font-family: var(--gp-font-mono);
+}
+
+.count {
+  padding: 0 var(--gp-space-2);
+  border-radius: var(--gp-radius-sm);
+  background: var(--gp-bg-raised);
+  color: var(--gp-accent-text);
+  font-size: var(--gp-text-sm);
+}

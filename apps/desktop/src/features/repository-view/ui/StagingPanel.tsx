@@ -1,0 +1,331 @@
+import { Minus, Plus, Trash2, TriangleAlert } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+
+import type { ChangedFile, DiffSide } from '../../../shared/ipc';
+import { Button } from '../../../shared/ui/Button/Button';
+import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog/ConfirmDialog';
+import {
+  loadHeadMessage,
+  useCommitChanges,
+  useDiscardFiles,
+  useStageFiles,
+  useUnstageFiles,
+  useWorkingTreeStatus,
+} from '../api/useWorkingTree';
+import { CHANGE_LETTERS } from '../model/changeLetters';
+import styles from './StagingPanel.module.css';
+
+/** Git's convention for a readable one-line summary. */
+const SUMMARY_SOFT_LIMIT = 72;
+
+interface StagingPanelProps {
+  path: string;
+  openFile: { file: string; side: DiffSide } | null;
+  onOpenFile: (file: string, side: DiffSide) => void;
+}
+
+export function StagingPanel({ path, openFile, onOpenFile }: StagingPanelProps) {
+  const status = useWorkingTreeStatus(path);
+  const stage = useStageFiles(path);
+  const unstage = useUnstageFiles(path);
+  const discard = useDiscardFiles(path);
+  const [pendingDiscard, setPendingDiscard] = useState<string[] | null>(null);
+  const actionError = stage.error ?? unstage.error ?? discard.error;
+
+  if (status.isError) {
+    return (
+      <aside className={styles.panel} aria-label="Working copy">
+        <p className={styles.error} role="alert">
+          {status.error.message}
+        </p>
+      </aside>
+    );
+  }
+  const { staged = [], unstaged = [], conflicted = [] } = status.data ?? {};
+  const paths = (files: ChangedFile[]) => files.map((file) => file.path);
+
+  return (
+    <aside className={styles.panel} aria-label="Working copy">
+      <div className={styles.lists}>
+        {conflicted.length > 0 && (
+          <p className={styles.conflicts} role="status">
+            <TriangleAlert size={14} aria-hidden />
+            {conflicted.length} conflicted {conflicted.length === 1 ? 'file' : 'files'}:{' '}
+            {conflicted.join(', ')}
+          </p>
+        )}
+        <FileSection
+          title="Unstaged files"
+          files={unstaged}
+          side="unstaged"
+          openFile={openFile}
+          onOpenFile={onOpenFile}
+          bulkAction={
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={unstaged.length === 0 || stage.isPending}
+              onClick={() => {
+                stage.mutate(paths(unstaged));
+              }}
+            >
+              Stage all
+            </Button>
+          }
+          rowActions={(file) => (
+            <>
+              <RowButton
+                label={`Discard changes to ${file.path}`}
+                onClick={() => {
+                  setPendingDiscard([file.path]);
+                }}
+              >
+                <Trash2 size={13} />
+              </RowButton>
+              <RowButton
+                label={`Stage ${file.path}`}
+                onClick={() => {
+                  stage.mutate([file.path]);
+                }}
+              >
+                <Plus size={14} />
+              </RowButton>
+            </>
+          )}
+        />
+        <FileSection
+          title="Staged files"
+          files={staged}
+          side="staged"
+          openFile={openFile}
+          onOpenFile={onOpenFile}
+          bulkAction={
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={staged.length === 0 || unstage.isPending}
+              onClick={() => {
+                unstage.mutate(paths(staged));
+              }}
+            >
+              Unstage all
+            </Button>
+          }
+          rowActions={(file) => (
+            <RowButton
+              label={`Unstage ${file.path}`}
+              onClick={() => {
+                unstage.mutate([file.path]);
+              }}
+            >
+              <Minus size={14} />
+            </RowButton>
+          )}
+        />
+        {actionError && (
+          <p className={styles.error} role="alert">
+            {actionError.message}
+          </p>
+        )}
+      </div>
+      <CommitBox path={path} stagedCount={staged.length} />
+      <ConfirmDialog
+        open={pendingDiscard !== null}
+        title="Discard changes?"
+        description={
+          <>
+            Unstaged changes to <strong>{pendingDiscard?.join(', ')}</strong> will be lost. New
+            files are deleted. This cannot be undone.
+          </>
+        }
+        confirmLabel="Discard"
+        onCancel={() => {
+          setPendingDiscard(null);
+        }}
+        onConfirm={() => {
+          if (pendingDiscard) {
+            discard.mutate(pendingDiscard);
+          }
+          setPendingDiscard(null);
+        }}
+      />
+    </aside>
+  );
+}
+
+interface FileSectionProps {
+  title: string;
+  files: ChangedFile[];
+  side: DiffSide;
+  openFile: { file: string; side: DiffSide } | null;
+  onOpenFile: (file: string, side: DiffSide) => void;
+  bulkAction: ReactNode;
+  rowActions: (file: ChangedFile) => ReactNode;
+}
+
+function FileSection({
+  title,
+  files,
+  side,
+  openFile,
+  onOpenFile,
+  bulkAction,
+  rowActions,
+}: FileSectionProps) {
+  const headingId = `${side}-files-title`;
+  return (
+    <section className={styles.section} aria-labelledby={headingId}>
+      <header className={styles.sectionHeader}>
+        <h2 id={headingId} className={styles.sectionTitle}>
+          {title} ({files.length})
+        </h2>
+        {bulkAction}
+      </header>
+      {files.length === 0 ? (
+        <p className={styles.empty}>{side === 'staged' ? 'Nothing staged yet.' : 'No changes.'}</p>
+      ) : (
+        <ul className={styles.files}>
+          {files.map((file) => {
+            const { letter, label } = CHANGE_LETTERS[file.kind];
+            const isOpen = openFile?.file === file.path && openFile.side === side;
+            return (
+              <li key={file.path} className={styles.file} data-open={isOpen}>
+                <button
+                  type="button"
+                  className={styles.fileButton}
+                  title={file.from ? `${file.from} → ${file.path}` : file.path}
+                  onClick={() => {
+                    onOpenFile(file.path, side);
+                  }}
+                >
+                  <span className={styles.kind} data-kind={file.kind} title={label}>
+                    {letter}
+                  </span>
+                  <span className={styles.path}>{file.path}</span>
+                </button>
+                <span className={styles.rowActions}>{rowActions(file)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function RowButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className={styles.rowButton}
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+function CommitBox({ path, stagedCount }: { path: string; stagedCount: number }) {
+  const commit = useCommitChanges(path);
+  const [summary, setSummary] = useState('');
+  const [description, setDescription] = useState('');
+  const [amend, setAmend] = useState(false);
+  const canCommit = summary.trim() !== '' && (stagedCount > 0 || amend) && !commit.isPending;
+
+  const toggleAmend = async (next: boolean) => {
+    setAmend(next);
+    if (next && summary.trim() === '' && description.trim() === '') {
+      const [previousSummary = '', ...body] = (await loadHeadMessage(path)).split('\n');
+      setSummary(previousSummary);
+      setDescription(body.join('\n').trim());
+    }
+  };
+
+  const submit = () => {
+    const message = description.trim() ? `${summary.trim()}\n\n${description.trim()}` : summary;
+    commit.mutate(
+      { message, amend },
+      {
+        onSuccess: () => {
+          setSummary('');
+          setDescription('');
+          setAmend(false);
+        },
+      },
+    );
+  };
+
+  return (
+    <form
+      className={styles.commit}
+      aria-label="Commit"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (canCommit) {
+          submit();
+        }
+      }}
+    >
+      <label className={styles.amend}>
+        <input
+          type="checkbox"
+          checked={amend}
+          onChange={(event) => {
+            void toggleAmend(event.target.checked);
+          }}
+        />
+        Amend previous commit
+      </label>
+      <div className={styles.summaryRow}>
+        <input
+          className={styles.summary}
+          aria-label="Commit summary"
+          placeholder="Commit summary"
+          value={summary}
+          onChange={(event) => {
+            setSummary(event.target.value);
+          }}
+        />
+        <span
+          className={styles.counter}
+          data-over={summary.length > SUMMARY_SOFT_LIMIT}
+          title="Keep summaries under 72 characters"
+        >
+          {SUMMARY_SOFT_LIMIT - summary.length}
+        </span>
+      </div>
+      <textarea
+        className={styles.description}
+        aria-label="Commit description"
+        placeholder="Description"
+        rows={4}
+        value={description}
+        onChange={(event) => {
+          setDescription(event.target.value);
+        }}
+      />
+      {commit.error && (
+        <p className={styles.error} role="alert">
+          {commit.error.message}
+        </p>
+      )}
+      <Button type="submit" variant="primary" disabled={!canCommit}>
+        {amend
+          ? 'Amend commit'
+          : stagedCount > 0
+            ? `Commit ${stagedCount} ${stagedCount === 1 ? 'file' : 'files'}`
+            : 'Stage changes to commit'}
+      </Button>
+    </form>
+  );
+}

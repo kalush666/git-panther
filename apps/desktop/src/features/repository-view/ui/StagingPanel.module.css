@@ -1,0 +1,221 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: var(--gp-details-width);
+  height: 100%;
+  border-left: 1px solid var(--gp-border-subtle);
+  background: var(--gp-bg-surface);
+}
+
+.lists {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--gp-space-2) 0;
+  scrollbar-width: thin;
+}
+
+.section + .section {
+  margin-top: var(--gp-space-3);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--gp-space-3) 0 var(--gp-space-4);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--gp-text-md);
+  font-weight: var(--gp-weight-semibold);
+}
+
+.empty {
+  margin: var(--gp-space-2) var(--gp-space-4);
+  color: var(--gp-text-muted);
+  font-size: var(--gp-text-sm);
+}
+
+.files {
+  margin: var(--gp-space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  min-height: var(--gp-row-height);
+  padding-right: var(--gp-space-2);
+}
+
+.file:hover {
+  background: var(--gp-bg-raised);
+}
+
+.file[data-open='true'] {
+  background: var(--gp-accent-subtle);
+}
+
+.fileButton {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--gp-space-2);
+  min-width: 0;
+  height: var(--gp-row-height);
+  padding: 0 var(--gp-space-2) 0 var(--gp-space-4);
+  border: none;
+  background: transparent;
+  color: var(--gp-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kind {
+  flex-shrink: 0;
+  width: var(--gp-space-3);
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-sm);
+  font-weight: var(--gp-weight-semibold);
+}
+
+.kind[data-kind='added'],
+.kind[data-kind='untracked'] {
+  color: var(--gp-success);
+}
+
+.kind[data-kind='deleted'] {
+  color: var(--gp-danger);
+}
+
+.kind[data-kind='modified'],
+.kind[data-kind='typeChanged'] {
+  color: var(--gp-warning);
+}
+
+.kind[data-kind='renamed'] {
+  color: var(--gp-info);
+}
+
+.path {
+  overflow: hidden;
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-sm);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+
+.rowActions {
+  display: flex;
+  gap: var(--gp-space-1);
+  opacity: 0;
+}
+
+.file:hover .rowActions,
+.file:focus-within .rowActions {
+  opacity: 1;
+}
+
+.rowButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--gp-control-height-sm);
+  height: var(--gp-control-height-sm);
+  border: 1px solid var(--gp-border-strong);
+  border-radius: var(--gp-radius-sm);
+  background: var(--gp-bg-surface);
+  color: var(--gp-text-secondary);
+  cursor: pointer;
+}
+
+.rowButton:hover {
+  border-color: var(--gp-accent);
+  color: var(--gp-text-primary);
+}
+
+.conflicts {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-space-2);
+  margin: 0 var(--gp-space-4) var(--gp-space-3);
+  color: var(--gp-warning);
+  font-size: var(--gp-text-sm);
+}
+
+.commit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-space-2);
+  padding: var(--gp-space-3) var(--gp-space-4) var(--gp-space-4);
+  border-top: 1px solid var(--gp-border-subtle);
+}
+
+.amend {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-space-2);
+  color: var(--gp-text-secondary);
+  font-size: var(--gp-text-sm);
+}
+
+.summaryRow {
+  position: relative;
+}
+
+.summary,
+.description {
+  width: 100%;
+  padding: var(--gp-space-2) var(--gp-space-3);
+  border: 1px solid var(--gp-border-strong);
+  border-radius: var(--gp-radius-md);
+  background: var(--gp-bg-canvas);
+  color: var(--gp-text-primary);
+  font: inherit;
+  user-select: text;
+}
+
+.summary {
+  padding-right: var(--gp-space-6);
+}
+
+.description {
+  resize: vertical;
+}
+
+.summary:focus-visible,
+.description:focus-visible {
+  border-color: var(--gp-accent);
+  outline-offset: 0;
+}
+
+.counter {
+  position: absolute;
+  top: 50%;
+  right: var(--gp-space-3);
+  color: var(--gp-text-muted);
+  font-size: var(--gp-text-xs);
+  transform: translateY(-50%);
+}
+
+.counter[data-over='true'] {
+  color: var(--gp-warning);
+}
+
+.error {
+  margin: var(--gp-space-2) var(--gp-space-4);
+  color: var(--gp-danger);
+  font-size: var(--gp-text-sm);
+  user-select: text;
+}
+
+.commit .error {
+  margin: 0;
+}
