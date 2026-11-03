@@ -65,9 +65,11 @@ Stash save / apply / pop / drop; basic conflict view (take ours / theirs / mark 
 
 **Demo:** Stash and Pop sit in the repository header; the stash dialog takes an optional message and can leave new files behind. The sidebar lists stashes with Apply / Pop / Drop (confirmed); a conflicting pop keeps its entry. When a merge, rebase, cherry-pick or revert stops on conflicts, the working-copy panel lists each file with Keep mine / Take incoming / Mark resolved, then Continue or Abort (confirmed). "Mine" and "incoming" stay correct during a rebase, where git's ours and theirs swap.
 
-### ⏳ M7 — Settings & release
+### ✅ M7 — Settings & release
 
 Settings screen (theme, git path, pull mode, fonts), E2E flows, self-contained Windows installer (NSIS/MSI, embedded WebView2 offline installer) from CI, verified on a machine without internet.
+
+**Demo:** Settings (title bar gear, or "Choose git…" when git is missing) sets theme, interface size, code font, pull strategy and the git executable; a git path is checked before saving and offers a restart. The Release workflow builds NSIS and MSI installers (~210 MB each, WebView2 offline installer embedded) and fails if one is too small to be self-contained. Manual closed-network checks are in [Offline verification](OFFLINE-VERIFICATION.md); they still need running on an offline machine.
 
 ## Later (to be prioritised together)
 

@@ -57,31 +57,34 @@ Dependencies point **inward only**. The domain knows nothing about git2, Tauri, 
 
 Ports are small, capability-based traits declared in `panther-domain::ports` (see the `solid` skill for rationale):
 
-| Port                                   | Capability                                                 |
-| -------------------------------------- | ---------------------------------------------------------- |
-| `RepositoryOpener`                     | open / init / discover a repository                        |
-| `CommitLog`                            | paged history walk, commit details                         |
-| `WorkingTree`                          | status, stage/unstage file & hunk, discard                 |
-| `RefStore`                             | branches, tags, HEAD, checkout                             |
-| `CommitWriter`                         | create / amend commits                                     |
-| `RemoteSync`                           | clone, fetch, pull, push (progress-reporting, cancellable) |
-| `StashStore`                           | stash list / save / apply / pop / drop                     |
-| `DiffProvider`                         | file and hunk diffs, word-level highlights                 |
-| `HostingProvider` _(later)_            | pull requests, avatars, repo metadata                      |
-| `Clock`, `FileSystem`, `ProcessRunner` | deterministic seams for tests                              |
+| Port                        | Capability                                                         |
+| --------------------------- | ------------------------------------------------------------------ |
+| `GitBinaryProbe`            | which git version an executable is                                 |
+| `RepositoryOpener`          | open / init a repository                                           |
+| `RepositoryCloner`          | clone with progress and cancellation                               |
+| `CommitLog`                 | history walk, commit summaries, refs, details, per-commit diffs    |
+| `WorkingTree`               | status, diffs, stage / unstage / discard files and hunks           |
+| `CommitWriter`              | create / amend commits                                             |
+| `BranchStore`               | list, create, check out, rename, delete branches                   |
+| `RemoteSync`                | remotes; fetch, pull, push (progress-reporting, cancellable)       |
+| `StashStore`                | stash list / save / apply / pop / drop                             |
+| `ConflictResolver`          | interrupted operation; keep a side, mark resolved, continue, abort |
+| `RecentRepositoryStore`     | persist the recent-repositories list                               |
+| `SettingsStore`             | persist settings the core needs (the git executable)               |
+| `HostingProvider` _(later)_ | pull requests and repo metadata on self-hosted servers             |
 
-`GitRepository` is a supertrait combining the git ports for convenient wiring; use cases depend only on the ports they need.
+Use cases depend only on the ports they need.
 
 ### Git engine routing
 
 `panther-git` provides two adapters that satisfy the same contracts:
 
-- **`Git2Repository`** (libgit2 via `git2-rs`): history, status, diff, staging, refs, local commits, stash — fast, in-process.
-- **`GitCli`** (spawns the system `git`): clone/fetch/pull/push (so Git Credential Manager, ssh-agent and the user's config just work), hooks, and later rebase/LFS.
+- **libgit2** (via `git2-rs`): fast in-process reads (status, diffs, refs, branch and stash lists, repository state).
+- **The system `git` CLI**: everything that changes the repository or talks to a remote (commit, apply, switch, branch, stash, merge/rebase continue and abort, clone, fetch, pull, push, the history walk), so hooks, signing, Git Credential Manager, ssh-agent and the user's config just work.
 
-The composition root builds a `RoutedGitRepository` that delegates each port to the right engine. A shared **contract test suite** runs against both adapters and the in-memory fake.
+Each adapter (`GitWorkingTree`, `GitBranchStore`, `GitRemoteSync`, `GitStashStore`, …) routes its own methods to the right engine. Integration tests run every adapter against real temporary repositories.
 
-Git is a hard runtime requirement: at startup the app runs `git --version`, requires ≥ 2.40, and shows a friendly install screen otherwise.
+Git is a hard runtime requirement: at startup the app runs `git --version` on the configured executable (git from `PATH` unless Settings name another), requires ≥ 2.40, and otherwise shows a screen explaining how to install it or choose another git.
 
 ## IPC
 
