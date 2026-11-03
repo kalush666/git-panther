@@ -6,7 +6,7 @@ Status legend: ✅ done · 🚧 in progress · ⏳ planned
 
 ## MVP
 
-### 🚧 M0 — Foundation
+### ✅ M0 — Foundation
 
 - Toolchain (Rust stable, Node, pnpm), repo, `.gitignore`, Conventional Commits
 - Project skills: `clean-code`, `solid`, `design-system`
