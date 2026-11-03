@@ -24,6 +24,12 @@ pub enum AppErrorKind {
     HunkOutdated,
     IdentityMissing,
     CommitFailed,
+    InvalidBranchName,
+    BranchExists,
+    BranchNotFound,
+    BranchNotMerged,
+    CannotDeleteCurrentBranch,
+    CheckoutConflict,
     WatchFailed,
     Internal,
 }
@@ -79,6 +85,14 @@ impl From<RepositoryError> for AppError {
             RepositoryError::HunkOutdated { .. } => AppErrorKind::HunkOutdated,
             RepositoryError::IdentityMissing => AppErrorKind::IdentityMissing,
             RepositoryError::CommitFailed { .. } => AppErrorKind::CommitFailed,
+            RepositoryError::InvalidBranchName(_) => AppErrorKind::InvalidBranchName,
+            RepositoryError::BranchExists { .. } => AppErrorKind::BranchExists,
+            RepositoryError::BranchNotFound { .. } => AppErrorKind::BranchNotFound,
+            RepositoryError::BranchNotMerged { .. } => AppErrorKind::BranchNotMerged,
+            RepositoryError::CannotDeleteCurrentBranch { .. } => {
+                AppErrorKind::CannotDeleteCurrentBranch
+            }
+            RepositoryError::CheckoutConflict { .. } => AppErrorKind::CheckoutConflict,
         };
         Self::new(kind, error.to_string())
     }

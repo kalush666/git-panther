@@ -33,6 +33,11 @@ export const tauriBackend: Backend = {
     commands.applyHunk(path, file, index, header, action),
   commitChanges: commands.commitChanges,
   headMessage: commands.headMessage,
+  listBranches: commands.listBranches,
+  createBranch: commands.createBranch,
+  checkoutBranch: commands.checkoutBranch,
+  renameBranch: commands.renameBranch,
+  deleteBranch: commands.deleteBranch,
   onRepositoryChanged: (listener) =>
     events.repositoryChanged.listen((event) => {
       listener(event.payload.path);

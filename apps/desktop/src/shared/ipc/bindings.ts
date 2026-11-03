@@ -55,6 +55,15 @@ export const commands = {
 	commitChanges: (path: string, message: string, amend: boolean) => typedError<string, AppError>(__TAURI_INVOKE("commit_changes", { path, message, amend })),
 	/**  The message of the HEAD commit, to prefill an amend. */
 	headMessage: (path: string) => typedError<string | null, AppError>(__TAURI_INVOKE("head_message", { path })),
+	/**  Local and remote branches. */
+	listBranches: (path: string) => typedError<BranchDto_Serialize[], AppError>(__TAURI_INVOKE("list_branches", { path })),
+	/**  Creates branch `name` at commit `start`, optionally switching to it. */
+	createBranch: (path: string, name: string, start: string, checkout: boolean) => typedError<null, AppError>(__TAURI_INVOKE("create_branch", { path, name, start, checkout })),
+	/**  Switches to a local branch, or to a tracking branch for a remote one. */
+	checkoutBranch: (path: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("checkout_branch", { path, name })),
+	renameBranch: (path: string, from: string, to: string) => typedError<null, AppError>(__TAURI_INVOKE("rename_branch", { path, from, to })),
+	/**  Deletes a local branch; `force` deletes it even if unmerged. */
+	deleteBranch: (path: string, name: string, force: boolean) => typedError<null, AppError>(__TAURI_INVOKE("delete_branch", { path, name, force })),
 };
 
 /** Events */
@@ -71,7 +80,34 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "watchFailed" | "internal";
+
+/**  A branch shown in the sidebar. */
+export type BranchDto = BranchDto_Serialize | BranchDto_Deserialize;
+
+/**  A branch shown in the sidebar. */
+export type BranchDto_Deserialize = {
+	name: string,
+	kind: BranchKindDto,
+	target: string,
+	upstream?: string | null,
+	ahead: number,
+	behind: number,
+	isHead: boolean,
+};
+
+/**  A branch shown in the sidebar. */
+export type BranchDto_Serialize = {
+	name: string,
+	kind: BranchKindDto,
+	target: string,
+	upstream: string | null,
+	ahead: number,
+	behind: number,
+	isHead: boolean,
+};
+
+export type BranchKindDto = "local" | "remote";
 
 /**  A changed file in the working tree or index. */
 export type ChangedFileDto = ChangedFileDto_Serialize | ChangedFileDto_Deserialize;

@@ -10,8 +10,8 @@ use tauri::{AppHandle, State};
 use tauri_specta::Event;
 
 use super::dto::{
-    CloneProgressDto, CommitDetailsDto, DiffSideDto, FileDiffDto, GitInstallationDto, GraphPageDto,
-    HunkActionDto, RecentRepositoryDto, RepositoryChanged, RepositorySummaryDto,
+    BranchDto, CloneProgressDto, CommitDetailsDto, DiffSideDto, FileDiffDto, GitInstallationDto,
+    GraphPageDto, HunkActionDto, RecentRepositoryDto, RepositoryChanged, RepositorySummaryDto,
     WorkingTreeStatusDto,
 };
 use super::error::{AppError, AppErrorKind};
@@ -342,6 +342,75 @@ pub async fn head_message(
 ) -> Result<Option<String>, AppError> {
     let copy = services.working_copy.clone();
     run_blocking(move || Ok(copy.head_message(&PathBuf::from(path))?)).await
+}
+
+/// Local and remote branches.
+#[tauri::command]
+#[specta::specta]
+pub async fn list_branches(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Vec<BranchDto>, AppError> {
+    let branches = services.branches.clone();
+    run_blocking(move || {
+        Ok(branches
+            .list(&PathBuf::from(path))?
+            .into_iter()
+            .map(BranchDto::from)
+            .collect())
+    })
+    .await
+}
+
+/// Creates branch `name` at commit `start`, optionally switching to it.
+#[tauri::command]
+#[specta::specta]
+pub async fn create_branch(
+    services: State<'_, AppServices>,
+    path: String,
+    name: String,
+    start: String,
+    checkout: bool,
+) -> Result<(), AppError> {
+    let branches = services.branches.clone();
+    run_blocking(move || Ok(branches.create(&PathBuf::from(path), &name, &start, checkout)?)).await
+}
+
+/// Switches to a local branch, or to a tracking branch for a remote one.
+#[tauri::command]
+#[specta::specta]
+pub async fn checkout_branch(
+    services: State<'_, AppServices>,
+    path: String,
+    name: String,
+) -> Result<(), AppError> {
+    let branches = services.branches.clone();
+    run_blocking(move || Ok(branches.checkout(&PathBuf::from(path), &name)?)).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn rename_branch(
+    services: State<'_, AppServices>,
+    path: String,
+    from: String,
+    to: String,
+) -> Result<(), AppError> {
+    let branches = services.branches.clone();
+    run_blocking(move || Ok(branches.rename(&PathBuf::from(path), &from, &to)?)).await
+}
+
+/// Deletes a local branch; `force` deletes it even if unmerged.
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_branch(
+    services: State<'_, AppServices>,
+    path: String,
+    name: String,
+    force: bool,
+) -> Result<(), AppError> {
+    let branches = services.branches.clone();
+    run_blocking(move || Ok(branches.delete(&PathBuf::from(path), &name, force)?)).await
 }
 
 fn widen(value: u32) -> usize {

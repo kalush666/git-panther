@@ -1,5 +1,6 @@
 import type {
   AppError,
+  BranchDto_Serialize,
   CloneProgressDto_Serialize,
   ChangedFileDto_Serialize,
   CommitDetailsDto,
@@ -26,6 +27,7 @@ export type DiffHunk = HunkDto_Serialize;
 export type DiffLine = DiffLineDto_Serialize;
 export type DiffSide = DiffSideDto;
 export type HunkAction = HunkActionDto;
+export type Branch = BranchDto_Serialize;
 
 /** One hunk as the UI showed it; the backend refuses it if the file changed. */
 export interface HunkTarget {
@@ -76,6 +78,12 @@ export interface Backend {
   /** Resolves to the new commit id. */
   commitChanges(path: string, message: string, amend: boolean): Promise<Result<string>>;
   headMessage(path: string): Promise<Result<string | null>>;
+  listBranches(path: string): Promise<Result<Branch[]>>;
+  createBranch(path: string, name: string, start: string, checkout: boolean): Promise<Result<null>>;
+  /** For a remote branch, switches to a local branch tracking it. */
+  checkoutBranch(path: string, name: string): Promise<Result<null>>;
+  renameBranch(path: string, from: string, to: string): Promise<Result<null>>;
+  deleteBranch(path: string, name: string, force: boolean): Promise<Result<null>>;
   /** Shows the native folder picker; resolves to `null` if the user cancels. */
   pickFolder(title: string): Promise<string | null>;
 }

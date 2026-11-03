@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use panther_application::commit_graph::{GraphEntry, GraphPage};
+use panther_domain::branch::{Branch, BranchKind};
 use panther_domain::commit::{ChangeKind, CommitDetails, FileChange, Person, RefKind, RefLabel};
 use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::ports::HunkAction;
@@ -492,6 +493,43 @@ impl From<HunkActionDto> for HunkAction {
             HunkActionDto::Stage => Self::Stage,
             HunkActionDto::Unstage => Self::Unstage,
             HunkActionDto::Discard => Self::Discard,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum BranchKindDto {
+    Local,
+    Remote,
+}
+
+/// A branch shown in the sidebar.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BranchDto {
+    pub name: String,
+    pub kind: BranchKindDto,
+    pub target: String,
+    pub upstream: Option<String>,
+    pub ahead: u32,
+    pub behind: u32,
+    pub is_head: bool,
+}
+
+impl From<Branch> for BranchDto {
+    fn from(branch: Branch) -> Self {
+        Self {
+            name: branch.name,
+            kind: match branch.kind {
+                BranchKind::Local => BranchKindDto::Local,
+                BranchKind::Remote => BranchKindDto::Remote,
+            },
+            target: branch.target.to_string(),
+            upstream: branch.upstream,
+            ahead: branch.ahead,
+            behind: branch.behind,
+            is_head: branch.is_head,
         }
     }
 }
