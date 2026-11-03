@@ -19,6 +19,10 @@ Status legend: ✅ done · 🚧 in progress · ⏳ planned
 
 **Demo:** the app launches, shows the Git Panther shell, detects git, switches themes; `pnpm check` is green.
 
+Open items carried forward: the `tauri-driver` smoke test of the real window moves to M7 (E2E currently drives the UI in a browser with mocked IPC), and the CI workflow has not run yet because the repo has no remote.
+
+![M0 shell, dark theme](screenshots/m0-dark.png)
+
 ### ⏳ M1 — Repositories
 
 Open / init / clone (with progress, cancellable), repo tabs, recent repositories, file watcher.
