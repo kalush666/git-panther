@@ -1244,6 +1244,7 @@ dependencies = [
  "panther-application",
  "panther-domain",
  "panther-git",
+ "panther-graph",
  "serde",
  "serde_json",
  "specta",
