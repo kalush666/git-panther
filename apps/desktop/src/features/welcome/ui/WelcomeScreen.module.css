@@ -71,3 +71,11 @@
   color: var(--gp-text-muted);
   font-size: var(--gp-text-sm);
 }
+
+.error {
+  max-width: var(--gp-content-max-width);
+  margin: var(--gp-space-2) 0 0;
+  color: var(--gp-danger);
+  text-align: center;
+  user-select: text;
+}
