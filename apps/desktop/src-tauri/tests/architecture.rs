@@ -13,6 +13,7 @@ const LAYER_RULES: &[(&str, &[&str])] = &[
     ("panther-graph", &["panther-domain"]),
     ("panther-application", &["panther-domain", "panther-graph"]),
     ("panther-git", &["panther-domain"]),
+    ("panther-hosting", &["panther-domain"]),
 ];
 
 /// External crates that must never leak into the domain or application layers.

@@ -10,6 +10,7 @@ pub mod commit;
 pub mod conflict;
 pub mod git_installation;
 pub mod history;
+pub mod hosting;
 pub mod identity;
 pub mod layout;
 pub mod ports;

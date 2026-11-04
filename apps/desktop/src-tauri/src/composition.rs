@@ -10,6 +10,7 @@ use panther_application::clone_repository::CloneRepository;
 use panther_application::commit_graph::CommitGraph;
 use panther_application::conflicts::Conflicts;
 use panther_application::history::History;
+use panther_application::hosting::Hosting;
 use panther_application::identity::Identities;
 use panther_application::layout::Layout;
 use panther_application::open_repository::OpenRepository;
@@ -25,6 +26,8 @@ use panther_git::{
     GitConflictResolver, GitCredentialStore, GitHistoryEditor, GitIdentityConfig, GitRemoteConfig,
     GitRemoteSync, GitRepositoryLayout, GitStashStore, GitTagStore, GitWorkingTree, SystemGitProbe,
 };
+
+use panther_hosting::{GitHubProvider, GitLabProvider};
 
 use crate::infra::recent_store::JsonRecentRepositoryStore;
 use crate::infra::settings_store::JsonSettingsStore;
@@ -50,6 +53,7 @@ pub struct AppServices {
     pub remotes: Arc<Remotes>,
     pub layout: Arc<Layout>,
     pub identities: Arc<Identities>,
+    pub hosting: Arc<Hosting>,
 }
 
 impl AppServices {
@@ -105,6 +109,13 @@ impl AppServices {
                 Arc::new(GitTagStore::new(git.clone())),
                 Arc::new(GitCommitLog::new(git.clone())),
                 undo.clone(),
+            )),
+            hosting: Arc::new(Hosting::new(
+                settings_store.clone(),
+                Arc::new(GitCredentialStore::new(git.clone())),
+                Arc::new(GitRemoteSync::new(git.clone())),
+                Arc::new(GitLabProvider::default()),
+                Arc::new(GitHubProvider::default()),
             )),
             accounts: Arc::new(Accounts::new(
                 Arc::new(GitCredentialStore::new(git.clone())),

@@ -12,7 +12,6 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
 use tauri_specta::Event;
 
-use super::dto::IdentityDto;
 use super::dto::{
     AccountDto, BlameLineDto, BranchDto, CloneProgressDto, CommitDetailsDto, CommitSummaryDto,
     ConflictChunkDto, ConflictSideDto, DiffSideDto, FileDiffDto, GitInstallationDto, GraphPageDto,
@@ -20,11 +19,15 @@ use super::dto::{
     RemoteDto, RepositoryChanged, RepositorySummaryDto, ResetModeDto, SettingsDto, StashDto,
     SubmoduleDto, WorkingTreeStatusDto, WorktreeDto,
 };
+use super::dto::{
+    HostingAccessDto, HostingKindDto, HostingStatusDto, IdentityDto, IssueDto, PullRequestDto,
+};
 use super::error::{AppError, AppErrorKind};
 use crate::composition::AppServices;
 use crate::infra::jobs::JobRegistry;
 use crate::infra::watcher::RepositoryWatcher;
 use panther_application::accounts::SignIn;
+use panther_domain::hosting::NewPullRequest;
 use panther_domain::remote::{PushOptions, RemoteName};
 
 /// Runs blocking work (git, disk) off the async runtime's worker threads.
@@ -815,6 +818,124 @@ pub async fn set_identity(
 ) -> Result<(), AppError> {
     let identities = services.identities.clone();
     run_blocking(move || Ok(identities.apply(&PathBuf::from(path), &identity.into())?)).await
+}
+
+/// The code review servers connected with an access token.
+#[tauri::command]
+#[specta::specta]
+pub async fn list_hosting(
+    services: State<'_, AppServices>,
+) -> Result<Vec<HostingAccessDto>, AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || {
+        Ok(hosting
+            .connections()?
+            .into_iter()
+            .map(HostingAccessDto::from)
+            .collect())
+    })
+    .await
+}
+
+/// Checks and keeps an access token for a code review server.
+#[tauri::command]
+#[specta::specta]
+pub async fn connect_hosting(
+    services: State<'_, AppServices>,
+    server: String,
+    kind: HostingKindDto,
+    token: String,
+) -> Result<HostingAccessDto, AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || Ok(hosting.connect(&server, kind.into(), token)?.into())).await
+}
+
+/// Forgets a code review server and its token.
+#[tauri::command]
+#[specta::specta]
+pub async fn disconnect_hosting(
+    services: State<'_, AppServices>,
+    server: String,
+) -> Result<(), AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || Ok(hosting.disconnect(&server)?)).await
+}
+
+/// The repository's project on a code review server, if a remote points to one.
+#[tauri::command]
+#[specta::specta]
+pub async fn hosting_status(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Option<HostingStatusDto>, AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || {
+        Ok(hosting
+            .status(&PathBuf::from(path))?
+            .map(HostingStatusDto::from))
+    })
+    .await
+}
+
+/// Open merge / pull requests of the repository's project.
+#[tauri::command]
+#[specta::specta]
+pub async fn list_pull_requests(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Vec<PullRequestDto>, AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || {
+        Ok(hosting
+            .pull_requests(&PathBuf::from(path))?
+            .into_iter()
+            .map(PullRequestDto::from)
+            .collect())
+    })
+    .await
+}
+
+/// Open issues of the repository's project.
+#[tauri::command]
+#[specta::specta]
+pub async fn list_issues(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Vec<IssueDto>, AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || {
+        Ok(hosting
+            .issues(&PathBuf::from(path))?
+            .into_iter()
+            .map(IssueDto::from)
+            .collect())
+    })
+    .await
+}
+
+/// Opens a merge / pull request from `source` into `target`.
+#[tauri::command]
+#[specta::specta]
+pub async fn create_pull_request(
+    services: State<'_, AppServices>,
+    path: String,
+    source: String,
+    target: String,
+    title: String,
+) -> Result<PullRequestDto, AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || {
+        let request = NewPullRequest {
+            source_branch: source,
+            target_branch: target,
+            title,
+            description: String::new(),
+        };
+        Ok(hosting
+            .create_pull_request(&PathBuf::from(path), &request)?
+            .into())
+    })
+    .await
 }
 
 /// Whether the repository uses Git LFS and whether `git lfs` is installed.

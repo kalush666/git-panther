@@ -7,7 +7,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-use panther_domain::account::{Account, Password};
+use panther_domain::account::{Account, Password, Server};
 use panther_domain::ports::CredentialStore;
 use panther_domain::repository::RepositoryError;
 
@@ -43,11 +43,22 @@ impl GitCredentialStore {
 
     /// Runs `git credential <action>` with `description` on stdin.
     fn credential(&self, action: &str, description: &str) -> Result<(), RepositoryError> {
+        self.credential_output(action, description).map(drop)
+    }
+
+    /// [`Self::credential`], returning what git printed.
+    fn credential_output(
+        &self,
+        action: &str,
+        description: &str,
+    ) -> Result<String, RepositoryError> {
         let mut child = self
             .command()
+            // Asking for a missing token must fail, not open a sign-in window.
+            .env("GCM_INTERACTIVE", "never")
             .args(["credential", action])
             .stdin(Stdio::piped())
-            .stdout(Stdio::null())
+            .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|error| git_failed(format!("could not start git: {error}")))?;
@@ -60,7 +71,7 @@ impl GitCredentialStore {
             .wait_with_output()
             .map_err(|error| git_failed(format!("git stopped unexpectedly: {error}")))?;
         if output.status.success() {
-            Ok(())
+            Ok(String::from_utf8_lossy(&output.stdout).into_owned())
         } else {
             Err(git_failed(
                 String::from_utf8_lossy(&output.stderr).trim().to_owned(),
@@ -77,6 +88,18 @@ impl Default for GitCredentialStore {
 
 fn git_failed(details: String) -> RepositoryError {
     RepositoryError::Git { details }
+}
+
+/// The user name API tokens are filed under, apart from the git login.
+const TOKEN_USER: &str = "git-panther-api-token";
+
+/// The lines of git's credential protocol naming the token of `server`.
+fn describe_token(server: &Server) -> String {
+    format!(
+        "protocol={}\nhost={}\nusername={TOKEN_USER}\n",
+        server.protocol(),
+        server.host()
+    )
 }
 
 /// The lines of git's credential protocol naming `account`.
@@ -107,6 +130,29 @@ impl CredentialStore for GitCredentialStore {
 
     fn erase(&self, account: &Account) -> Result<(), RepositoryError> {
         self.credential("reject", &format!("{}\n", describe(account)))
+    }
+
+    fn store_token(&self, server: &Server, token: &Password) -> Result<(), RepositoryError> {
+        if !self.has_helper()? {
+            return Err(RepositoryError::CredentialHelperMissing);
+        }
+        let description = format!("{}password={}\n\n", describe_token(server), token.expose());
+        self.credential("approve", &description)
+    }
+
+    fn token(&self, server: &Server) -> Result<Option<Password>, RepositoryError> {
+        let Ok(output) = self.credential_output("fill", &format!("{}\n", describe_token(server)))
+        else {
+            return Ok(None);
+        };
+        Ok(output
+            .lines()
+            .find_map(|line| line.strip_prefix("password="))
+            .and_then(|token| Password::new(token.to_owned()).ok()))
+    }
+
+    fn erase_token(&self, server: &Server) -> Result<(), RepositoryError> {
+        self.credential("reject", &format!("{}\n", describe_token(server)))
     }
 
     fn verify(&self, url: &str) -> Result<(), RepositoryError> {

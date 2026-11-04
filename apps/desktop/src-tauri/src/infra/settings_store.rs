@@ -5,6 +5,7 @@ use std::io;
 use std::path::PathBuf;
 
 use panther_domain::account::{Account, Server, parse_username};
+use panther_domain::hosting::{HostingAccess, HostingKind};
 use panther_domain::ports::SettingsStore;
 use panther_domain::repository::RepositoryError;
 use panther_domain::settings::Settings;
@@ -20,6 +21,43 @@ struct StoredSettings {
     git_executable: Option<PathBuf>,
     #[serde(default)]
     accounts: Vec<StoredAccount>,
+    #[serde(default)]
+    hosting: Vec<StoredHosting>,
+}
+
+/// A connected code review server; its token stays in the credential helper.
+#[derive(Serialize, Deserialize)]
+struct StoredHosting {
+    server: String,
+    /// `gitlab` or `github`.
+    kind: String,
+}
+
+impl StoredHosting {
+    fn into_access(self) -> Option<HostingAccess> {
+        let kind = match self.kind.as_str() {
+            "gitlab" => HostingKind::GitLab,
+            "github" => HostingKind::GitHub,
+            _ => return None,
+        };
+        Some(HostingAccess {
+            server: Server::parse(&self.server).ok()?,
+            kind,
+        })
+    }
+}
+
+impl From<&HostingAccess> for StoredHosting {
+    fn from(access: &HostingAccess) -> Self {
+        Self {
+            server: access.server.to_string(),
+            kind: match access.kind {
+                HostingKind::GitLab => "gitlab",
+                HostingKind::GitHub => "github",
+            }
+            .to_owned(),
+        }
+    }
 }
 
 /// Server and user name only; passwords stay in the credential helper.
@@ -81,6 +119,11 @@ impl SettingsStore for JsonSettingsStore {
                 .into_iter()
                 .filter_map(StoredAccount::into_account)
                 .collect(),
+            hosting: stored
+                .hosting
+                .into_iter()
+                .filter_map(StoredHosting::into_access)
+                .collect(),
         })
     }
 
@@ -89,6 +132,7 @@ impl SettingsStore for JsonSettingsStore {
             version: FORMAT_VERSION,
             git_executable: settings.git_executable.clone(),
             accounts: settings.accounts.iter().map(StoredAccount::from).collect(),
+            hosting: settings.hosting.iter().map(StoredHosting::from).collect(),
         };
         let text = serde_json::to_string_pretty(&stored).map_err(storage_error)?;
         if let Some(folder) = self.file.parent() {
@@ -126,6 +170,10 @@ mod tests {
             accounts: vec![Account {
                 server: Server::parse("https://gitlab.example.internal").unwrap(),
                 username: "p9493378".into(),
+            }],
+            hosting: vec![HostingAccess {
+                server: Server::parse("https://gitlab.example.internal").unwrap(),
+                kind: HostingKind::GitLab,
             }],
         };
 

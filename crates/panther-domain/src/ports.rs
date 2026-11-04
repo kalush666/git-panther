@@ -5,12 +5,13 @@
 
 use std::path::Path;
 
-use crate::account::{Account, Password};
+use crate::account::{Account, Password, Server};
 use crate::branch::{Branch, BranchName};
 use crate::commit::{BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
 use crate::conflict::ConflictChunk;
 use crate::git_installation::{GitVersion, GitVersionParseError};
 use crate::history::{HeadSnapshot, RebaseStep, ResetMode, TagName};
+use crate::hosting::{HostedProject, Issue, NewPullRequest, PullRequest};
 use crate::identity::Identity;
 use crate::layout::{LfsStatus, Submodule, Worktree};
 use crate::recent::RecentRepositories;
@@ -646,12 +647,67 @@ pub trait CredentialStore: Send + Sync {
     /// [`RepositoryError`] when the helper cannot be reached.
     fn erase(&self, account: &Account) -> Result<(), RepositoryError>;
 
+    /// Keeps an API access token for `server`, apart from the git password.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CredentialHelperMissing`] or a helper error.
+    fn store_token(&self, server: &Server, token: &Password) -> Result<(), RepositoryError>;
+
+    /// The API access token kept for `server`, if any.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the helper cannot be reached.
+    fn token(&self, server: &Server) -> Result<Option<Password>, RepositoryError>;
+
+    /// # Errors
+    /// [`RepositoryError`] when the helper cannot be reached.
+    fn erase_token(&self, server: &Server) -> Result<(), RepositoryError>;
+
     /// Reads the remote at `url` with the stored credentials.
     ///
     /// # Errors
     /// [`RepositoryError::AuthenticationFailed`] for wrong credentials, or a
     /// network error.
     fn verify(&self, url: &str) -> Result<(), RepositoryError>;
+}
+
+/// The API of one kind of code review server.
+pub trait HostingProvider: Send + Sync {
+    /// Checks that `token` is accepted by `server`.
+    ///
+    /// # Errors
+    /// [`RepositoryError::HostingUnauthorized`] or a network error.
+    fn check(&self, server: &Server, token: &Password) -> Result<(), RepositoryError>;
+
+    /// Open merge / pull requests of `project`.
+    ///
+    /// # Errors
+    /// [`RepositoryError::HostingUnauthorized`], [`RepositoryError::HostingFailed`]
+    /// or a network error.
+    fn pull_requests(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+    ) -> Result<Vec<PullRequest>, RepositoryError>;
+
+    /// # Errors
+    /// [`RepositoryError::HostingFailed`] (e.g. one already exists for the branch).
+    fn create_pull_request(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+        request: &NewPullRequest,
+    ) -> Result<PullRequest, RepositoryError>;
+
+    /// Open issues of `project`.
+    ///
+    /// # Errors
+    /// Like [`HostingProvider::pull_requests`].
+    fn issues(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+    ) -> Result<Vec<Issue>, RepositoryError>;
 }
 
 /// Persists [`Settings`] between runs.
