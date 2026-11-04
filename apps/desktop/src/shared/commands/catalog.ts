@@ -16,6 +16,10 @@ export const BINDABLE_COMMANDS = {
   'repository.stageAll': { title: 'Stage all changes', shortcut: 'Ctrl+Shift+A' },
   'repository.commit': { title: 'Go to the commit message', shortcut: 'Ctrl+Enter' },
   'app.settings': { title: 'Open settings', shortcut: 'Ctrl+,' },
+  'app.openRepository': { title: 'Open a repository', shortcut: 'Ctrl+O' },
+  'tabs.next': { title: 'Next tab', shortcut: 'Ctrl+Tab' },
+  'tabs.previous': { title: 'Previous tab', shortcut: 'Ctrl+Shift+Tab' },
+  'tabs.close': { title: 'Close the tab', shortcut: 'Ctrl+W' },
   'app.toggleTheme': { title: 'Switch between light and dark', shortcut: 'Ctrl+Shift+T' },
 } as const satisfies Record<string, { title: string; shortcut: string }>;
 

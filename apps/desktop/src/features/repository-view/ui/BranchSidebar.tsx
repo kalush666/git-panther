@@ -86,7 +86,7 @@ export function BranchSidebar({
   };
 
   return (
-    <nav className={styles.sidebar} aria-label="Branches">
+    <nav className={styles.sidebar} aria-label="Branches" data-panel="sidebar">
       <label className={styles.filter}>
         <Search size={13} aria-hidden />
         <input

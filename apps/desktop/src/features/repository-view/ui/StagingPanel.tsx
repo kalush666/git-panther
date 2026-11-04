@@ -1,3 +1,4 @@
+import * as ContextMenu from '@radix-ui/react-context-menu';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
@@ -13,8 +14,10 @@ import {
   useWorkingTreeStatus,
 } from '../api/useWorkingTree';
 import { CHANGE_LETTERS } from '../model/changeLetters';
+import { useCommitDraft, useCommitDrafts } from '../model/workspace';
 import { ConflictSection } from './ConflictSection';
 import { IdentityControl } from './IdentityControl';
+import menu from './menu.module.css';
 import styles from './StagingPanel.module.css';
 
 /** Git's convention for a readable one-line summary. */
@@ -22,13 +25,21 @@ const SUMMARY_SOFT_LIMIT = 72;
 
 interface StagingPanelProps {
   path: string;
+  /** Opens the History view of a file. */
+  onShowHistory: (file: string) => void;
   openFile: { file: string; side: DiffSide } | null;
   onOpenFile: (file: string, side: DiffSide) => void;
   /** Opens the conflict editor for a conflicted file. */
   onResolveFile: (file: string) => void;
 }
 
-export function StagingPanel({ path, openFile, onOpenFile, onResolveFile }: StagingPanelProps) {
+export function StagingPanel({
+  path,
+  openFile,
+  onOpenFile,
+  onResolveFile,
+  onShowHistory,
+}: StagingPanelProps) {
   const status = useWorkingTreeStatus(path);
   const stage = useStageFiles(path);
   const unstage = useUnstageFiles(path);
@@ -37,7 +48,7 @@ export function StagingPanel({ path, openFile, onOpenFile, onResolveFile }: Stag
 
   if (status.isError) {
     return (
-      <aside className={styles.panel} aria-label="Working copy">
+      <aside className={styles.panel} aria-label="Working copy" data-panel="details">
         <p className={styles.error} role="alert">
           {status.error.message}
         </p>
@@ -48,7 +59,7 @@ export function StagingPanel({ path, openFile, onOpenFile, onResolveFile }: Stag
   const paths = (files: ChangedFile[]) => files.map((file) => file.path);
 
   return (
-    <aside className={styles.panel} aria-label="Working copy">
+    <aside className={styles.panel} aria-label="Working copy" data-panel="details">
       <div className={styles.lists}>
         <ConflictSection path={path} conflicted={conflicted} onOpenFile={onResolveFile} />
         <FileSection
@@ -57,17 +68,33 @@ export function StagingPanel({ path, openFile, onOpenFile, onResolveFile }: Stag
           side="unstaged"
           openFile={openFile}
           onOpenFile={onOpenFile}
+          onToggle={(file) => {
+            stage.mutate([file.path]);
+          }}
+          onShowHistory={onShowHistory}
           bulkAction={
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={unstaged.length === 0 || stage.isPending}
-              onClick={() => {
-                stage.mutate(paths(unstaged));
-              }}
-            >
-              Stage all
-            </Button>
+            <span className={styles.bulk}>
+              <ConfirmButton
+                confirmLabel="Discard all?"
+                label="Discard all unstaged changes; new files are deleted"
+                disabled={unstaged.length === 0 || discard.isPending}
+                onConfirm={() => {
+                  discard.mutate(paths(unstaged));
+                }}
+              >
+                Discard all
+              </ConfirmButton>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={unstaged.length === 0 || stage.isPending}
+                onClick={() => {
+                  stage.mutate(paths(unstaged));
+                }}
+              >
+                Stage all
+              </Button>
+            </span>
           }
           rowActions={(file) => (
             <>
@@ -98,6 +125,10 @@ export function StagingPanel({ path, openFile, onOpenFile, onResolveFile }: Stag
           side="staged"
           openFile={openFile}
           onOpenFile={onOpenFile}
+          onToggle={(file) => {
+            unstage.mutate([file.path]);
+          }}
+          onShowHistory={onShowHistory}
           bulkAction={
             <Button
               size="sm"
@@ -141,6 +172,9 @@ interface FileSectionProps {
   side: DiffSide;
   openFile: { file: string; side: DiffSide } | null;
   onOpenFile: (file: string, side: DiffSide) => void;
+  /** Space on a file: stage it, or unstage it. */
+  onToggle: (file: ChangedFile) => void;
+  onShowHistory: (file: string) => void;
   bulkAction: ReactNode;
   rowActions: (file: ChangedFile) => ReactNode;
 }
@@ -151,6 +185,8 @@ function FileSection({
   side,
   openFile,
   onOpenFile,
+  onToggle,
+  onShowHistory,
   bulkAction,
   rowActions,
 }: FileSectionProps) {
@@ -172,19 +208,57 @@ function FileSection({
             const isOpen = openFile?.file === file.path && openFile.side === side;
             return (
               <li key={file.path} className={styles.file} data-open={isOpen}>
-                <button
-                  type="button"
-                  className={styles.fileButton}
-                  title={file.from ? `${file.from} → ${file.path}` : file.path}
-                  onClick={() => {
-                    onOpenFile(file.path, side);
-                  }}
-                >
-                  <span className={styles.kind} data-kind={file.kind} title={label}>
-                    {letter}
-                  </span>
-                  <span className={styles.path}>{file.path}</span>
-                </button>
+                <ContextMenu.Root>
+                  <ContextMenu.Trigger asChild>
+                    <button
+                      type="button"
+                      className={styles.fileButton}
+                      title={`${file.from ? `${file.from} → ${file.path}` : file.path}\nSpace: ${side === 'staged' ? 'unstage' : 'stage'} · Enter: open the diff`}
+                      onClick={() => {
+                        onOpenFile(file.path, side);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === ' ') {
+                          event.preventDefault();
+                          onToggle(file);
+                        }
+                      }}
+                    >
+                      <span className={styles.kind} data-kind={file.kind} title={label}>
+                        {letter}
+                      </span>
+                      <span className={styles.path}>{file.path}</span>
+                    </button>
+                  </ContextMenu.Trigger>
+                  <ContextMenu.Portal>
+                    <ContextMenu.Content className={menu.content}>
+                      <ContextMenu.Item
+                        className={menu.item}
+                        onSelect={() => {
+                          onToggle(file);
+                        }}
+                      >
+                        {side === 'staged' ? 'Unstage' : 'Stage'}
+                      </ContextMenu.Item>
+                      <ContextMenu.Item
+                        className={menu.item}
+                        onSelect={() => {
+                          onShowHistory(file.path);
+                        }}
+                      >
+                        File history
+                      </ContextMenu.Item>
+                      <ContextMenu.Item
+                        className={menu.item}
+                        onSelect={() => {
+                          void navigator.clipboard.writeText(file.path);
+                        }}
+                      >
+                        Copy path
+                      </ContextMenu.Item>
+                    </ContextMenu.Content>
+                  </ContextMenu.Portal>
+                </ContextMenu.Root>
                 <span className={styles.rowActions}>{rowActions(file)}</span>
               </li>
             );
@@ -227,8 +301,15 @@ interface CommitBoxProps {
 function CommitBox({ path, stagedCount, unstaged }: CommitBoxProps) {
   const commit = useCommitChanges(path);
   const stageAll = useStageFiles(path);
-  const [summary, setSummary] = useState('');
-  const [description, setDescription] = useState('');
+  const { summary, description } = useCommitDraft(path);
+  const updateDraft = useCommitDrafts((state) => state.update);
+  const clearDraft = useCommitDrafts((state) => state.clear);
+  const setSummary = (value: string) => {
+    updateDraft(path, { summary: value });
+  };
+  const setDescription = (value: string) => {
+    updateDraft(path, { description: value });
+  };
   const [amend, setAmend] = useState(false);
   // With nothing staged, one click stages everything and commits it.
   const commitsAll = stagedCount === 0 && !amend && unstaged.length > 0;
@@ -251,8 +332,7 @@ function CommitBox({ path, stagedCount, unstaged }: CommitBoxProps) {
       { message, amend },
       {
         onSuccess: () => {
-          setSummary('');
-          setDescription('');
+          clearDraft(path);
           setAmend(false);
         },
       },

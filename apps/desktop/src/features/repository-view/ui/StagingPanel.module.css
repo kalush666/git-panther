@@ -220,3 +220,8 @@
   padding-top: var(--gp-space-2);
   border-top: none;
 }
+
+.bulk {
+  display: flex;
+  gap: var(--gp-space-1);
+}

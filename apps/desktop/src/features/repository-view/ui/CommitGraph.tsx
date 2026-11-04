@@ -38,6 +38,8 @@ interface CommitGraphProps {
   leadingRow?: ReactNode;
   /** Context-menu items for a commit row (right-click). */
   rowMenu?: (entry: GraphEntryDto) => ReactNode;
+  /** Double-clicking a branch label checks the branch out. */
+  onCheckoutRef?: (name: string) => void;
 }
 
 /**
@@ -74,6 +76,7 @@ export function CommitGraph({
   onSelectedCommitChange,
   leadingRow,
   rowMenu,
+  onCheckoutRef,
 }: CommitGraphProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -225,6 +228,7 @@ export function CommitGraph({
               gridTemplateColumns={gridTemplateColumns}
               columns={columns}
               menu={rowMenu}
+              onCheckoutRef={onCheckoutRef}
               isSelected={item.index === selectedIndex}
               isMatch={matches.has(item.index)}
               onSelect={select}
@@ -245,6 +249,7 @@ interface CommitRowProps {
   gridTemplateColumns: string;
   columns: ColumnVisibility;
   menu: CommitGraphProps['rowMenu'];
+  onCheckoutRef: CommitGraphProps['onCheckoutRef'];
   isSelected: boolean;
   /** Matches the current search. */
   isMatch: boolean;
@@ -258,6 +263,7 @@ function CommitRow({
   gridTemplateColumns,
   columns,
   menu,
+  onCheckoutRef,
   isSelected,
   isMatch,
   onSelect,
@@ -277,11 +283,13 @@ function CommitRow({
     >
       {entry ? (
         <>
-          {columns.refs && <RefPills entry={entry} />}
+          {columns.refs && <RefPills entry={entry} onCheckout={onCheckoutRef} />}
           <span className={styles.graphCell} />
           <span className={styles.summary}>
             {/* With the label column hidden, labels lead the message instead. */}
-            {!columns.refs && entry.refs.length > 0 && <RefPills entry={entry} />}
+            {!columns.refs && entry.refs.length > 0 && (
+              <RefPills entry={entry} onCheckout={onCheckoutRef} />
+            )}
             <span className={styles.summaryText}>{entry.summary}</span>
             {entry.bodyPreview && <span className={styles.preview}>{entry.bodyPreview}</span>}
           </span>
@@ -321,7 +329,13 @@ function CommitRow({
   );
 }
 
-function RefPills({ entry }: { entry: GraphEntryDto }) {
+function RefPills({
+  entry,
+  onCheckout,
+}: {
+  entry: GraphEntryDto;
+  onCheckout: CommitGraphProps['onCheckoutRef'];
+}) {
   const pills = groupRefs(entry.refs);
   const shown = pills.slice(0, VISIBLE_PILLS);
   const hidden = pills.slice(VISIBLE_PILLS);
@@ -332,7 +346,7 @@ function RefPills({ entry }: { entry: GraphEntryDto }) {
   return (
     <span className={styles.refs} style={laneColor}>
       {shown.map((pill) => (
-        <RefPillLabel key={`${pill.kind}:${pill.name}`} pill={pill} />
+        <RefPillLabel key={`${pill.kind}:${pill.name}`} pill={pill} onCheckout={onCheckout} />
       ))}
       {hidden.length > 0 && (
         <span className={styles.more} title={hidden.map((pill) => pill.name).join('\n')}>
@@ -343,14 +357,38 @@ function RefPills({ entry }: { entry: GraphEntryDto }) {
   );
 }
 
-function RefPillLabel({ pill }: { pill: RefPill }) {
+function RefPillLabel({
+  pill,
+  onCheckout,
+}: {
+  pill: RefPill;
+  onCheckout: CommitGraphProps['onCheckoutRef'];
+}) {
+  // A local branch checks out as is; a remote-only one through its remote.
+  const target =
+    pill.kind === 'tag' || pill.isHead
+      ? null
+      : pill.isLocal
+        ? pill.name
+        : pill.remotes[0]
+          ? `${pill.remotes[0]}/${pill.name}`
+          : null;
   const where = [pill.isLocal ? 'local' : null, ...pill.remotes].filter(Boolean).join(', ');
   return (
     <span
       className={styles.pill}
       data-kind={pill.kind}
       data-head={pill.isHead}
-      title={pill.kind === 'tag' ? `Tag ${pill.name}` : `${pill.name} (${where})`}
+      title={
+        pill.kind === 'tag'
+          ? `Tag ${pill.name}`
+          : `${pill.name} (${where})${target ? '\nDouble-click to check out' : ''}`
+      }
+      onDoubleClick={(event) => {
+        if (!target || !onCheckout) return;
+        event.stopPropagation();
+        onCheckout(target);
+      }}
     >
       {pill.isHead && <Check size={12} strokeWidth={2.5} aria-label="checked out" />}
       {pill.kind === 'tag' && <Tag size={12} strokeWidth={2} aria-hidden />}

@@ -113,9 +113,14 @@ function entry(index: number): GraphEntryDto {
             { name: 'main', kind: 'localBranch', isHead: true },
             { name: 'origin/main', kind: 'remoteBranch', isHead: false },
           ]
-        : index === 12
-          ? [{ name: 'v1.0.0', kind: 'tag', isHead: false }]
-          : [],
+        : index === 7
+          ? [
+              { name: 'develop', kind: 'localBranch', isHead: false },
+              { name: 'origin/develop', kind: 'remoteBranch', isHead: false },
+            ]
+          : index === 12
+            ? [{ name: 'v1.0.0', kind: 'tag', isHead: false }]
+            : [],
     graph: graphRow(index),
   };
 }

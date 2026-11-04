@@ -69,6 +69,15 @@ export function AppShell() {
 function useAppCommands(openSettings: () => void) {
   const tabs = useTabsStore((state) => state.tabs);
   const activate = useTabsStore((state) => state.activate);
+  const activePath = useTabsStore((state) => state.activePath);
+  const openTab = useTabsStore((state) => state.openTab);
+  const closeTab = useTabsStore((state) => state.closeTab);
+  const step = (by: number) => {
+    if (tabs.length === 0) return;
+    const index = tabs.findIndex((tab) => tab.path === activePath);
+    const next = tabs[(index + by + tabs.length) % tabs.length];
+    if (next) activate(next.path);
+  };
   const preference = useThemeStore((state) => state.preference);
   const setPreference = useThemeStore((state) => state.setPreference);
   const dark =
@@ -76,6 +85,45 @@ function useAppCommands(openSettings: () => void) {
     (preference === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   useCommands('app', [
     { id: 'app.settings', title: 'Open settings', group: 'App', run: openSettings },
+    {
+      id: 'app.openRepository',
+      title: 'Open a repository',
+      group: 'App',
+      run: () => {
+        void ipc.pickFolder('Open a repository').then(async (folder) => {
+          if (!folder) return;
+          const result = await ipc.openRepository(folder);
+          if (result.status === 'ok') openTab({ path: result.data.path, name: result.data.name });
+        });
+      },
+    },
+    {
+      id: 'tabs.next',
+      title: 'Next tab',
+      group: 'Tabs',
+      enabled: tabs.length > 1,
+      run: () => {
+        step(1);
+      },
+    },
+    {
+      id: 'tabs.previous',
+      title: 'Previous tab',
+      group: 'Tabs',
+      enabled: tabs.length > 1,
+      run: () => {
+        step(-1);
+      },
+    },
+    {
+      id: 'tabs.close',
+      title: 'Close the tab',
+      group: 'Tabs',
+      enabled: activePath !== null,
+      run: () => {
+        if (activePath) closeTab(activePath);
+      },
+    },
     {
       id: 'app.toggleTheme',
       title: dark ? 'Switch to the light theme' : 'Switch to the dark theme',
