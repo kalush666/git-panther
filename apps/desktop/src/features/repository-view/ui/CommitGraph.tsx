@@ -307,7 +307,15 @@ function CommitRow({
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>{row}</ContextMenu.Trigger>
       <ContextMenu.Portal>
-        <ContextMenu.Content className={menuStyles.content}>{menu(entry)}</ContextMenu.Content>
+        <ContextMenu.Content
+          className={menuStyles.content}
+          // Actions may open an input bar; keep focus there, not on the row.
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+          }}
+        >
+          {menu(entry)}
+        </ContextMenu.Content>
       </ContextMenu.Portal>
     </ContextMenu.Root>
   );

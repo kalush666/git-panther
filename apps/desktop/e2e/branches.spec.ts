@@ -39,15 +39,15 @@ test.describe('branches', () => {
     await commits.getByRole('option', { name: /Merge topic 5/ }).click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Create branch here…' }).click();
 
-    const dialog = page.getByRole('dialog', { name: 'Create branch' });
-    await dialog.getByLabel('Branch name').fill('bad name');
-    await dialog.getByRole('button', { name: 'Create branch' }).click();
-    await expect(dialog.getByRole('alert')).toContainText('not a valid branch name');
+    const bar = page.getByRole('form', { name: /^New branch at commit/ });
+    await bar.getByLabel('Branch name').fill('bad name');
+    await bar.getByLabel('Branch name').press('Enter');
+    await expect(bar.getByRole('alert')).toContainText('not a valid branch name');
 
-    await dialog.getByLabel('Branch name').fill('hotfix/login');
-    await dialog.getByRole('button', { name: 'Create branch' }).click();
+    await bar.getByLabel('Branch name').fill('hotfix/login');
+    await bar.getByLabel('Branch name').press('Enter');
 
-    await expect(dialog).toBeHidden();
+    await expect(bar).toBeHidden();
     await expect(localTree(page).getByRole('button', { name: 'hotfix' })).toBeVisible();
     // The new branch was switched to, so it is the checked-out one.
     await expect(branchRow(page, 'checked out login')).toBeVisible();
@@ -56,25 +56,21 @@ test.describe('branches', () => {
   test('renames a branch', async ({ page }) => {
     await branchRow(page, 'develop').click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Rename…' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Rename branch' });
-    await dialog.getByLabel('Branch name').fill('development');
-    await dialog.getByRole('button', { name: 'Rename' }).click();
+    const bar = page.getByRole('form', { name: 'Rename develop to' });
+    await expect(bar.getByLabel('Branch name')).toHaveValue('develop');
+    await bar.getByLabel('Branch name').fill('development');
+    await bar.getByRole('button', { name: 'Rename' }).click();
 
     await expect(branchRow(page, 'development')).toBeVisible();
   });
 
-  test('asks again before deleting an unmerged branch', async ({ page }) => {
+  test('deletes a branch at once, and Undo brings it back', async ({ page }) => {
     await branchRow(page, 'graph').click({ button: 'right' });
-    await page.getByRole('menuitem', { name: 'Delete…' }).click();
-    await page
-      .getByRole('dialog', { name: 'Delete branch?' })
-      .getByRole('button', { name: 'Delete' })
-      .click();
-
-    const confirm = page.getByRole('dialog', { name: 'Delete unmerged branch?' });
-    await confirm.getByRole('button', { name: 'Delete anyway' }).click();
-
-    await expect(confirm).toBeHidden();
+    await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
     await expect(branchRow(page, 'graph')).toHaveCount(0);
+    await expect(page.getByText('Deleted branch feature/graph')).toBeVisible();
+
+    await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+    await expect(branchRow(page, 'graph')).toBeVisible();
   });
 });

@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { useId, useState } from 'react';
 
 import { Button } from '../ui/Button/Button';
-import dialog from '../ui/ConfirmDialog/ConfirmDialog.module.css';
+import dialog from '../ui/Dialog/Dialog.module.css';
 import styles from './SignInDialog.module.css';
 import { useSignIn } from './useAccounts';
 

@@ -277,7 +277,7 @@ function BranchRow({
               const source = event.dataTransfer.getData(BRANCH_DRAG_TYPE);
               if (source && source !== branch.name) {
                 event.preventDefault();
-                history.openCombine(source);
+                history.openCombine(source, event.clientX, event.clientY);
               }
             }}
             title={`${branch.name}${branch.upstream ? ` → ${branch.upstream}` : ''} (double-click to check out)`}
@@ -305,7 +305,13 @@ function BranchRow({
           </button>
         </ContextMenu.Trigger>
         <ContextMenu.Portal>
-          <ContextMenu.Content className={menu.content}>
+          <ContextMenu.Content
+            className={menu.content}
+            // Actions may open an input bar; keep focus there, not on the row.
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+            }}
+          >
             <ContextMenu.Item
               className={menu.item}
               disabled={branch.isHead}
@@ -376,10 +382,10 @@ function BranchRow({
                   className={`${menu.item} ${menu.danger}`}
                   disabled={branch.isHead}
                   onSelect={() => {
-                    actions.openDelete(branch.name);
+                    actions.remove(branch.name);
                   }}
                 >
-                  Delete…
+                  Delete
                 </ContextMenu.Item>
               </>
             )}

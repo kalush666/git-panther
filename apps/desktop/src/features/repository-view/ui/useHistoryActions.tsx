@@ -1,7 +1,8 @@
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useState, type ReactNode } from 'react';
 
-import { isIpcError, type ResetMode } from '../../../shared/ipc';
-import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog/ConfirmDialog';
+import type { ResetMode } from '../../../shared/ipc';
+import { InlinePrompt } from '../../../shared/ui/InlinePrompt/InlinePrompt';
 import { useBranches } from '../api/useBranches';
 import {
   describeDone,
@@ -10,203 +11,220 @@ import {
   useUndo,
   type HistoryRequest,
 } from '../api/useHistory';
-import { CombineBranchesDialog } from './CombineBranchesDialog';
-import { InteractiveRebaseDialog } from './InteractiveRebaseDialog';
-import { TagDialog } from './TagDialog';
+import menu from './menu.module.css';
+import type { Report } from './useBranchActions';
 
-type Dialog =
+type Prompt =
   | { kind: 'hardReset'; commit: string; label: string }
-  | { kind: 'tag'; target: string; label: string }
-  | { kind: 'combine'; source: string }
-  | { kind: 'rebase'; base: string; label: string };
+  | { kind: 'tag'; target: string; label: string };
+
+/** A branch dropped on the checked-out one, and where the pointer was. */
+interface Drop {
+  source: string;
+  x: number;
+  y: number;
+}
+
+export interface RebaseTarget {
+  base: string;
+  label: string;
+}
 
 export interface HistoryActions {
   /** The checked-out branch, or `null` when HEAD is detached. */
   currentBranch: string | null;
   run: (request: HistoryRequest) => void;
-  /** Resets, asking first for a hard reset that throws away changes. */
+  /** Resets; a hard reset asks first, in the bar under the header. */
   reset: (commit: string, label: string, mode: ResetMode) => void;
   openCreateTag: (target: string, label: string) => void;
-  /** Asks whether to merge `source` into the current branch or rebase onto it. */
-  openCombine: (source: string) => void;
-  /** Plans an interactive rebase of the commits after `base`. */
+  /** Offers merge or rebase in a menu at the drop point. */
+  openCombine: (source: string, x: number, y: number) => void;
+  /** The commit whose later commits the rebase panel is planning, if open. */
+  rebaseTarget: RebaseTarget | null;
   openInteractiveRebase: (base: string, label: string) => void;
+  closeInteractiveRebase: () => void;
+  /** Whether a graph action is running. */
+  isRunning: boolean;
   /** What Undo would revert, e.g. "Merge topic". */
   undoLabel: string | null;
   undo: () => void;
+  report: Report;
   /** The last result to show under the header. */
   outcome: { tone: 'done' | 'error'; message: string } | null;
   dismiss: () => void;
-  dialogs: ReactNode;
+  /** The bar asking for a tag name or a confirmation, when open. */
+  prompt: ReactNode;
+  /** The menu shown after a drop, when open. */
+  dropMenu: ReactNode;
 }
 
-/** Graph actions, undo, and the dialogs that confirm or collect their input. */
+/** Graph actions, undo and the bars and menus that collect their input. */
 export function useHistoryActions(path: string): HistoryActions {
   const action = useHistoryAction(path);
   const undoAction = useUndo(path);
   const pendingUndo = usePendingUndo(path);
   const branches = useBranches(path);
-  const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [prompt, setPrompt] = useState<Prompt | null>(null);
+  const [drop, setDrop] = useState<Drop | null>(null);
+  const [rebaseTarget, setRebaseTarget] = useState<RebaseTarget | null>(null);
   const [outcome, setOutcome] = useState<HistoryActions['outcome']>(null);
   const currentBranch =
     branches.data?.find((branch) => branch.kind === 'local' && branch.isHead)?.name ?? null;
+  const current = currentBranch ?? 'HEAD';
+
+  const report: Report = (tone, message) => {
+    setOutcome({ tone, message });
+  };
 
   const run = (request: HistoryRequest) => {
     setOutcome(null);
     action.mutate(request, {
       onSuccess: () => {
-        setOutcome({ tone: 'done', message: describeDone(request) });
+        report('done', describeDone(request));
+        if (request.action === 'rebaseInteractive') setRebaseTarget(null);
       },
       onError: (error) => {
-        setOutcome({ tone: 'error', message: error.message });
+        report('error', error.message);
       },
     });
   };
 
-  const close = () => {
-    setDialog(null);
+  const closePrompt = () => {
+    setPrompt(null);
+    action.reset();
   };
 
-  const dialogs = (() => {
-    switch (dialog?.kind) {
+  const bar = (() => {
+    switch (prompt?.kind) {
       case undefined:
         return null;
       case 'hardReset':
         return (
-          <ConfirmDialog
-            open
-            title="Hard reset?"
-            description={
-              <>
-                {currentBranch ?? 'HEAD'} moves to {dialog.label}, and{' '}
-                <strong>all uncommitted changes are thrown away</strong>. Undo can bring the commits
-                back, but not the uncommitted changes.
-              </>
-            }
-            confirmLabel="Reset hard"
-            onCancel={close}
-            onConfirm={() => {
-              run({ action: 'reset', commit: dialog.commit, label: dialog.label, mode: 'hard' });
-              close();
+          <InlinePrompt
+            key={`reset:${prompt.commit}`}
+            title={`Reset ${current} to ${prompt.label} and throw away all uncommitted changes? Undo brings the commits back, not the changes.`}
+            submitLabel="Reset hard"
+            danger
+            error={null}
+            isPending={action.isPending}
+            onCancel={closePrompt}
+            onSubmit={() => {
+              run({ action: 'reset', commit: prompt.commit, label: prompt.label, mode: 'hard' });
+              setPrompt(null);
             }}
           />
         );
       case 'tag':
         return (
-          <TagDialog
-            targetLabel={dialog.label}
+          <InlinePrompt
+            key={`tag:${prompt.target}`}
+            title={`New tag at ${prompt.label}`}
+            input={{ label: 'Tag name', initial: '', placeholder: 'v1.2.0' }}
+            submitLabel="Create tag"
             error={
               action.isError && action.variables.action === 'createTag'
                 ? action.error.message
                 : null
             }
             isPending={action.isPending}
-            onCancel={() => {
-              action.reset();
-              close();
-            }}
-            onSubmit={(name, message) => {
-              action.mutate(
-                { action: 'createTag', name, target: dialog.target, message },
-                {
-                  onSuccess: () => {
-                    setOutcome({ tone: 'done', message: `Created tag ${name}` });
-                    close();
-                  },
-                },
-              );
-            }}
-          />
-        );
-      case 'rebase':
-        return (
-          <InteractiveRebaseDialog
-            path={path}
-            base={dialog.base}
-            baseLabel={dialog.label}
-            error={
-              action.isError && action.variables.action === 'rebaseInteractive'
-                ? action.error.message
-                : null
-            }
-            isPending={action.isPending}
-            onCancel={() => {
-              action.reset();
-              close();
-            }}
-            onStart={(steps) => {
+            onCancel={closePrompt}
+            onSubmit={(name) => {
               const request: HistoryRequest = {
-                action: 'rebaseInteractive',
-                base: dialog.base,
-                label: dialog.label,
-                steps,
+                action: 'createTag',
+                name,
+                target: prompt.target,
+                message: null,
               };
               action.mutate(request, {
                 onSuccess: () => {
-                  setOutcome({ tone: 'done', message: describeDone(request) });
-                  close();
-                },
-                onError: (error) => {
-                  // A conflict leaves the rebase open; the conflict view takes over.
-                  if (isIpcError(error, 'operationConflict')) {
-                    setOutcome({ tone: 'error', message: error.message });
-                    close();
-                  }
+                  report('done', describeDone(request));
+                  setPrompt(null);
                 },
               });
-            }}
-          />
-        );
-      case 'combine':
-        return (
-          <CombineBranchesDialog
-            source={dialog.source}
-            target={currentBranch}
-            onCancel={close}
-            onChoose={(request) => {
-              run(request);
-              close();
             }}
           />
         );
     }
   })();
 
+  const dropMenu = drop && (
+    <DropdownMenu.Root
+      open
+      onOpenChange={(open) => {
+        if (!open) setDrop(null);
+      }}
+    >
+      <DropdownMenu.Trigger asChild>
+        <span
+          aria-hidden
+          style={{ position: 'fixed', left: drop.x, top: drop.y, width: 0, height: 0 }}
+        />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content className={menu.content} align="start" sideOffset={4}>
+          <DropdownMenu.Item
+            className={menu.item}
+            onSelect={() => {
+              run({ action: 'merge', branch: drop.source });
+            }}
+          >
+            Merge {drop.source} into {current}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            className={menu.item}
+            onSelect={() => {
+              run({ action: 'rebase', onto: drop.source });
+            }}
+          >
+            Rebase {current} onto {drop.source}
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+
   return {
     currentBranch,
     run,
     reset: (commit, label, mode) => {
-      if (mode === 'hard') setDialog({ kind: 'hardReset', commit, label });
+      if (mode === 'hard') setPrompt({ kind: 'hardReset', commit, label });
       else run({ action: 'reset', commit, label, mode });
     },
     openCreateTag: (target, label) => {
       action.reset();
-      setDialog({ kind: 'tag', target, label });
+      setPrompt({ kind: 'tag', target, label });
     },
-    openCombine: (source) => {
-      setDialog({ kind: 'combine', source });
+    openCombine: (source, x, y) => {
+      setDrop({ source, x, y });
     },
+    rebaseTarget,
     openInteractiveRebase: (base, label) => {
       action.reset();
-      setDialog({ kind: 'rebase', base, label });
+      setRebaseTarget({ base, label });
     },
+    closeInteractiveRebase: () => {
+      setRebaseTarget(null);
+    },
+    isRunning: action.isPending,
     undoLabel: pendingUndo.data ?? null,
     undo: () => {
       if (undoAction.isPending) return;
       setOutcome(null);
       undoAction.mutate(undefined, {
         onSuccess: (label) => {
-          setOutcome({ tone: 'done', message: `Undid: ${label}` });
+          report('done', `Undid: ${label}`);
         },
         onError: (error) => {
-          setOutcome({ tone: 'error', message: error.message });
+          report('error', error.message);
         },
       });
     },
+    report,
     outcome,
     dismiss: () => {
       setOutcome(null);
     },
-    dialogs,
+    prompt: bar,
+    dropMenu,
   };
 }

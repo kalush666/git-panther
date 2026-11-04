@@ -31,6 +31,9 @@ export function createMockHistory(
   };
 
   return {
+    /** Remembers how to undo an action done elsewhere in the mock. */
+    remember,
+
     /** Records a checkout so Undo can switch back. */
     trackCheckout: (run: () => Result<null>, name: string): Result<null> => {
       const previous = branches.headName();

@@ -17,49 +17,34 @@ async function openRepository(page: Page, query = '') {
   await expect(header(page)).toBeVisible();
 }
 
-async function stash(page: Page, message: string, includeUntracked = true) {
+async function stash(page: Page) {
   await header(page).getByRole('button', { name: 'Stash' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Stash changes' });
-  await dialog.getByLabel('Message (optional)').fill(message);
-  if (!includeUntracked) await dialog.getByLabel('Include new (untracked) files').uncheck();
-  await dialog.getByRole('button', { name: 'Stash' }).click();
-  await expect(dialog).toBeHidden();
 }
 
 test.describe('stash', () => {
-  test('stashes everything and pops it back', async ({ page }) => {
+  test('stashes everything in one click and pops it back', async ({ page }) => {
     await openRepository(page);
-    await stash(page, 'login form');
+    await stash(page);
 
     await expect(workingCopy(page)).toBeHidden();
-    await expect(
-      stashList(page).getByRole('button', { name: 'On main: login form' }),
-    ).toBeVisible();
+    await expect(stashList(page).getByRole('button', { name: 'On main: WIP' })).toBeVisible();
 
     await header(page).getByRole('button', { name: 'Pop' }).click();
     await expect(workingCopy(page)).toContainText('3 changes');
     await expect(stashList(page).getByRole('listitem')).toHaveCount(0);
   });
 
-  test('leaves new files behind unless asked', async ({ page }) => {
-    await openRepository(page);
-    await stash(page, 'tracked only', false);
-    await expect(workingCopy(page)).toContainText('1 change');
-  });
-
   test('explains when there is nothing to stash', async ({ page }) => {
     await openRepository(page);
-    await stash(page, 'first');
-    await header(page).getByRole('button', { name: 'Stash' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Stash changes' });
-    await dialog.getByRole('button', { name: 'Stash' }).click();
-    await expect(dialog.getByRole('alert')).toContainText('no local changes');
+    await stash(page);
+    await stash(page);
+    await expect(header(page).getByRole('alert')).toContainText('no local changes');
   });
 
-  test('applies, then drops after confirming', async ({ page }) => {
+  test('applies, drops at once, and Undo brings the stash back', async ({ page }) => {
     await openRepository(page);
-    await stash(page, 'keep me');
-    const entry = stashList(page).getByRole('button', { name: 'On main: keep me' });
+    await stash(page);
+    const entry = stashList(page).getByRole('button', { name: 'On main: WIP' });
 
     await entry.click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Apply stash' }).click();
@@ -67,12 +52,11 @@ test.describe('stash', () => {
     await expect(entry).toBeVisible();
 
     await entry.click({ button: 'right' });
-    await page.getByRole('menuitem', { name: 'Drop stash…' }).click();
-    await page
-      .getByRole('dialog', { name: 'Drop stash?' })
-      .getByRole('button', { name: 'Drop' })
-      .click();
+    await page.getByRole('menuitem', { name: 'Drop stash' }).click();
     await expect(entry).toBeHidden();
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).first().click();
+    await expect(entry).toBeVisible();
   });
 });
 
@@ -100,8 +84,8 @@ test.describe('conflicts', () => {
   test('aborts only after confirming', async ({ page }) => {
     await openRepository(page, '?mockConflict=rebase');
     await conflicts(page).getByRole('button', { name: 'Abort rebase' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Abort the rebase?' });
-    await dialog.getByRole('button', { name: 'Abort rebase' }).click();
+    await expect(conflicts(page)).toBeVisible();
+    await conflicts(page).getByRole('button', { name: 'Really abort the rebase?' }).click();
     await expect(conflicts(page)).toBeHidden();
   });
 });

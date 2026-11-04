@@ -1,9 +1,8 @@
 import { TriangleAlert } from 'lucide-react';
-import { useState } from 'react';
 
 import type { Operation } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
-import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog/ConfirmDialog';
+import { ConfirmButton } from '../../../shared/ui/ConfirmButton/ConfirmButton';
 import {
   useAbortOperation,
   useContinueOperation,
@@ -36,7 +35,6 @@ export function ConflictSection({ path, conflicted, onOpenFile }: ConflictSectio
   const markResolved = useMarkResolved(path);
   const continueOperation = useContinueOperation(path);
   const abort = useAbortOperation(path);
-  const [confirmAbort, setConfirmAbort] = useState(false);
   const current = operation.data ?? null;
   const busy = resolve.isPending || markResolved.isPending || continueOperation.isPending;
   const error = resolve.error ?? markResolved.error ?? continueOperation.error ?? abort.error;
@@ -119,16 +117,15 @@ export function ConflictSection({ path, conflicted, onOpenFile }: ConflictSectio
       )}
       {name && (
         <div className={styles.actions}>
-          <Button
-            size="sm"
-            variant="danger"
+          <ConfirmButton
+            confirmLabel={`Really abort the ${name}?`}
             disabled={abort.isPending}
-            onClick={() => {
-              setConfirmAbort(true);
+            onConfirm={() => {
+              abort.mutate();
             }}
           >
             Abort {name}
-          </Button>
+          </ConfirmButton>
           <Button
             size="sm"
             variant="primary"
@@ -141,19 +138,6 @@ export function ConflictSection({ path, conflicted, onOpenFile }: ConflictSectio
           </Button>
         </div>
       )}
-      <ConfirmDialog
-        open={confirmAbort}
-        title={`Abort the ${name ?? 'operation'}?`}
-        description="The repository returns to how it was before it started. Resolutions made so far are lost."
-        confirmLabel={`Abort ${name ?? ''}`.trim()}
-        onCancel={() => {
-          setConfirmAbort(false);
-        }}
-        onConfirm={() => {
-          abort.mutate();
-          setConfirmAbort(false);
-        }}
-      />
     </section>
   );
 }

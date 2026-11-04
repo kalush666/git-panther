@@ -1,0 +1,8 @@
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gp-space-1);
+  color: var(--gp-text-secondary);
+  font-size: var(--gp-text-sm);
+  white-space: nowrap;
+}

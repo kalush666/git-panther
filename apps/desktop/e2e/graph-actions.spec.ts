@@ -12,7 +12,8 @@ const branchRow = (page: Page, label: string) =>
 const commitRow = (page: Page, message: string) =>
   page.getByRole('listbox', { name: 'Commits' }).getByRole('option', { name: new RegExp(message) });
 const status = (page: Page) => page.getByRole('status').filter({ hasNotText: /changes?$/ });
-const undoButton = (page: Page) => page.getByRole('button', { name: 'Undo', exact: true });
+/** The header's Undo button (the result banner has one too). */
+const undoButton = (page: Page) => page.getByRole('button', { name: 'Undo', exact: true }).first();
 
 test.describe('graph actions', () => {
   test.beforeEach(async ({ page }) => {
@@ -40,10 +41,11 @@ test.describe('graph actions', () => {
     await expect(page.getByRole('region', { name: 'Merge in progress' })).toBeVisible();
   });
 
-  test('dropping a branch on the checked-out one offers merge or rebase', async ({ page }) => {
+  test('dropping a branch on the checked-out one offers merge or rebase right there', async ({
+    page,
+  }) => {
     await branchRow(page, 'develop').dragTo(branchRow(page, 'checked out main'));
-    const dialog = page.getByRole('dialog', { name: 'Combine develop and main' });
-    await dialog.getByRole('button', { name: 'Rebase main onto develop' }).click();
+    await page.getByRole('menuitem', { name: 'Rebase main onto develop' }).click();
     await expect(page.getByText('Rebased onto develop')).toBeVisible();
   });
 
@@ -55,8 +57,7 @@ test.describe('graph actions', () => {
     await commitRow(page, 'Change number 4997').click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Reset main to this commit' }).hover();
     await page.getByRole('menuitem', { name: 'Hard: discard all changes…' }).click();
-    const confirm = page.getByRole('dialog', { name: 'Hard reset?' });
-    await expect(confirm).toContainText('all uncommitted changes are thrown away');
+    const confirm = page.getByRole('form', { name: /throw away all uncommitted changes/ });
     await confirm.getByRole('button', { name: 'Reset hard' }).click();
     await expect(page.getByText(/^Reset to \w+ \(hard\)$/)).toBeVisible();
   });
@@ -64,14 +65,14 @@ test.describe('graph actions', () => {
   test('creates, refuses duplicate, and deletes tags', async ({ page }) => {
     await commitRow(page, 'Change number 4988').click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Create tag here…' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Create tag' });
-    await dialog.getByLabel('Tag name').fill('v1.0.0');
-    await dialog.getByRole('button', { name: 'Create tag' }).click();
-    await expect(dialog.getByRole('alert')).toContainText('already exists');
+    const bar = page.getByRole('form', { name: /^New tag at commit/ });
+    await bar.getByLabel('Tag name').fill('v1.0.0');
+    await bar.getByLabel('Tag name').press('Enter');
+    await expect(bar.getByRole('alert')).toContainText('already exists');
 
-    await dialog.getByLabel('Tag name').fill('v2.0.0');
-    await dialog.getByRole('button', { name: 'Create tag' }).click();
-    await expect(dialog).toBeHidden();
+    await bar.getByLabel('Tag name').fill('v2.0.0');
+    await bar.getByLabel('Tag name').press('Enter');
+    await expect(bar).toBeHidden();
     await expect(page.getByText('Created tag v2.0.0')).toBeVisible();
 
     await commitRow(page, 'Change number 4988').click({ button: 'right' });
@@ -88,4 +89,14 @@ test.describe('graph actions', () => {
     await expect(branchRow(page, 'checked out main')).toBeVisible();
     await expect(status(page).getByText('Undid: Check out develop')).toBeVisible();
   });
+});
+
+test('a name bar opened from a menu takes the keyboard right away', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /^Open repository/ }).click();
+  await commitRow(page, 'Change number 4988').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Create tag here…' }).click();
+  await page.keyboard.type('v3.0.0');
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Created tag v3.0.0')).toBeVisible();
 });

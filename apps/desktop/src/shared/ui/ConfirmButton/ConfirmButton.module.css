@@ -1,0 +1,34 @@
+.bare {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--gp-control-height-sm);
+  height: var(--gp-control-height-sm);
+  padding: 0 var(--gp-space-1);
+  border: none;
+  border-radius: var(--gp-radius-sm);
+  background: transparent;
+  color: var(--gp-text-secondary);
+  cursor: pointer;
+}
+
+.bare:hover {
+  background: var(--gp-bg-raised);
+  color: var(--gp-text-primary);
+}
+
+.bare[data-armed='true'] {
+  background: var(--gp-danger);
+  color: var(--gp-on-accent);
+}
+
+.bare:focus-visible {
+  outline: 2px solid var(--gp-focus-ring);
+  outline-offset: 1px;
+}
+
+.armedText {
+  font-size: var(--gp-text-xs);
+  font-weight: var(--gp-weight-semibold);
+  white-space: nowrap;
+}

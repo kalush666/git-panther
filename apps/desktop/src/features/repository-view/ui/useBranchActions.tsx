@@ -1,105 +1,109 @@
 import { useState, type ReactNode } from 'react';
 
-import { isIpcError } from '../../../shared/ipc';
-import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog/ConfirmDialog';
+import { InlinePrompt } from '../../../shared/ui/InlinePrompt/InlinePrompt';
 import {
   useCheckoutBranch,
   useCreateBranch,
   useDeleteBranch,
   useRenameBranch,
 } from '../api/useBranches';
-import { BranchNameDialog } from './BranchNameDialog';
+import styles from './useBranchActions.module.css';
 
-type Dialog =
-  | { kind: 'create'; start: string; startLabel: string }
-  | { kind: 'rename'; from: string }
-  | { kind: 'delete'; name: string };
+type Prompt =
+  { kind: 'create'; start: string; startLabel: string } | { kind: 'rename'; from: string };
+
+/** Reports a finished action in the banner under the header. */
+export type Report = (tone: 'done' | 'error', message: string) => void;
 
 export interface BranchActions {
   checkout: (name: string) => void;
   openCreate: (start: string, startLabel: string) => void;
   openRename: (name: string) => void;
-  openDelete: (name: string) => void;
+  /** Deletes right away: Undo brings the branch back. */
+  remove: (name: string) => void;
   /** The last checkout error, shown next to the branch list. */
   checkoutError: string | null;
-  dialogs: ReactNode;
+  /** The name bar, when one is open. */
+  prompt: ReactNode;
 }
 
-/** Branch commands plus the dialogs that collect their input. */
-export function useBranchActions(path: string): BranchActions {
-  const [dialog, setDialog] = useState<Dialog | null>(null);
+/** Branch commands, asking for names in a bar under the header. */
+export function useBranchActions(path: string, report: Report): BranchActions {
+  const [prompt, setPrompt] = useState<Prompt | null>(null);
+  const [switchTo, setSwitchTo] = useState(true);
   const create = useCreateBranch(path);
   const checkout = useCheckoutBranch(path);
   const rename = useRenameBranch(path);
   const remove = useDeleteBranch(path);
 
   const close = () => {
-    setDialog(null);
+    setPrompt(null);
     create.reset();
     rename.reset();
-    remove.reset();
   };
 
-  const dialogs = (() => {
-    switch (dialog?.kind) {
+  const bar = (() => {
+    switch (prompt?.kind) {
       case undefined:
         return null;
       case 'create':
         return (
-          <BranchNameDialog
-            title="Create branch"
-            description={<>New branch starting at {dialog.startLabel}.</>}
-            initialName=""
-            confirmLabel="Create branch"
-            offerCheckout
+          <InlinePrompt
+            key={`create:${prompt.start}`}
+            title={`New branch at ${prompt.startLabel}`}
+            input={{ label: 'Branch name', initial: '', placeholder: 'feature/my-change' }}
+            submitLabel="Create branch"
+            extra={
+              <label className={styles.switch}>
+                <input
+                  type="checkbox"
+                  checked={switchTo}
+                  onChange={(event) => {
+                    setSwitchTo(event.target.checked);
+                  }}
+                />
+                Switch to it
+              </label>
+            }
             error={create.error?.message ?? null}
             isPending={create.isPending}
             onCancel={close}
-            onSubmit={(name, switchTo) => {
+            onSubmit={(name) => {
               create.mutate(
-                { name, start: dialog.start, checkout: switchTo },
-                { onSuccess: close },
+                { name, start: prompt.start, checkout: switchTo },
+                {
+                  onSuccess: () => {
+                    report('done', `Created branch ${name}`);
+                    close();
+                  },
+                },
               );
             }}
           />
         );
       case 'rename':
         return (
-          <BranchNameDialog
-            title="Rename branch"
-            description={<>Rename “{dialog.from}”.</>}
-            initialName={dialog.from}
-            confirmLabel="Rename"
-            offerCheckout={false}
+          <InlinePrompt
+            key={`rename:${prompt.from}`}
+            title={`Rename ${prompt.from} to`}
+            input={{ label: 'Branch name', initial: prompt.from }}
+            submitLabel="Rename"
             error={rename.error?.message ?? null}
             isPending={rename.isPending}
             onCancel={close}
             onSubmit={(to) => {
-              rename.mutate({ from: dialog.from, to }, { onSuccess: close });
+              rename.mutate(
+                { from: prompt.from, to },
+                {
+                  onSuccess: () => {
+                    report('done', `Renamed ${prompt.from} to ${to}`);
+                    close();
+                  },
+                },
+              );
             }}
           />
         );
-      case 'delete': {
-        const notMerged = isIpcError(remove.error, 'branchNotMerged');
-        const failed = remove.error && !notMerged ? remove.error.message : null;
-        return (
-          <ConfirmDialog
-            open
-            title={notMerged ? 'Delete unmerged branch?' : 'Delete branch?'}
-            description={
-              notMerged
-                ? `“${dialog.name}” has commits that exist nowhere else. Deleting it loses them.`
-                : (failed ??
-                  `Delete the local branch “${dialog.name}”? Remote branches are not affected.`)
-            }
-            confirmLabel={notMerged ? 'Delete anyway' : 'Delete'}
-            onCancel={close}
-            onConfirm={() => {
-              remove.mutate({ name: dialog.name, force: notMerged }, { onSuccess: close });
-            }}
-          />
-        );
-      }
     }
   })();
 
@@ -108,15 +112,27 @@ export function useBranchActions(path: string): BranchActions {
       checkout.mutate(name);
     },
     openCreate: (start, startLabel) => {
-      setDialog({ kind: 'create', start, startLabel });
+      create.reset();
+      setPrompt({ kind: 'create', start, startLabel });
     },
     openRename: (from) => {
-      setDialog({ kind: 'rename', from });
+      rename.reset();
+      setPrompt({ kind: 'rename', from });
     },
-    openDelete: (name) => {
-      setDialog({ kind: 'delete', name });
+    remove: (name) => {
+      remove.mutate(
+        { name, force: true },
+        {
+          onSuccess: () => {
+            report('done', `Deleted branch ${name}`);
+          },
+          onError: (error) => {
+            report('error', error.message);
+          },
+        },
+      );
     },
     checkoutError: checkout.error?.message ?? null,
-    dialogs,
+    prompt: bar,
   };
 }
