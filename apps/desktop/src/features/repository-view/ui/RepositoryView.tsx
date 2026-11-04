@@ -20,6 +20,7 @@ import { ConflictEditor } from './ConflictEditor';
 import { DiffViewer } from './DiffViewer';
 import { FileHistoryView, type FileView } from './FileHistoryView';
 import { RebasePanel } from './RebasePanel';
+import { RecoverView } from './RecoverView';
 import { requestTarget, ReviewPanel, type ReviewTarget } from './ReviewPanel';
 import { ResizeHandle } from './ResizeHandle';
 import { StagingPanel } from './StagingPanel';
@@ -54,9 +55,11 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
   const history = useHistoryActions(path);
   const sync = useSync(path);
   const [review, setReview] = useState<ReviewTarget | null>(null);
+  const [recovering, setRecovering] = useState(false);
   const showReview = (target: ReviewTarget) => {
     setDiff(null);
     setFileView(null);
+    setRecovering(false);
     setReview(target);
   };
   const branchActions = useBranchActions(path, history.report, (base, head) => {
@@ -92,6 +95,18 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
       enabled: headBranch !== undefined,
       run: () => {
         if (headBranch) branchActions.openCreate(headBranch.target, headBranch.name);
+      },
+    },
+    {
+      id: 'repository.recover',
+      title: 'Recover lost commits…',
+      group: 'Repository',
+      enabled: true,
+      run: () => {
+        setDiff(null);
+        setFileView(null);
+        setReview(null);
+        setRecovering(true);
       },
     },
     {
@@ -143,24 +158,25 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
+      // Escape in a text field belongs to that field; a checkbox has no use for it.
       const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
-      ) {
-        return;
-      }
+      const typing =
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLInputElement && !['checkbox', 'radio'].includes(target.type));
+      if (typing) return;
       if (history.rebaseTarget) history.closeInteractiveRebase();
       else if (conflictFile) setConflictFile(null);
       else if (fileView) setFileView(null);
       else if (diff) setDiff(null);
       else if (review) setReview(null);
+      else if (recovering) setRecovering(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [history, conflictFile, fileView, diff, review]);
+  }, [history, conflictFile, fileView, diff, review, recovering]);
   const keepSelectedCommit = useCallback((commitId: string | null) => {
     setSelectedCommitId(commitId);
   }, []);
@@ -325,6 +341,23 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
               }}
               onShowBlame={(file) => {
                 setFileView({ kind: 'blame', file });
+              }}
+            />
+          ) : recovering ? (
+            <RecoverView
+              path={path}
+              onCreateBranch={(entry) => {
+                branchActions.openCreate(entry.id, `commit ${entry.shortId}`);
+              }}
+              onCheckout={(entry) => {
+                history.run({
+                  action: 'checkoutCommit',
+                  commit: entry.id,
+                  label: entry.shortId,
+                });
+              }}
+              onClose={() => {
+                setRecovering(false);
               }}
             />
           ) : review ? (

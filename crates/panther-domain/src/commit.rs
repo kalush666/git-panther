@@ -153,6 +153,26 @@ impl Comparison {
     pub const MAX_COMMITS: usize = 500;
 }
 
+/// One place HEAD pointed at, from git's reflog, newest first.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReflogEntry {
+    pub id: CommitId,
+    /// The commit's own summary line.
+    pub summary: String,
+    /// What moved HEAD there, e.g. `reset: moving to HEAD~1`.
+    pub action: String,
+    /// Unix seconds.
+    pub time: i64,
+    /// No branch or tag contains the commit any more, so it is lost unless
+    /// recovered.
+    pub lost: bool,
+}
+
+impl ReflogEntry {
+    /// Enough to recover recent work; older entries are left out.
+    pub const LIMIT: usize = 200;
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RefKind {
     LocalBranch,

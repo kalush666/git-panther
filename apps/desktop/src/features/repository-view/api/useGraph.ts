@@ -70,6 +70,14 @@ export function useFileHistory(path: string, file: string) {
   });
 }
 
+/** Where HEAD pointed recently, for recovering lost commits. */
+export function useReflog(path: string) {
+  return useQuery({
+    queryKey: [...repositoryQueryKey(path), 'reflog'],
+    queryFn: async () => unwrap(await ipc.reflog(path)),
+  });
+}
+
 export function useBlame(path: string, file: string) {
   return useQuery({
     queryKey: [...repositoryQueryKey(path), 'blame', file],

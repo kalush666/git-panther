@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
+use panther_domain::commit::ReflogEntry;
 use panther_domain::commit::{
     BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, Comparison, RefLabel,
 };
@@ -158,6 +159,14 @@ impl CommitGraph {
         head: &str,
     ) -> Result<Comparison, RepositoryError> {
         self.log.compare(repository, base, head)
+    }
+
+    /// Where HEAD pointed recently, with commits no ref contains marked lost.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    pub fn reflog(&self, repository: &Path) -> Result<Vec<ReflogEntry>, RepositoryError> {
+        self.log.reflog(repository)
     }
 
     /// How `path` differs between commits `from` and `to`.
@@ -412,6 +421,10 @@ mod tests {
 
         fn compare(&self, _: &Path, base: &str, _: &str) -> Result<Comparison, RepositoryError> {
             Err(RepositoryError::CommitNotFound { id: base.into() })
+        }
+
+        fn reflog(&self, _: &Path) -> Result<Vec<ReflogEntry>, RepositoryError> {
+            Ok(Vec::new())
         }
 
         fn compare_file_diff(
