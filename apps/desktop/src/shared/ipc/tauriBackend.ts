@@ -115,6 +115,7 @@ export const tauriBackend: Backend = {
   connectHostingWithLogin: commands.connectHostingWithLogin,
   disconnectHosting: commands.disconnectHosting,
   hostingStatus: commands.hostingStatus,
+  listPipelines: commands.listPipelines,
   pullRequestReview: commands.pullRequestReview,
   commentPullRequest: commands.commentPullRequest,
   approvePullRequest: commands.approvePullRequest,

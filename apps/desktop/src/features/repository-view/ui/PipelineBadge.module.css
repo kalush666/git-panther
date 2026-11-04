@@ -1,0 +1,38 @@
+.badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-self: center;
+  color: var(--gp-text-muted);
+}
+
+.badge[data-state='passed'] {
+  color: var(--gp-success);
+}
+
+.badge[data-state='failed'] {
+  color: var(--gp-danger);
+}
+
+.badge[data-state='running'] {
+  color: var(--gp-info);
+}
+
+.badge[data-state='running'] svg {
+  animation: spin 1.2s linear infinite;
+}
+
+.badge[data-state='pending'] {
+  color: var(--gp-warning);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge[data-state='running'] svg {
+    animation: none;
+  }
+}

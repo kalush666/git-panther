@@ -178,6 +178,8 @@ export const commands = {
 	connectHosting: (server: string, kind: HostingKindDto, token: string) => typedError<HostingAccessDto, AppError>(__TAURI_INVOKE("connect_hosting", { server, kind, token })),
 	/**  Connects a GitLab server with the user's git sign-in instead of a token. */
 	connectHostingWithLogin: (server: string) => typedError<HostingAccessDto, AppError>(__TAURI_INVOKE("connect_hosting_with_login", { server })),
+	/**  The newest CI pipeline of each recently built commit. */
+	listPipelines: (path: string) => typedError<PipelineDto[], AppError>(__TAURI_INVOKE("list_pipelines", { path })),
 	/**  Description, approvals and comments of request `number`. */
 	pullRequestReview: (path: string, number: number) => typedError<PullRequestReviewDto_Serialize, AppError>(__TAURI_INVOKE("pull_request_review", { path, number })),
 	/**  Comments on request `number`. */
@@ -509,6 +511,15 @@ export type PersonDto = {
 	 */
 	time: number,
 };
+
+/**  The newest CI pipeline of one commit. */
+export type PipelineDto = {
+	commit: string,
+	state: PipelineStateDto,
+	url: string,
+};
+
+export type PipelineStateDto = "pending" | "running" | "passed" | "failed" | "canceled" | "skipped";
 
 /**  A merge request (GitLab) or pull request (GitHub). */
 export type PullRequestDto = {

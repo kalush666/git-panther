@@ -13,7 +13,8 @@ use panther_domain::conflict::ConflictChunk;
 use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::history::{RebaseAction, RebaseStep, ResetMode};
 use panther_domain::hosting::{
-    HostingAccess, HostingKind, Issue, PullRequest, PullRequestReview, ReviewComment,
+    HostingAccess, HostingKind, Issue, Pipeline, PipelineState, PullRequest, PullRequestReview,
+    ReviewComment,
 };
 use panther_domain::identity::{Identity, Signing, SigningFormat};
 use panther_domain::layout::{LfsStatus, Submodule, SubmoduleState, Worktree};
@@ -1028,6 +1029,43 @@ impl From<PullRequest> for PullRequestDto {
             target_branch: request.target_branch,
             url: request.url,
             draft: request.draft,
+        }
+    }
+}
+
+/// The newest CI pipeline of one commit.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PipelineDto {
+    pub commit: String,
+    pub state: PipelineStateDto,
+    pub url: String,
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PipelineStateDto {
+    Pending,
+    Running,
+    Passed,
+    Failed,
+    Canceled,
+    Skipped,
+}
+
+impl From<Pipeline> for PipelineDto {
+    fn from(pipeline: Pipeline) -> Self {
+        Self {
+            commit: pipeline.commit,
+            state: match pipeline.state {
+                PipelineState::Pending => PipelineStateDto::Pending,
+                PipelineState::Running => PipelineStateDto::Running,
+                PipelineState::Passed => PipelineStateDto::Passed,
+                PipelineState::Failed => PipelineStateDto::Failed,
+                PipelineState::Canceled => PipelineStateDto::Canceled,
+                PipelineState::Skipped => PipelineStateDto::Skipped,
+            },
+            url: pipeline.url,
         }
     }
 }

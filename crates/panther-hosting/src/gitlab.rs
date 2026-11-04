@@ -2,7 +2,8 @@
 
 use panther_domain::account::{Account, Password, Server};
 use panther_domain::hosting::{
-    HostedProject, Issue, NewPullRequest, PullRequest, PullRequestReview, ReviewComment,
+    HostedProject, Issue, NewPullRequest, Pipeline, PipelineState, PullRequest, PullRequestReview,
+    ReviewComment,
 };
 use panther_domain::ports::HostingProvider;
 use panther_domain::repository::RepositoryError;
@@ -10,7 +11,7 @@ use reqwest::blocking::Client;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::http::{client, encode_path, json, send};
+use crate::http::{client, encode_path, json, newest_per_commit, send};
 
 /// Answers of `/oauth/token` that mean "not with these credentials" rather
 /// than a broken server.
@@ -57,6 +58,13 @@ impl From<MergeRequest> for PullRequest {
             draft: request.draft,
         }
     }
+}
+
+#[derive(Deserialize)]
+struct GitLabPipeline {
+    sha: String,
+    status: String,
+    web_url: String,
 }
 
 #[derive(Deserialize)]
@@ -203,6 +211,25 @@ impl HostingProvider for GitLabProvider {
             }));
         let created: MergeRequest = json(request, &project.server.to_string())?;
         Ok(created.into())
+    }
+
+    fn pipelines(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+    ) -> Result<Vec<Pipeline>, RepositoryError> {
+        let request = self
+            .client
+            .get(Self::project(project, "/pipelines?per_page=100"))
+            .bearer_auth(token.expose());
+        let pipelines: Vec<GitLabPipeline> = json(request, &project.server.to_string())?;
+        Ok(newest_per_commit(pipelines.into_iter().map(|pipeline| {
+            Pipeline {
+                commit: pipeline.sha,
+                state: PipelineState::from_gitlab(&pipeline.status),
+                url: pipeline.web_url,
+            }
+        })))
     }
 
     fn review(

@@ -21,6 +21,8 @@ import type {
   PullRequestReviewDto,
   ReviewCommentDto,
   ComparisonDto,
+  PipelineDto,
+  PipelineStateDto,
   HunkDto_Serialize,
   IdentityDto_Serialize,
   LfsStatusDto,
@@ -74,6 +76,8 @@ export type HostingStatus = HostingStatusDto;
 export type PullRequestReview = PullRequestReviewDto;
 export type ReviewComment = ReviewCommentDto;
 export type Comparison = ComparisonDto;
+export type Pipeline = PipelineDto;
+export type PipelineState = PipelineStateDto;
 export type PullRequest = PullRequestDto;
 export type Issue = IssueDto;
 
@@ -196,6 +200,8 @@ export interface Backend {
   /** The repository's project on a code review server, if a remote points to one. */
   hostingStatus(path: string): Promise<Result<HostingStatus | null>>;
   listPullRequests(path: string): Promise<Result<PullRequest[]>>;
+  /** The newest CI pipeline of each recently built commit. */
+  listPipelines(path: string): Promise<Result<Pipeline[]>>;
   /** Description, approvals and comments of request `number`. */
   pullRequestReview(path: string, number: number): Promise<Result<PullRequestReview>>;
   commentPullRequest(path: string, number: number, body: string): Promise<Result<null>>;

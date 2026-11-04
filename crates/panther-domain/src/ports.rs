@@ -13,7 +13,9 @@ use crate::commit::{
 use crate::conflict::ConflictChunk;
 use crate::git_installation::{GitVersion, GitVersionParseError};
 use crate::history::{HeadSnapshot, RebaseStep, ResetMode, TagName};
-use crate::hosting::{HostedProject, Issue, NewPullRequest, PullRequest, PullRequestReview};
+use crate::hosting::{
+    HostedProject, Issue, NewPullRequest, Pipeline, PullRequest, PullRequestReview,
+};
 use crate::identity::Identity;
 use crate::layout::{LfsStatus, Submodule, Worktree};
 use crate::recent::RecentRepositories;
@@ -742,6 +744,16 @@ pub trait HostingProvider: Send + Sync {
         project: &HostedProject,
         token: &Password,
     ) -> Result<Vec<Issue>, RepositoryError>;
+
+    /// The newest pipeline of each recently built commit, newest first.
+    ///
+    /// # Errors
+    /// Like [`HostingProvider::pull_requests`].
+    fn pipelines(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+    ) -> Result<Vec<Pipeline>, RepositoryError>;
 
     /// Description, approvals and comments of request `number`.
     ///

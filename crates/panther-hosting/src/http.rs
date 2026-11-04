@@ -2,6 +2,7 @@
 
 use std::time::Duration;
 
+use panther_domain::hosting::Pipeline;
 use panther_domain::repository::RepositoryError;
 use reqwest::StatusCode;
 use reqwest::blocking::{Client, RequestBuilder, Response};
@@ -87,6 +88,14 @@ fn explanation(body: &str) -> String {
                 })
         })
         .unwrap_or_else(|| body.chars().take(200).collect())
+}
+
+/// The first (newest) pipeline of each commit; servers list newest first.
+pub fn newest_per_commit(pipelines: impl Iterator<Item = Pipeline>) -> Vec<Pipeline> {
+    let mut seen = std::collections::HashSet::new();
+    pipelines
+        .filter(|pipeline| seen.insert(pipeline.commit.clone()))
+        .collect()
 }
 
 /// `group/app` as one URL path segment: `group%2Fapp`.

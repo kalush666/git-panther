@@ -432,6 +432,16 @@ function createMockBackend(): Backend {
       ),
     listPullRequests: () => Promise.resolve(connected() ? ok(pullRequests) : notConnected()),
     listIssues: () => Promise.resolve(connected() ? ok(issues) : notConnected()),
+    listPipelines: () => {
+      // The newest commits: one running, one passed, one failed.
+      const states = ['running', 'passed', 'failed'] as const;
+      const pipelines = mockGraphPage(0, states.length).entries.map((entry, index) => ({
+        commit: entry.id,
+        state: states[index] ?? 'passed',
+        url: `https://${MOCK_GIT_HOST}/team/demo/-/pipelines/${String(100 - index)}`,
+      }));
+      return Promise.resolve(connected() ? ok(pipelines) : notConnected());
+    },
     pullRequestReview: (_path, number) =>
       Promise.resolve(connected() ? ok(reviewOf(number)) : notConnected()),
     commentPullRequest: (_path, number, body) => {

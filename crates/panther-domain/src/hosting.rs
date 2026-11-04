@@ -109,6 +109,53 @@ pub struct ReviewComment {
     pub line: Option<u32>,
 }
 
+/// Where a CI pipeline (GitLab) or workflow run (GitHub) stands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PipelineState {
+    /// Waiting for a runner, or created but not started.
+    Pending,
+    Running,
+    Passed,
+    Failed,
+    Canceled,
+    Skipped,
+}
+
+impl PipelineState {
+    /// GitLab's pipeline `status`.
+    pub fn from_gitlab(status: &str) -> Self {
+        match status {
+            "running" => Self::Running,
+            "success" => Self::Passed,
+            "failed" => Self::Failed,
+            "canceled" | "canceling" => Self::Canceled,
+            "skipped" | "manual" => Self::Skipped,
+            _ => Self::Pending,
+        }
+    }
+
+    /// GitHub's workflow run `status` and, once completed, `conclusion`.
+    pub fn from_github(status: &str, conclusion: Option<&str>) -> Self {
+        match (status, conclusion) {
+            ("completed", Some("success")) => Self::Passed,
+            ("completed", Some("cancelled")) => Self::Canceled,
+            ("completed", Some("skipped" | "neutral")) => Self::Skipped,
+            ("completed", _) => Self::Failed,
+            ("in_progress", _) => Self::Running,
+            _ => Self::Pending,
+        }
+    }
+}
+
+/// The newest pipeline of one commit.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Pipeline {
+    /// The full commit id it ran on.
+    pub commit: String,
+    pub state: PipelineState,
+    pub url: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Issue {
     pub number: u64,
@@ -121,6 +168,27 @@ pub struct Issue {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_pipeline_states_of_both_servers() {
+        assert_eq!(PipelineState::from_gitlab("success"), PipelineState::Passed);
+        assert_eq!(
+            PipelineState::from_gitlab("created"),
+            PipelineState::Pending
+        );
+        assert_eq!(
+            PipelineState::from_github("completed", Some("failure")),
+            PipelineState::Failed
+        );
+        assert_eq!(
+            PipelineState::from_github("in_progress", None),
+            PipelineState::Running
+        );
+        assert_eq!(
+            PipelineState::from_github("queued", None),
+            PipelineState::Pending
+        );
+    }
 
     #[test]
     fn reads_projects_from_every_remote_url_style() {
