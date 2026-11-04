@@ -13,8 +13,8 @@ use tauri::{AppHandle, State};
 use tauri_specta::Event;
 
 use super::dto::{
-    BranchDto, CloneProgressDto, CommitDetailsDto, ConflictSideDto, DiffSideDto, FileDiffDto,
-    GitInstallationDto, GraphPageDto, HunkActionDto, OperationDto, PullStrategyDto,
+    AccountDto, BranchDto, CloneProgressDto, CommitDetailsDto, ConflictSideDto, DiffSideDto,
+    FileDiffDto, GitInstallationDto, GraphPageDto, HunkActionDto, OperationDto, PullStrategyDto,
     RecentRepositoryDto, RemoteDto, RepositoryChanged, RepositorySummaryDto, SettingsDto, StashDto,
     WorkingTreeStatusDto,
 };
@@ -22,6 +22,7 @@ use super::error::{AppError, AppErrorKind};
 use crate::composition::AppServices;
 use crate::infra::jobs::JobRegistry;
 use crate::infra::watcher::RepositoryWatcher;
+use panther_application::accounts::SignIn;
 
 /// Runs blocking work (git, disk) off the async runtime's worker threads.
 async fn run_blocking<T: Send + 'static>(
@@ -703,6 +704,52 @@ pub async fn abort_operation(
 ) -> Result<(), AppError> {
     let conflicts = services.conflicts.clone();
     run_blocking(move || Ok(conflicts.abort(&PathBuf::from(path))?)).await
+}
+
+/// HTTPS git servers the user signed in to.
+#[tauri::command]
+#[specta::specta]
+pub async fn list_accounts(services: State<'_, AppServices>) -> Result<Vec<AccountDto>, AppError> {
+    let accounts = services.accounts.clone();
+    run_blocking(move || Ok(accounts.list()?.into_iter().map(AccountDto::from).collect())).await
+}
+
+/// Hands the credentials to git's credential helper. With `repository`, they
+/// are first tried against its remote on that server.
+#[tauri::command]
+#[specta::specta]
+pub async fn sign_in(
+    services: State<'_, AppServices>,
+    server: String,
+    username: String,
+    password: String,
+    repository: Option<String>,
+) -> Result<AccountDto, AppError> {
+    let accounts = services.accounts.clone();
+    run_blocking(move || {
+        let repository = repository.map(PathBuf::from);
+        Ok(accounts
+            .sign_in(SignIn {
+                server: &server,
+                username: &username,
+                password,
+                repository: repository.as_deref(),
+            })?
+            .into())
+    })
+    .await
+}
+
+/// Forgets an account and its stored password.
+#[tauri::command]
+#[specta::specta]
+pub async fn sign_out(
+    services: State<'_, AppServices>,
+    server: String,
+    username: String,
+) -> Result<(), AppError> {
+    let accounts = services.accounts.clone();
+    run_blocking(move || Ok(accounts.sign_out(&server, &username)?)).await
 }
 
 fn widen(value: u32) -> usize {

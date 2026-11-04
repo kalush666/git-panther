@@ -4,6 +4,7 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
+use panther_domain::account::{Account, Server, parse_username};
 use panther_domain::ports::SettingsStore;
 use panther_domain::repository::RepositoryError;
 use panther_domain::settings::Settings;
@@ -17,6 +18,34 @@ struct StoredSettings {
     version: u32,
     #[serde(default)]
     git_executable: Option<PathBuf>,
+    #[serde(default)]
+    accounts: Vec<StoredAccount>,
+}
+
+/// Server and user name only; passwords stay in the credential helper.
+#[derive(Serialize, Deserialize)]
+struct StoredAccount {
+    server: String,
+    username: String,
+}
+
+impl StoredAccount {
+    /// Skips entries edited into something unreadable rather than failing.
+    fn into_account(self) -> Option<Account> {
+        Some(Account {
+            server: Server::parse(&self.server).ok()?,
+            username: parse_username(&self.username).ok()?,
+        })
+    }
+}
+
+impl From<&Account> for StoredAccount {
+    fn from(account: &Account) -> Self {
+        Self {
+            server: account.server.to_string(),
+            username: account.username.clone(),
+        }
+    }
 }
 
 pub struct JsonSettingsStore {
@@ -47,6 +76,11 @@ impl SettingsStore for JsonSettingsStore {
         let stored: StoredSettings = serde_json::from_str(&text).map_err(storage_error)?;
         Ok(Settings {
             git_executable: stored.git_executable,
+            accounts: stored
+                .accounts
+                .into_iter()
+                .filter_map(StoredAccount::into_account)
+                .collect(),
         })
     }
 
@@ -54,6 +88,7 @@ impl SettingsStore for JsonSettingsStore {
         let stored = StoredSettings {
             version: FORMAT_VERSION,
             git_executable: settings.git_executable.clone(),
+            accounts: settings.accounts.iter().map(StoredAccount::from).collect(),
         };
         let text = serde_json::to_string_pretty(&stored).map_err(storage_error)?;
         if let Some(folder) = self.file.parent() {
@@ -88,6 +123,10 @@ mod tests {
         let store = store_in(&dir);
         let settings = Settings {
             git_executable: Some(PathBuf::from(r"D:\tools\git\cmd\git.exe")),
+            accounts: vec![Account {
+                server: Server::parse("https://gitlab.example.internal").unwrap(),
+                username: "p9493378".into(),
+            }],
         };
 
         store.save(&settings).unwrap();

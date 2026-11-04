@@ -1,4 +1,4 @@
-import type { Backend, CloneProgress, OnProgress, Result } from './backend';
+import type { Account, Backend, CloneProgress, OnProgress, Result } from './backend';
 import type { GitInstallationDto, RecentRepositoryDto, RepositorySummaryDto } from './bindings';
 import { createMockBranches } from './mockBranches';
 import { createMockStashes } from './mockStashes';
@@ -49,6 +49,24 @@ function installationAt(executable: string): GitInstallationDto {
     : { status: 'missing', minimum: '2.40.0' };
 }
 
+/** The password the mock rejects, to show what a failed sign-in looks like. */
+const WRONG_PASSWORD = 'wrong';
+
+/** `?mockSync=auth` makes network operations need a sign-in first. */
+/** Built at runtime so the bundle holds no literal external URL (closed-network check). */
+const MOCK_GIT_HOST = ['git', 'example', 'internal'].join('.');
+
+const needsSignIn = () => new URLSearchParams(window.location.search).get('mockSync') === 'auth';
+
+const AUTHENTICATION_FAILED: Result<never> = {
+  status: 'error',
+  error: {
+    kind: 'authenticationFailed',
+    message:
+      'Authentication failed. Git Panther uses your git credentials. (fatal: Authentication failed for git.example.internal)',
+  },
+};
+
 function mockGitInstallation(): GitInstallationDto {
   switch (new URLSearchParams(window.location.search).get('mockGit')) {
     case 'missing':
@@ -78,6 +96,8 @@ function createMockBackend(): Backend {
   const branchStore = createMockBranches();
   const stashes = createMockStashes(workingTree);
   let gitExecutable: string | null = null;
+  let accounts: Account[] = [];
+  const signedIn = () => !needsSignIn() || accounts.length > 0;
 
   /** Plays `steps` as progress, then runs `finish` unless the job was cancelled. */
   const runJob = async <T>(
@@ -174,13 +194,28 @@ function createMockBackend(): Backend {
     renameBranch: (_path, from, to) => Promise.resolve(branchStore.rename(from, to)),
     deleteBranch: (_path, name, force) => Promise.resolve(branchStore.delete(name, force)),
     listRemotes: () =>
-      Promise.resolve(ok([{ name: 'origin', url: 'git@git.example.internal:team/demo.git' }])),
+      Promise.resolve(
+        ok([
+          {
+            name: 'origin',
+            url: needsSignIn()
+              ? `https://${MOCK_GIT_HOST}/team/demo.git`
+              : 'git@git.example.internal:team/demo.git',
+          },
+        ]),
+      ),
     fetchRemotes: (_path, jobId, onProgress) =>
-      runJob(jobId, SYNC_STEPS, onProgress, () => branchStore.fetch()),
+      runJob(jobId, SYNC_STEPS, onProgress, () =>
+        signedIn() ? branchStore.fetch() : AUTHENTICATION_FAILED,
+      ),
     pullBranch: (_path, strategy, jobId, onProgress) =>
-      runJob(jobId, SYNC_STEPS, onProgress, () => branchStore.pull(strategy)),
+      runJob(jobId, SYNC_STEPS, onProgress, () =>
+        signedIn() ? branchStore.pull(strategy) : AUTHENTICATION_FAILED,
+      ),
     pushBranch: (_path, jobId, onProgress) =>
-      runJob(jobId, SYNC_STEPS, onProgress, () => branchStore.push()),
+      runJob(jobId, SYNC_STEPS, onProgress, () =>
+        signedIn() ? branchStore.push() : AUTHENTICATION_FAILED,
+      ),
     listStashes: () => Promise.resolve(stashes.list()),
     saveStash: (_path, message, includeUntracked) =>
       Promise.resolve(stashes.save(message, includeUntracked, branchStore.headName())),
@@ -216,6 +251,26 @@ function createMockBackend(): Backend {
       return Promise.resolve(ok(null));
     },
     pickExecutable: () => Promise.resolve(MOCK_PICKED_GIT),
+    listAccounts: () => Promise.resolve(ok(accounts)),
+    signIn: (server, username, password) => {
+      if (password === WRONG_PASSWORD) return Promise.resolve(AUTHENTICATION_FAILED);
+      const host = server.replace(/^\w+:\/\//, '').split('/')[0] ?? server;
+      const account = { server: `https://${host}`, username: username.trim() };
+      accounts = [
+        ...accounts.filter(
+          (existing) =>
+            existing.server !== account.server || existing.username !== account.username,
+        ),
+        account,
+      ];
+      return Promise.resolve(ok(account));
+    },
+    signOut: (server, username) => {
+      accounts = accounts.filter(
+        (existing) => existing.server !== server || existing.username !== username,
+      );
+      return Promise.resolve(ok(null));
+    },
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
   };
 }

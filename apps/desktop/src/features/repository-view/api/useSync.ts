@@ -39,6 +39,10 @@ export function useSync(path: string) {
 
   return {
     run: mutation.mutate,
+    /** Runs the last fetch, pull or push again, e.g. after signing in. */
+    retry: () => {
+      if (mutation.variables) mutation.mutate(mutation.variables);
+    },
     cancel,
     dismiss: mutation.reset,
     progress,

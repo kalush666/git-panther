@@ -53,6 +53,9 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::set_git_executable,
             commands::restart_app,
             commands::set_zoom,
+            commands::list_accounts,
+            commands::sign_in,
+            commands::sign_out,
         ])
         .events(tauri_specta::collect_events![dto::RepositoryChanged])
 }

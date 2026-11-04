@@ -9,6 +9,7 @@ import {
 import { PULL_STRATEGIES, usePullStrategyStore } from '../../../shared/preferences/pullStrategy';
 import { THEME_PREFERENCES, useThemeStore } from '../../../shared/preferences/theme';
 import { Button } from '../../../shared/ui/Button/Button';
+import { AccountsSetting } from './AccountsSetting';
 import { GitExecutableSetting } from './GitExecutableSetting';
 import { SegmentedControl } from './SegmentedControl';
 import styles from './SettingsView.module.css';
@@ -63,6 +64,14 @@ export function SettingsView({ onClose }: SettingsViewProps) {
               value={codeFont}
               onChange={setCodeFont}
             />
+          </Row>
+        </Group>
+        <Group title="Accounts">
+          <Row
+            label="HTTPS git servers"
+            hint="Sign in with your personal number and password. The password is kept by your git credential manager."
+          >
+            <AccountsSetting />
           </Row>
         </Group>
         <Group title="Git">

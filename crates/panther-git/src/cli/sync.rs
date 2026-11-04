@@ -61,7 +61,7 @@ const NETWORK_SIGNS: &[&str] = &[
 ];
 
 /// Maps git's wording to the errors the UI explains specifically.
-fn classify(messages: &[String]) -> RepositoryError {
+pub fn classify(messages: &[String]) -> RepositoryError {
     let text = messages.join("\n");
     let lower = text.to_lowercase();
     let details = failure_details(messages);

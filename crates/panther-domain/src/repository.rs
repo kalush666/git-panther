@@ -179,6 +179,14 @@ pub enum RepositoryError {
     UnresolvedConflicts,
     #[error("{path} cannot be used as git: {reason}")]
     InvalidGitExecutable { path: PathBuf, reason: String },
+    #[error(transparent)]
+    InvalidServer(#[from] crate::account::InvalidServer),
+    #[error(transparent)]
+    InvalidCredentials(#[from] crate::account::InvalidCredentials),
+    #[error(
+        "Git is not set up to remember passwords. Install Git for Windows with Git Credential Manager, or configure credential.helper."
+    )]
+    CredentialHelperMissing,
 }
 
 #[cfg(test)]

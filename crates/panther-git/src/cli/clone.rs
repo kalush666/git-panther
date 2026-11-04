@@ -36,8 +36,13 @@ impl GitCliCloner {
             .arg(&request.destination);
         match run_transfer(&mut command, on_progress, cancel) {
             Ok(output) if output.succeeded => Ok(()),
-            Ok(output) => Err(RepositoryError::CloneFailed {
-                details: failure_details(&output.messages),
+            // Sign-in and network problems get their specific explanation.
+            Ok(output) => Err(match super::sync::classify(&output.messages) {
+                error @ (RepositoryError::AuthenticationFailed { .. }
+                | RepositoryError::NetworkFailed { .. }) => error,
+                _ => RepositoryError::CloneFailed {
+                    details: failure_details(&output.messages),
+                },
             }),
             Err(TransferError::Cancelled) => Err(RepositoryError::Cancelled),
             Err(TransferError::Io(error)) => Err(RepositoryError::CloneFailed {

@@ -1,4 +1,5 @@
 import type {
+  AccountDto,
   AppError,
   BranchDto_Serialize,
   CloneProgressDto_Serialize,
@@ -40,6 +41,7 @@ export type Stash = StashDto;
 export type Operation = OperationDto;
 export type ConflictSide = ConflictSideDto;
 export type Settings = SettingsDto_Serialize;
+export type Account = AccountDto;
 
 /** Receives progress of a long-running network job. */
 export type OnProgress = (progress: CloneProgress) => void;
@@ -133,6 +135,18 @@ export interface Backend {
   setZoom(scale: number): Promise<Result<null>>;
   /** Shows the native file picker for a program; resolves to `null` if the user cancels. */
   pickExecutable(title: string): Promise<string | null>;
+  listAccounts(): Promise<Result<Account[]>>;
+  /**
+   * Hands the credentials to git's credential helper. With `repository`,
+   * they are first tried against its remote on that server.
+   */
+  signIn(
+    server: string,
+    username: string,
+    password: string,
+    repository: string | null,
+  ): Promise<Result<Account>>;
+  signOut(server: string, username: string): Promise<Result<null>>;
   /** Shows the native folder picker; resolves to `null` if the user cancels. */
   pickFolder(title: string): Promise<string | null>;
 }
