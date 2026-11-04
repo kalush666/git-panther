@@ -204,6 +204,8 @@ pub enum RepositoryError {
     NothingToUndo,
     #[error("The repository changed since that action, so it can no longer be undone safely.")]
     UndoOutdated,
+    #[error(transparent)]
+    InvalidRebasePlan(#[from] crate::history::InvalidRebasePlan),
 }
 
 #[cfg(test)]

@@ -91,6 +91,7 @@ impl AppServices {
             history: Arc::new(History::new(
                 history_editor,
                 Arc::new(GitTagStore::new(git.clone())),
+                Arc::new(GitCommitLog::new(git.clone())),
                 undo.clone(),
             )),
             accounts: Arc::new(Accounts::new(

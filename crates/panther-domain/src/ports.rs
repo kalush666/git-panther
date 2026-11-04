@@ -8,8 +8,9 @@ use std::path::Path;
 use crate::account::{Account, Password};
 use crate::branch::{Branch, BranchName};
 use crate::commit::{BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
+use crate::conflict::ConflictChunk;
 use crate::git_installation::{GitVersion, GitVersionParseError};
-use crate::history::{HeadSnapshot, ResetMode, TagName};
+use crate::history::{HeadSnapshot, RebaseStep, ResetMode, TagName};
 use crate::recent::RecentRepositories;
 use crate::remote::{PullStrategy, Remote};
 use crate::repository::{
@@ -180,6 +181,28 @@ pub trait ConflictResolver: Send + Sync {
         repository: &Path,
         path: &str,
         side: ConflictSide,
+    ) -> Result<(), RepositoryError>;
+
+    /// The conflicted file `path` split into agreed text and conflicts,
+    /// with "mine" and "incoming" as the user sees them.
+    ///
+    /// # Errors
+    /// [`RepositoryError::NotFound`] if the file is missing.
+    fn conflict_chunks(
+        &self,
+        repository: &Path,
+        path: &str,
+    ) -> Result<Vec<ConflictChunk>, RepositoryError>;
+
+    /// Writes the user's resolution of `path` and stages it.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the file cannot be written or staged.
+    fn resolve_with(
+        &self,
+        repository: &Path,
+        path: &str,
+        content: &str,
     ) -> Result<(), RepositoryError>;
 
     /// Stages files the user resolved by hand.
@@ -448,6 +471,28 @@ pub trait HistoryEditor: Send + Sync {
     /// # Errors
     /// [`RepositoryError::CheckoutConflict`] if uncommitted changes would be lost.
     fn checkout_commit(&self, repository: &Path, commit: &CommitId) -> Result<(), RepositoryError>;
+
+    /// Commits on the current branch after `base`, oldest first, leaving
+    /// out merge commits (an interactive rebase flattens them).
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] if `base` is unknown.
+    fn commits_since(
+        &self,
+        repository: &Path,
+        base: &CommitId,
+    ) -> Result<Vec<CommitId>, RepositoryError>;
+
+    /// Rewrites the commits after `base` as `steps` says, in that order.
+    ///
+    /// # Errors
+    /// [`RepositoryError::OperationConflict`] or [`RepositoryError::CheckoutConflict`].
+    fn rebase_interactive(
+        &self,
+        repository: &Path,
+        base: &CommitId,
+        steps: &[RebaseStep],
+    ) -> Result<(), RepositoryError>;
 
     /// Puts HEAD back where `snapshot` says, keeping uncommitted changes.
     ///

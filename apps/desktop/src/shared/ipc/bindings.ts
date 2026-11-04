@@ -140,6 +140,14 @@ export const commands = {
 	fileHistory: (path: string, file: string) => typedError<CommitSummaryDto[], AppError>(__TAURI_INVOKE("file_history", { path, file })),
 	/**  Who last changed each line of `file`. */
 	blameFile: (path: string, file: string) => typedError<BlameLineDto[], AppError>(__TAURI_INVOKE("blame_file", { path, file })),
+	/**  The commits an interactive rebase onto `base` would rewrite, oldest first. */
+	rebasePlan: (path: string, base: string) => typedError<CommitSummaryDto[], AppError>(__TAURI_INVOKE("rebase_plan", { path, base })),
+	/**  Rewrites the commits after `base` as `steps` says. */
+	rebaseInteractive: (path: string, base: string, steps: RebaseStepDto[]) => typedError<null, AppError>(__TAURI_INVOKE("rebase_interactive", { path, base, steps })),
+	/**  A conflicted file split into agreed text and conflicts. */
+	conflictChunks: (path: string, file: string) => typedError<ConflictChunkDto_Serialize[], AppError>(__TAURI_INVOKE("conflict_chunks", { path, file })),
+	/**  Writes the user's resolution of a conflicted file and stages it. */
+	resolveConflictWith: (path: string, file: string, content: string) => typedError<null, AppError>(__TAURI_INVOKE("resolve_conflict_with", { path, file, content })),
 };
 
 /** Events */
@@ -163,7 +171,7 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "undoOutdated" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "undoOutdated" | "invalidRebasePlan" | "watchFailed" | "internal";
 
 /**  Who last changed one line. */
 export type BlameLineDto = {
@@ -256,6 +264,15 @@ export type CommitSummaryDto = {
 	summary: string,
 	author: PersonDto,
 };
+
+/**  A piece of a conflicted file. */
+export type ConflictChunkDto = ConflictChunkDto_Serialize | ConflictChunkDto_Deserialize;
+
+/**  A piece of a conflicted file. */
+export type ConflictChunkDto_Deserialize = { kind: "common"; text: string } | { kind: "conflict"; mine: string; base?: string | null; incoming: string };
+
+/**  A piece of a conflicted file. */
+export type ConflictChunkDto_Serialize = { kind: "common"; text: string } | { kind: "conflict"; mine: string; base: string | null; incoming: string };
 
 /**  Which version of a conflicted file to keep. */
 export type ConflictSideDto = "mine" | "incoming";
@@ -377,6 +394,15 @@ export type PersonDto = {
 
 /**  How a pull combines fetched work with local commits. */
 export type PullStrategyDto = "fastForwardOnly" | "merge" | "rebase";
+
+/**  What an interactive rebase does with one commit. */
+export type RebaseActionDto = { kind: "pick" } | { kind: "reword"; message: string } | { kind: "squash" } | { kind: "fixup" } | { kind: "drop" };
+
+/**  One line of an interactive rebase, oldest commit first. */
+export type RebaseStepDto = {
+	commit: string,
+	action: RebaseActionDto,
+};
 
 /**  An entry in the recent-repositories list. */
 export type RecentRepositoryDto = {

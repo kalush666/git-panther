@@ -7,6 +7,7 @@
 pub mod account;
 pub mod branch;
 pub mod commit;
+pub mod conflict;
 pub mod git_installation;
 pub mod history;
 pub mod ports;

@@ -52,6 +52,7 @@ pub enum AppErrorKind {
     TagNotFound,
     NothingToUndo,
     UndoOutdated,
+    InvalidRebasePlan,
     WatchFailed,
     Internal,
 }
@@ -137,6 +138,7 @@ impl From<RepositoryError> for AppError {
             RepositoryError::TagNotFound { .. } => AppErrorKind::TagNotFound,
             RepositoryError::NothingToUndo => AppErrorKind::NothingToUndo,
             RepositoryError::UndoOutdated => AppErrorKind::UndoOutdated,
+            RepositoryError::InvalidRebasePlan(_) => AppErrorKind::InvalidRebasePlan,
         };
         Self::new(kind, error.to_string())
     }

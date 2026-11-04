@@ -8,8 +8,9 @@ use panther_domain::branch::{Branch, BranchKind};
 use panther_domain::commit::{
     BlameLine, ChangeKind, CommitDetails, CommitSummary, FileChange, Person, RefKind, RefLabel,
 };
+use panther_domain::conflict::ConflictChunk;
 use panther_domain::git_installation::{GitInstallation, GitVersion};
-use panther_domain::history::ResetMode;
+use panther_domain::history::{RebaseAction, RebaseStep, ResetMode};
 use panther_domain::ports::HunkAction;
 use panther_domain::remote::{PullStrategy, Remote};
 use panther_domain::repository::{CloneProgress, HeadState, RepositorySummary, repository_name};
@@ -739,6 +740,74 @@ impl From<BlameLine> for BlameLineDto {
             time: line.time,
             summary: line.summary,
             content: line.content,
+        }
+    }
+}
+
+/// What an interactive rebase does with one commit.
+#[derive(Debug, Clone, Deserialize, Type)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum RebaseActionDto {
+    Pick,
+    Reword { message: String },
+    Squash,
+    Fixup,
+    Drop,
+}
+
+/// One line of an interactive rebase, oldest commit first.
+#[derive(Debug, Clone, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RebaseStepDto {
+    pub commit: String,
+    pub action: RebaseActionDto,
+}
+
+impl RebaseStepDto {
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] for a malformed commit id.
+    pub fn into_step(self) -> Result<RebaseStep, panther_domain::repository::RepositoryError> {
+        let commit = panther_domain::commit::CommitId::parse(&self.commit).map_err(|error| {
+            panther_domain::repository::RepositoryError::CommitNotFound { id: error.input }
+        })?;
+        let action = match self.action {
+            RebaseActionDto::Pick => RebaseAction::Pick,
+            RebaseActionDto::Reword { message } => RebaseAction::Reword(message),
+            RebaseActionDto::Squash => RebaseAction::Squash,
+            RebaseActionDto::Fixup => RebaseAction::Fixup,
+            RebaseActionDto::Drop => RebaseAction::Drop,
+        };
+        Ok(RebaseStep { commit, action })
+    }
+}
+
+/// A piece of a conflicted file.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum ConflictChunkDto {
+    Common {
+        text: String,
+    },
+    Conflict {
+        mine: String,
+        base: Option<String>,
+        incoming: String,
+    },
+}
+
+impl From<ConflictChunk> for ConflictChunkDto {
+    fn from(chunk: ConflictChunk) -> Self {
+        match chunk {
+            ConflictChunk::Common(text) => Self::Common { text },
+            ConflictChunk::Conflict {
+                mine,
+                base,
+                incoming,
+            } => Self::Conflict {
+                mine,
+                base,
+                incoming,
+            },
         }
     }
 }

@@ -4,9 +4,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use panther_domain::commit::CommitId;
-use panther_domain::history::{ResetMode, TagName};
-use panther_domain::ports::{HistoryEditor, TagStore};
+use panther_domain::commit::{CommitId, CommitSummary};
+use panther_domain::history::{RebaseStep, ResetMode, TagName, check_rebase_plan};
+use panther_domain::ports::{CommitLog, HistoryEditor, TagStore};
 use panther_domain::repository::RepositoryError;
 
 use crate::undo::UndoLog;
@@ -14,6 +14,7 @@ use crate::undo::UndoLog;
 pub struct History {
     editor: Arc<dyn HistoryEditor>,
     tags: Arc<dyn TagStore>,
+    log: Arc<dyn CommitLog>,
     undo: Arc<UndoLog>,
 }
 
@@ -29,9 +30,47 @@ impl History {
     pub fn new(
         editor: Arc<dyn HistoryEditor>,
         tags: Arc<dyn TagStore>,
+        log: Arc<dyn CommitLog>,
         undo: Arc<UndoLog>,
     ) -> Self {
-        Self { editor, tags, undo }
+        Self {
+            editor,
+            tags,
+            log,
+            undo,
+        }
+    }
+
+    /// The commits an interactive rebase onto `base` would rewrite, oldest
+    /// first.
+    ///
+    /// # Errors
+    /// An unknown commit, or [`HistoryEditor::commits_since`] errors.
+    pub fn rebase_plan(
+        &self,
+        repository: &Path,
+        base: &str,
+    ) -> Result<Vec<CommitSummary>, RepositoryError> {
+        let ids = self.editor.commits_since(repository, &commit_id(base)?)?;
+        self.log.summaries(repository, &ids)
+    }
+
+    /// # Errors
+    /// [`RepositoryError::InvalidRebasePlan`], an unknown commit, or
+    /// [`HistoryEditor::rebase_interactive`] errors.
+    pub fn rebase_interactive(
+        &self,
+        repository: &Path,
+        base: &str,
+        steps: &[RebaseStep],
+    ) -> Result<(), RepositoryError> {
+        check_rebase_plan(steps)?;
+        let base = commit_id(base)?;
+        self.undo.track(
+            repository,
+            format!("Interactive rebase onto {}", short(&base)),
+            || self.editor.rebase_interactive(repository, &base, steps),
+        )
     }
 
     /// # Errors
