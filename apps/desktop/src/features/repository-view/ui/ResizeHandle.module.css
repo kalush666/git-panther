@@ -1,0 +1,29 @@
+.handle {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  width: var(--gp-space-1);
+  margin: 0 calc(var(--gp-space-1) / -2);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.handle::after {
+  position: absolute;
+  inset: 0;
+  left: 50%;
+  width: 2px;
+  background: transparent;
+  transform: translateX(-50%);
+  transition: background var(--gp-duration-fast) var(--gp-ease-out);
+  content: '';
+}
+
+.handle:hover::after,
+.handle:focus-visible::after {
+  background: var(--gp-accent);
+}
+
+.handle:focus-visible {
+  outline: none;
+}

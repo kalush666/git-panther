@@ -1,6 +1,6 @@
 import * as ContextMenu from '@radix-ui/react-context-menu';
 import { ChevronRight, GitBranch, TriangleAlert, Undo2, X } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 
 import { useCommands } from '../../../shared/commands';
 import type { GraphEntryDto } from '../../../shared/ipc';
@@ -10,6 +10,7 @@ import { useLfsStatus } from '../api/useLayout';
 import { useRepository } from '../api/useRepository';
 import { useStageFiles, useWorkingTreeStatus, type DiffSource } from '../api/useWorkingTree';
 import { describeHead } from '../model/describeHead';
+import { usePanelWidths } from '../model/workspace';
 import { BranchSidebar } from './BranchSidebar';
 import { CommitDetailsPanel } from './CommitDetailsPanel';
 import { CommitGraph } from './CommitGraph';
@@ -17,6 +18,7 @@ import { ConflictEditor } from './ConflictEditor';
 import { DiffViewer } from './DiffViewer';
 import { FileHistoryView, type FileView } from './FileHistoryView';
 import { RebasePanel } from './RebasePanel';
+import { ResizeHandle } from './ResizeHandle';
 import { StagingPanel } from './StagingPanel';
 import { StashActions } from './StashActions';
 import { SyncToolbar } from './SyncToolbar';
@@ -102,6 +104,29 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
         },
       })),
   ]);
+  const sidebarWidth = usePanelWidths((state) => state.sidebar);
+  const detailsWidth = usePanelWidths((state) => state.details);
+  // Escape steps back from a diff, history, blame, conflict or rebase view.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+      ) {
+        return;
+      }
+      if (history.rebaseTarget) history.closeInteractiveRebase();
+      else if (conflictFile) setConflictFile(null);
+      else if (fileView) setFileView(null);
+      else if (diff) setDiff(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [history, conflictFile, fileView, diff]);
   const keepSelectedCommit = useCallback((commitId: string | null) => {
     setSelectedCommitId(commitId);
   }, []);
@@ -140,7 +165,16 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
   const current: Selection | null = selection ?? (changeCount > 0 ? { kind: 'workingCopy' } : null);
   const isWorkingCopy = current?.kind === 'workingCopy';
   return (
-    <section className={styles.view} aria-labelledby="repository-title">
+    <section
+      className={styles.view}
+      aria-labelledby="repository-title"
+      style={
+        {
+          ...(sidebarWidth ? { '--gp-sidebar-width': `${String(sidebarWidth)}px` } : {}),
+          ...(detailsWidth ? { '--gp-details-width': `${String(detailsWidth)}px` } : {}),
+        } as CSSProperties
+      }
+    >
       <header className={styles.header}>
         <div className={styles.crumb}>
           <span className={styles.crumbLabel}>Repository</span>
@@ -213,6 +247,12 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
           hostingActions={hostingActions}
           onOpenRepository={onOpenRepository}
         />
+        <ResizeHandle
+          panel="sidebar"
+          label="Resize the branch list"
+          direction={1}
+          currentWidth={() => panelWidth('sidebar')}
+        />
         <div className={styles.graph}>
           {history.rebaseTarget ? (
             <RebasePanel path={path} target={history.rebaseTarget} history={history} />
@@ -260,6 +300,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
                 setSelection({ kind: 'commit', index });
               }}
               onSelectedCommitChange={keepSelectedCommit}
+              onCheckoutRef={branchActions.checkout}
               rowMenu={(entry) => (
                 <CommitMenu entry={entry} actions={branchActions} history={history} />
               )}
@@ -277,6 +318,12 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
             />
           )}
         </div>
+        <ResizeHandle
+          panel="details"
+          label="Resize the side panel"
+          direction={-1}
+          currentWidth={() => panelWidth('details')}
+        />
         {isWorkingCopy ? (
           <StagingPanel
             path={path}
@@ -286,6 +333,9 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
               setDiff({ kind: 'workingTree', file, side });
             }}
             onResolveFile={setConflictFile}
+            onShowHistory={(file) => {
+              setFileView({ kind: 'history', file });
+            }}
           />
         ) : (
           <CommitDetailsPanel
@@ -302,6 +352,11 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
       {history.dropMenu}
     </section>
   );
+}
+
+/** The rendered width of a panel, to start a resize from. */
+function panelWidth(panel: 'sidebar' | 'details'): number {
+  return document.querySelector(`[data-panel="${panel}"]`)?.getBoundingClientRect().width ?? 0;
 }
 
 const RESET_MODES = [

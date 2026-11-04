@@ -23,14 +23,14 @@ export function CommitDetailsPanel({ path, commitId, onOpenFile }: CommitDetails
 
   if (commitId === null) {
     return (
-      <aside className={styles.panel} aria-label="Commit details">
+      <aside data-panel="details" className={styles.panel} aria-label="Commit details">
         <p className={styles.empty}>Select a commit to see its details.</p>
       </aside>
     );
   }
   if (details.isError) {
     return (
-      <aside className={styles.panel} aria-label="Commit details">
+      <aside data-panel="details" className={styles.panel} aria-label="Commit details">
         <p className={styles.empty} role="alert">
           {details.error.message}
         </p>
@@ -38,13 +38,15 @@ export function CommitDetailsPanel({ path, commitId, onOpenFile }: CommitDetails
     );
   }
   if (!details.data) {
-    return <aside className={styles.panel} aria-label="Commit details" aria-busy />;
+    return (
+      <aside data-panel="details" className={styles.panel} aria-label="Commit details" aria-busy />
+    );
   }
 
   const { message, author, committer, parents, changes, id } = details.data;
   const [subject = '', ...body] = message.split('\n');
   return (
-    <aside className={styles.panel} aria-label="Commit details">
+    <aside data-panel="details" className={styles.panel} aria-label="Commit details">
       <h2 className={styles.subject}>{subject}</h2>
       {body.join('\n').trim() && <p className={styles.body}>{body.join('\n').trim()}</p>}
       <dl className={styles.facts}>
