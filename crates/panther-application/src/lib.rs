@@ -4,6 +4,7 @@
 //! ports, which the composition root fills with concrete adapters.
 
 pub mod accounts;
+pub mod bisect;
 pub mod branches;
 pub mod check_git_installation;
 pub mod clone_repository;

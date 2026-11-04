@@ -4,6 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use panther_application::accounts::Accounts;
+use panther_application::bisect::Bisect;
 use panther_application::branches::Branches;
 use panther_application::check_git_installation::CheckGitInstallation;
 use panther_application::clone_repository::CloneRepository;
@@ -23,7 +24,7 @@ use panther_application::sync::Sync;
 use panther_application::undo::UndoLog;
 use panther_application::working_copy::WorkingCopy;
 use panther_git::{
-    Git2RepositoryOpener, GitBranchStore, GitCliCloner, GitCommitLog, GitCommitWriter,
+    Git2RepositoryOpener, GitBisector, GitBranchStore, GitCliCloner, GitCommitLog, GitCommitWriter,
     GitConflictResolver, GitCredentialStore, GitHistoryEditor, GitIdentityConfig, GitRemoteConfig,
     GitRemoteSync, GitRepositoryLayout, GitStashStore, GitTagStore, GitWorkingTree, SystemGitProbe,
 };
@@ -52,6 +53,7 @@ pub struct AppServices {
     pub accounts: Arc<Accounts>,
     pub history: Arc<History>,
     pub gitflow: Arc<Gitflow>,
+    pub bisect: Arc<Bisect>,
     pub remotes: Arc<Remotes>,
     pub layout: Arc<Layout>,
     pub identities: Arc<Identities>,
@@ -106,6 +108,7 @@ impl AppServices {
                 git.clone(),
             )))),
             layout: Arc::new(Layout::new(Arc::new(GitRepositoryLayout::new(git.clone())))),
+            bisect: Arc::new(Bisect::new(Arc::new(GitBisector::new(git.clone())))),
             gitflow: Arc::new(Gitflow::new(
                 Arc::new(GitBranchStore::new(git.clone())),
                 history_editor.clone(),

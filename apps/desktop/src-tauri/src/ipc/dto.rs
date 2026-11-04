@@ -5,11 +5,12 @@ use std::path::Path;
 use panther_application::commit_graph::{GraphEntry, GraphPage};
 use panther_application::gitflow::FlowFinished;
 use panther_domain::account::Account;
+use panther_domain::bisect::{BisectStatus, BisectVerdict};
 use panther_domain::branch::{Branch, BranchKind};
 use panther_domain::commit::{
     BlameLine, ChangeKind, CommitDetails, CommitSummary, FileChange, Person, RefKind, RefLabel,
 };
-use panther_domain::commit::{Comparison, ReflogEntry};
+use panther_domain::commit::{CommitId, Comparison, ReflogEntry};
 use panther_domain::conflict::ConflictChunk;
 use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::gitflow::FlowKind;
@@ -1115,6 +1116,51 @@ impl From<PullRequestReview> for PullRequestReviewDto {
                 .map(ReviewCommentDto::from)
                 .collect(),
             mergeable: review.mergeable,
+        }
+    }
+}
+
+/// A verdict on the commit a bisect checked out.
+#[derive(Debug, Clone, Copy, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum BisectVerdictDto {
+    Good,
+    Bad,
+    Skip,
+}
+
+impl From<BisectVerdictDto> for BisectVerdict {
+    fn from(verdict: BisectVerdictDto) -> Self {
+        match verdict {
+            BisectVerdictDto::Good => Self::Good,
+            BisectVerdictDto::Bad => Self::Bad,
+            BisectVerdictDto::Skip => Self::Skip,
+        }
+    }
+}
+
+/// Where a bisect stands.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BisectStatusDto {
+    pub active: bool,
+    pub testing: Option<String>,
+    pub steps_left: Option<u32>,
+    pub first_bad: Option<String>,
+    pub good: Vec<String>,
+    pub bad: Vec<String>,
+}
+
+impl From<BisectStatus> for BisectStatusDto {
+    fn from(status: BisectStatus) -> Self {
+        let ids = |ids: Vec<CommitId>| ids.iter().map(ToString::to_string).collect();
+        Self {
+            active: status.active,
+            testing: status.testing.as_ref().map(ToString::to_string),
+            steps_left: status.steps_left,
+            first_bad: status.first_bad.as_ref().map(ToString::to_string),
+            good: ids(status.good),
+            bad: ids(status.bad),
         }
     }
 }
