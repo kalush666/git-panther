@@ -7,6 +7,7 @@ use std::sync::Arc;
 use panther_domain::account::{Account, Password, Server};
 use panther_domain::hosting::{
     HostedProject, HostingAccess, HostingKind, Issue, NewPullRequest, PullRequest,
+    PullRequestReview,
 };
 use panther_domain::ports::{CredentialStore, HostingProvider, RemoteSync, SettingsStore};
 use panther_domain::repository::RepositoryError;
@@ -197,6 +198,49 @@ impl Hosting {
     ) -> Result<PullRequest, RepositoryError> {
         self.with_session(repository, |provider, project, token| {
             provider.create_pull_request(project, token, request)
+        })
+    }
+
+    /// Description, approvals and comments of request `number`.
+    ///
+    /// # Errors
+    /// Like [`Hosting::pull_requests`].
+    pub fn review(
+        &self,
+        repository: &Path,
+        number: u64,
+    ) -> Result<PullRequestReview, RepositoryError> {
+        self.with_session(repository, |provider, project, token| {
+            provider.review(project, token, number)
+        })
+    }
+
+    /// # Errors
+    /// Like [`Hosting::pull_requests`].
+    pub fn comment(
+        &self,
+        repository: &Path,
+        number: u64,
+        body: &str,
+    ) -> Result<(), RepositoryError> {
+        self.with_session(repository, |provider, project, token| {
+            provider.comment(project, token, number, body)
+        })
+    }
+
+    /// # Errors
+    /// Like [`Hosting::pull_requests`].
+    pub fn approve(&self, repository: &Path, number: u64) -> Result<(), RepositoryError> {
+        self.with_session(repository, |provider, project, token| {
+            provider.approve(project, token, number)
+        })
+    }
+
+    /// # Errors
+    /// Like [`Hosting::pull_requests`].
+    pub fn merge(&self, repository: &Path, number: u64) -> Result<(), RepositoryError> {
+        self.with_session(repository, |provider, project, token| {
+            provider.merge(project, token, number)
         })
     }
 
@@ -396,6 +440,33 @@ mod tests {
         }
 
         fn issues(&self, _: &HostedProject, _: &Password) -> Result<Vec<Issue>, RepositoryError> {
+            unreachable!()
+        }
+
+        fn review(
+            &self,
+            _: &HostedProject,
+            _: &Password,
+            _: u64,
+        ) -> Result<PullRequestReview, RepositoryError> {
+            unreachable!()
+        }
+
+        fn comment(
+            &self,
+            _: &HostedProject,
+            _: &Password,
+            _: u64,
+            _: &str,
+        ) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
+
+        fn approve(&self, _: &HostedProject, _: &Password, _: u64) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
+
+        fn merge(&self, _: &HostedProject, _: &Password, _: u64) -> Result<(), RepositoryError> {
             unreachable!()
         }
 

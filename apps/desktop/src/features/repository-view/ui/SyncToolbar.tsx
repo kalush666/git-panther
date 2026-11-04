@@ -34,7 +34,21 @@ const ICON_SIZE = 14;
 type Sync = ReturnType<typeof useSync>;
 
 /** Fetch, Pull and Push for the open repository, with progress and errors. */
-export function SyncToolbar({ path, sync }: { path: string; sync: Sync }) {
+/** Offered after a push of a branch that has no open request yet. */
+export interface RequestOffer {
+  label: string;
+  open: () => void;
+}
+
+export function SyncToolbar({
+  path,
+  sync,
+  offer,
+}: {
+  path: string;
+  sync: Sync;
+  offer: RequestOffer | null;
+}) {
   useAutoFetch(path, sync.running === null);
   const branches = useBranches(path);
   const strategy = usePullStrategyStore((state) => state.strategy);
@@ -197,7 +211,7 @@ export function SyncToolbar({ path, sync }: { path: string; sync: Sync }) {
           </DropdownMenu.Root>
         </div>
       </div>
-      <SyncStatus path={path} sync={sync} />
+      <SyncStatus path={path} sync={sync} offer={offer} />
     </div>
   );
 }
@@ -235,7 +249,15 @@ export function SyncSignIn({ path, sync }: { path: string; sync: Sync }) {
   );
 }
 
-function SyncStatus({ path, sync }: { path: string; sync: Sync }) {
+function SyncStatus({
+  path,
+  sync,
+  offer,
+}: {
+  path: string;
+  sync: Sync;
+  offer: RequestOffer | null;
+}) {
   const server = useRemoteServer(path);
 
   if (sync.running) {
@@ -274,25 +296,56 @@ function SyncStatus({ path, sync }: { path: string; sync: Sync }) {
     );
   }
   if (sync.succeeded) {
-    return <SyncDone label={DONE_LABEL[sync.succeeded]} onDone={sync.dismiss} />;
+    return (
+      <SyncDone
+        label={DONE_LABEL[sync.succeeded]}
+        offer={sync.succeeded === 'push' ? offer : null}
+        onDone={sync.dismiss}
+      />
+    );
   }
   return null;
 }
 
 /** How long "Fetched" / "Pushed" stays before it clears itself. */
 const DONE_MS = 4_000;
+/** Longer when it offers to open a request, so there is time to click. */
+const OFFER_MS = 12_000;
 
-function SyncDone({ label, onDone }: { label: string; onDone: () => void }) {
+function SyncDone({
+  label,
+  offer,
+  onDone,
+}: {
+  label: string;
+  offer: RequestOffer | null;
+  onDone: () => void;
+}) {
+  const hasOffer = offer !== null;
   useEffect(() => {
-    const timer = setTimeout(onDone, DONE_MS);
+    const timer = setTimeout(onDone, hasOffer ? OFFER_MS : DONE_MS);
     return () => {
       clearTimeout(timer);
     };
-  }, [onDone]);
+  }, [onDone, hasOffer]);
   return (
-    <p className={styles.done} role="status">
-      {label}
-    </p>
+    <>
+      <p className={styles.done} role="status">
+        {label}
+      </p>
+      {offer && (
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            onDone();
+            offer.open();
+          }}
+        >
+          {offer.label}
+        </Button>
+      )}
+    </>
   );
 }
 

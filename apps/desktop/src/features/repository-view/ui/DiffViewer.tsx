@@ -46,12 +46,7 @@ export function DiffViewer({ path, source, onClose, onShowHistory, onShowBlame }
   const [selection, setSelection] = useState<LineSelection>({});
   // Lines are picked in the unified view, on uncommitted changes only.
   const canPickLines = source.kind === 'workingTree' && layout === 'unified';
-  const sideLabel =
-    source.kind === 'commit'
-      ? `in ${source.commitId.slice(0, 7)}`
-      : source.side === 'staged'
-        ? 'staged'
-        : 'unstaged';
+  const sideLabel = describeSource(source);
 
   const runHunk = (index: number, action: HunkAction) => {
     const hunk = diff.data?.hunks[index];
@@ -388,4 +383,16 @@ function SplitCell({
       </td>
     </>
   );
+}
+
+/** Where the diff comes from, e.g. "in 1a2b3c4" or "staged". */
+function describeSource(source: DiffSource): string {
+  switch (source.kind) {
+    case 'commit':
+      return `in ${source.commitId.slice(0, 7)}`;
+    case 'compare':
+      return `${source.from.slice(0, 7)}..${source.to.slice(0, 7)}`;
+    case 'workingTree':
+      return source.side;
+  }
 }

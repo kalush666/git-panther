@@ -7,11 +7,13 @@ use std::path::Path;
 
 use crate::account::{Account, Password, Server};
 use crate::branch::{Branch, BranchName};
-use crate::commit::{BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
+use crate::commit::{
+    BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, Comparison, RefLabel,
+};
 use crate::conflict::ConflictChunk;
 use crate::git_installation::{GitVersion, GitVersionParseError};
 use crate::history::{HeadSnapshot, RebaseStep, ResetMode, TagName};
-use crate::hosting::{HostedProject, Issue, NewPullRequest, PullRequest};
+use crate::hosting::{HostedProject, Issue, NewPullRequest, PullRequest, PullRequestReview};
 use crate::identity::Identity;
 use crate::layout::{LfsStatus, Submodule, Worktree};
 use crate::recent::RecentRepositories;
@@ -471,6 +473,31 @@ pub trait CommitLog: Send + Sync {
         id: &CommitId,
         path: &str,
     ) -> Result<FileDiff, RepositoryError>;
+
+    /// What revision `head` changes since it forked from revision `base`
+    /// (branch names, tags or commit ids).
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] if a revision is unknown, or
+    /// [`RepositoryError::Git`] when they share no history.
+    fn compare(
+        &self,
+        repository: &Path,
+        base: &str,
+        head: &str,
+    ) -> Result<Comparison, RepositoryError>;
+
+    /// How `path` differs between the trees of commits `from` and `to`.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] if a commit is unknown.
+    fn compare_file_diff(
+        &self,
+        repository: &Path,
+        from: &CommitId,
+        to: &CommitId,
+        path: &str,
+    ) -> Result<FileDiff, RepositoryError>;
 }
 
 /// Opens existing repositories and creates new ones on the local disk.
@@ -715,6 +742,51 @@ pub trait HostingProvider: Send + Sync {
         project: &HostedProject,
         token: &Password,
     ) -> Result<Vec<Issue>, RepositoryError>;
+
+    /// Description, approvals and comments of request `number`.
+    ///
+    /// # Errors
+    /// Like [`HostingProvider::pull_requests`].
+    fn review(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+        number: u64,
+    ) -> Result<PullRequestReview, RepositoryError>;
+
+    /// Adds a comment to request `number`.
+    ///
+    /// # Errors
+    /// Like [`HostingProvider::pull_requests`].
+    fn comment(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+        number: u64,
+        body: &str,
+    ) -> Result<(), RepositoryError>;
+
+    /// Approves request `number` as the token's user.
+    ///
+    /// # Errors
+    /// [`RepositoryError::HostingFailed`] e.g. when the user may not approve.
+    fn approve(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+        number: u64,
+    ) -> Result<(), RepositoryError>;
+
+    /// Merges request `number` on the server.
+    ///
+    /// # Errors
+    /// [`RepositoryError::HostingFailed`] when it cannot be merged yet.
+    fn merge(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+        number: u64,
+    ) -> Result<(), RepositoryError>;
 
     /// Trades the user's git sign-in for an API token, where the server
     /// allows it (GitLab's password grant). `None` when the server refuses.

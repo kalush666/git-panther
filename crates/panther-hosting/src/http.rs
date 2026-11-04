@@ -40,6 +40,19 @@ pub fn json<T: DeserializeOwned>(
         })
 }
 
+/// Sends `request` and only checks that it succeeded.
+///
+/// # Errors
+/// As [`json`].
+pub fn send(request: RequestBuilder, server: &str) -> Result<(), RepositoryError> {
+    let response = request
+        .send()
+        .map_err(|error| RepositoryError::NetworkFailed {
+            details: error.to_string(),
+        })?;
+    checked(response, server).map(drop)
+}
+
 /// The response when it succeeded.
 ///
 /// # Errors

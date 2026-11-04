@@ -28,6 +28,8 @@ use crate::infra::jobs::JobRegistry;
 use crate::infra::watcher::RepositoryWatcher;
 use panther_application::accounts::SignIn;
 use panther_domain::hosting::NewPullRequest;
+
+use super::dto::{ComparisonDto, PullRequestReviewDto};
 use panther_domain::remote::{PushOptions, RemoteName};
 
 /// Runs blocking work (git, disk) off the async runtime's worker threads.
@@ -944,6 +946,93 @@ pub async fn create_pull_request(
         };
         Ok(hosting
             .create_pull_request(&PathBuf::from(path), &request)?
+            .into())
+    })
+    .await
+}
+
+/// Description, approvals and comments of request `number`.
+#[tauri::command]
+#[specta::specta]
+pub async fn pull_request_review(
+    services: State<'_, AppServices>,
+    path: String,
+    number: u32,
+) -> Result<PullRequestReviewDto, AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || {
+        Ok(hosting
+            .review(&PathBuf::from(path), u64::from(number))?
+            .into())
+    })
+    .await
+}
+
+/// Comments on request `number`.
+#[tauri::command]
+#[specta::specta]
+pub async fn comment_pull_request(
+    services: State<'_, AppServices>,
+    path: String,
+    number: u32,
+    body: String,
+) -> Result<(), AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || Ok(hosting.comment(&PathBuf::from(path), u64::from(number), &body)?)).await
+}
+
+/// Approves request `number`.
+#[tauri::command]
+#[specta::specta]
+pub async fn approve_pull_request(
+    services: State<'_, AppServices>,
+    path: String,
+    number: u32,
+) -> Result<(), AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || Ok(hosting.approve(&PathBuf::from(path), u64::from(number))?)).await
+}
+
+/// Merges request `number` on the server.
+#[tauri::command]
+#[specta::specta]
+pub async fn merge_pull_request(
+    services: State<'_, AppServices>,
+    path: String,
+    number: u32,
+) -> Result<(), AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || Ok(hosting.merge(&PathBuf::from(path), u64::from(number))?)).await
+}
+
+/// What `head` changes since it forked from `base` (branches, tags or ids).
+#[tauri::command]
+#[specta::specta]
+pub async fn compare_refs(
+    services: State<'_, AppServices>,
+    path: String,
+    base: String,
+    head: String,
+) -> Result<ComparisonDto, AppError> {
+    let graph = services.commit_graph.clone();
+    run_blocking(move || Ok(graph.compare(&PathBuf::from(path), &base, &head)?.into())).await
+}
+
+/// How `file` differs between commits `from` and `to`.
+#[tauri::command]
+#[specta::specta]
+pub async fn compare_file_diff(
+    services: State<'_, AppServices>,
+    path: String,
+    from: String,
+    to: String,
+    file: String,
+) -> Result<FileDiffDto, AppError> {
+    let graph = services.commit_graph.clone();
+    run_blocking(move || {
+        let (from, to) = (commit_id(&from)?, commit_id(&to)?);
+        Ok(graph
+            .compare_file_diff(&PathBuf::from(path), &from, &to, &file)?
             .into())
     })
     .await

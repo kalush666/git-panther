@@ -6,6 +6,7 @@ import { useCommands } from '../../../shared/commands';
 import type { GraphEntryDto } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
 import { useBranches } from '../api/useBranches';
+import { useHostingStatus } from '../api/useHosting';
 import { useLfsStatus } from '../api/useLayout';
 import { useRepository } from '../api/useRepository';
 import { useSync } from '../api/useSync';
@@ -19,6 +20,7 @@ import { ConflictEditor } from './ConflictEditor';
 import { DiffViewer } from './DiffViewer';
 import { FileHistoryView, type FileView } from './FileHistoryView';
 import { RebasePanel } from './RebasePanel';
+import { requestTarget, ReviewPanel, type ReviewTarget } from './ReviewPanel';
 import { ResizeHandle } from './ResizeHandle';
 import { StagingPanel } from './StagingPanel';
 import { StashActions } from './StashActions';
@@ -53,7 +55,18 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
   const sync = useSync(path);
   const branchActions = useBranchActions(path, history.report);
   const remoteActions = useRemoteActions(path, history.report, onOpenRepository);
-  const hostingActions = useHostingActions(path, history.report, branchActions.checkout);
+  const [review, setReview] = useState<ReviewTarget | null>(null);
+  const hostingActions = useHostingActions(
+    path,
+    history.report,
+    branchActions.checkout,
+    (request) => {
+      setDiff(null);
+      setFileView(null);
+      setReview(requestTarget(request));
+    },
+  );
+  const hostingKind = useHostingStatus(path).data?.kind;
   const lfs = useLfsStatus(path);
   const branches = useBranches(path);
   const stage = useStageFiles(path);
@@ -123,12 +136,13 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
       else if (conflictFile) setConflictFile(null);
       else if (fileView) setFileView(null);
       else if (diff) setDiff(null);
+      else if (review) setReview(null);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [history, conflictFile, fileView, diff]);
+  }, [history, conflictFile, fileView, diff, review]);
   const keepSelectedCommit = useCallback((commitId: string | null) => {
     setSelectedCommitId(commitId);
   }, []);
@@ -204,7 +218,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
           Undo
         </Button>
         <StashActions path={path} />
-        <SyncToolbar path={path} sync={sync} />
+        <SyncToolbar path={path} sync={sync} offer={hostingActions.offer} />
       </header>
       {history.outcome && (
         <div
@@ -293,6 +307,19 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
               }}
               onShowBlame={(file) => {
                 setFileView({ kind: 'blame', file });
+              }}
+            />
+          ) : review ? (
+            <ReviewPanel
+              key={`${review.base}...${review.head}`}
+              path={path}
+              target={review}
+              prefix={hostingKind === 'gitHub' ? '#' : '!'}
+              report={history.report}
+              onOpenDiff={setDiff}
+              onCheckout={hostingActions.checkoutSource}
+              onClose={() => {
+                setReview(null);
               }}
             />
           ) : (

@@ -57,12 +57,14 @@ function ReviewRow({
   label,
   title,
   url,
+  onClick,
   onOpen,
   extraItems,
 }: {
   label: string;
   title: string;
   url: string;
+  onClick?: () => void;
   onOpen?: () => void;
   extraItems?: ReactNode;
 }) {
@@ -70,7 +72,13 @@ function ReviewRow({
     <li>
       <ContextMenu.Root>
         <ContextMenu.Trigger asChild>
-          <button type="button" className={styles.row} title={title} onDoubleClick={onOpen}>
+          <button
+            type="button"
+            className={styles.row}
+            title={title}
+            onClick={onClick}
+            onDoubleClick={onOpen}
+          >
             <span className={styles.name}>{label}</span>
           </button>
         </ContextMenu.Trigger>
@@ -157,20 +165,33 @@ export function ReviewLists({ path, actions }: { path: string; actions: HostingA
             <ReviewRow
               key={request.number}
               label={`${words.prefix}${String(request.number)} ${request.draft ? '[Draft] ' : ''}${request.title}`}
-              title={`${request.title}\n${request.author}: ${request.sourceBranch} → ${request.targetBranch}\nDouble-click to check out ${request.sourceBranch}`}
+              title={`${request.title}\n${request.author}: ${request.sourceBranch} → ${request.targetBranch}\nClick to review, double-click to check out ${request.sourceBranch}`}
               url={request.url}
+              onClick={() => {
+                actions.openReview(request);
+              }}
               onOpen={() => {
                 actions.checkoutSource(request);
               }}
               extraItems={
-                <ContextMenu.Item
-                  className={menu.item}
-                  onSelect={() => {
-                    actions.checkoutSource(request);
-                  }}
-                >
-                  Check out {request.sourceBranch}
-                </ContextMenu.Item>
+                <>
+                  <ContextMenu.Item
+                    className={menu.item}
+                    onSelect={() => {
+                      actions.openReview(request);
+                    }}
+                  >
+                    Review
+                  </ContextMenu.Item>
+                  <ContextMenu.Item
+                    className={menu.item}
+                    onSelect={() => {
+                      actions.checkoutSource(request);
+                    }}
+                  >
+                    Check out {request.sourceBranch}
+                  </ContextMenu.Item>
+                </>
               }
             />
           ))}

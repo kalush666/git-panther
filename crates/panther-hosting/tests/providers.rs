@@ -247,3 +247,102 @@ fn gitlab_without_the_password_grant_needs_a_token() {
             .is_none()
     );
 }
+
+#[test]
+fn gitlab_reviews_approves_and_merges_a_merge_request() {
+    let (server, received) = serve(vec![
+        (
+            "/api/v4/projects/team%2Fapp/merge_requests/7/approvals",
+            200,
+            r#"{"approved_by":[{"user":{"name":"Sam"}}]}"#,
+        ),
+        (
+            "/api/v4/projects/team%2Fapp/merge_requests/7/notes",
+            200,
+            r#"[{"body":"merged by bot","author":{"name":"Bot"},"created_at":"2026-01-01T10:00:00Z","system":true},{"body":"Rename this","author":{"name":"Sam"},"created_at":"2026-01-01T11:00:00Z","system":false,"position":{"new_path":"src/app.rs","new_line":12}}]"#,
+        ),
+        (
+            "/api/v4/projects/team%2Fapp/merge_requests/7/approve",
+            201,
+            "{}",
+        ),
+        (
+            "/api/v4/projects/team%2Fapp/merge_requests/7/merge",
+            200,
+            "{}",
+        ),
+        (
+            "/api/v4/projects/team%2Fapp/merge_requests/7",
+            200,
+            r#"{"description":"Adds the login form.","detailed_merge_status":"mergeable"}"#,
+        ),
+    ]);
+    let provider = GitLabProvider::default();
+
+    let review = provider.review(&project(&server), &token(), 7).unwrap();
+    assert_eq!(review.description, "Adds the login form.");
+    assert_eq!(review.approved_by, ["Sam"]);
+    assert!(review.mergeable);
+    assert_eq!(review.comments.len(), 1, "system notes are left out");
+    assert_eq!(review.comments[0].file.as_deref(), Some("src/app.rs"));
+    assert_eq!(review.comments[0].line, Some(12));
+
+    provider.approve(&project(&server), &token(), 7).unwrap();
+    provider.merge(&project(&server), &token(), 7).unwrap();
+    provider
+        .comment(&project(&server), &token(), 7, "Looks good")
+        .unwrap();
+    let log = received.lock().unwrap().clone();
+    let lines: Vec<&str> = log.iter().map(|request| request.line.as_str()).collect();
+    assert!(
+        lines
+            .iter()
+            .any(|line| line
+                .starts_with("POST /api/v4/projects/team%2Fapp/merge_requests/7/approve")),
+        "{lines:?}"
+    );
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.starts_with("PUT /api/v4/projects/team%2Fapp/merge_requests/7/merge")),
+        "{lines:?}"
+    );
+    assert!(log.last().unwrap().body.contains(r#""body":"Looks good""#));
+}
+
+#[test]
+fn github_reviews_pull_requests_with_both_kinds_of_comments() {
+    let (server, _) = serve(vec![
+        (
+            "/api/v3/repos/team/app/pulls/12/reviews",
+            200,
+            r#"[{"user":{"login":"sam"},"state":"APPROVED"},{"user":{"login":"lee"},"state":"COMMENTED"}]"#,
+        ),
+        (
+            "/api/v3/repos/team/app/pulls/12/comments",
+            200,
+            r#"[{"user":{"login":"lee"},"body":"Typo","created_at":"2026-01-01T09:00:00Z","path":"README.md","line":3}]"#,
+        ),
+        (
+            "/api/v3/repos/team/app/issues/12/comments",
+            200,
+            r#"[{"user":{"login":"sam"},"body":"Nice","created_at":"2026-01-01T12:00:00Z"}]"#,
+        ),
+        (
+            "/api/v3/repos/team/app/pulls/12",
+            200,
+            r#"{"body":null,"mergeable":true}"#,
+        ),
+    ]);
+    let review = GitHubProvider::default()
+        .review(&project(&server), &token(), 12)
+        .unwrap();
+    assert_eq!(review.approved_by, ["sam"]);
+    assert!(review.mergeable);
+    let bodies: Vec<&str> = review
+        .comments
+        .iter()
+        .map(|comment| comment.body.as_str())
+        .collect();
+    assert_eq!(bodies, ["Typo", "Nice"], "oldest first");
+}

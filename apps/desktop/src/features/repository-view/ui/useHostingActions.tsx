@@ -9,6 +9,7 @@ import {
   useConnectHostingWithLogin,
   useCreatePullRequest,
   useHostingStatus,
+  usePullRequests,
 } from '../api/useHosting';
 import type { Report } from './useBranchActions';
 import styles from './useBranchActions.module.css';
@@ -38,6 +39,13 @@ export interface HostingActions {
   openCreate: () => void;
   /** Checks out a request's source branch from `origin`. */
   checkoutSource: (request: PullRequest) => void;
+  /** Shows a request's changes and conversation in place of the graph. */
+  openReview: (request: PullRequest) => void;
+  /**
+   * "Open merge request" after pushing a branch that has none yet, on a
+   * connected server; `null` otherwise.
+   */
+  offer: { label: string; open: () => void } | null;
   prompt: ReactNode;
 }
 
@@ -45,6 +53,7 @@ export function useHostingActions(
   path: string,
   report: Report,
   checkout: (branch: string) => void,
+  openReview: (request: PullRequest) => void,
 ): HostingActions {
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [kind, setKind] = useState<HostingKind>('gitLab');
@@ -52,14 +61,23 @@ export function useHostingActions(
   const connectWithLogin = useConnectHostingWithLogin();
   const create = useCreatePullRequest(path);
   const branches = useBranches(path);
+  const hostingKind = useHostingStatus(path).data?.kind ?? null;
+  const requests = usePullRequests(path, hostingKind !== null);
   // GitLab numbers merge requests !8, GitHub pull requests #8.
-  const prefix = useHostingStatus(path).data?.kind === 'gitLab' ? '!' : '#';
+  const prefix = hostingKind === 'gitLab' ? '!' : '#';
   const head = branches.data?.find((branch) => branch.kind === 'local' && branch.isHead);
   const locals = (branches.data ?? []).filter((branch) => branch.kind === 'local');
   const target =
     USUAL_TARGETS.find(
       (name) => name !== head?.name && locals.some((branch) => branch.name === name),
     ) ?? 'main';
+
+  const offersRequest =
+    hostingKind !== null &&
+    head !== undefined &&
+    !USUAL_TARGETS.includes(head.name) &&
+    requests.data !== undefined &&
+    !requests.data.some((request) => request.sourceBranch === head.name);
 
   const close = () => {
     setPrompt(null);
@@ -183,6 +201,16 @@ export function useHostingActions(
     checkoutSource: (request) => {
       checkout(`origin/${request.sourceBranch}`);
     },
+    openReview,
+    offer: offersRequest
+      ? {
+          label: hostingKind === 'gitLab' ? 'Open merge request' : 'Open pull request',
+          open: () => {
+            create.reset();
+            setPrompt({ kind: 'create' });
+          },
+        }
+      : null,
     prompt: bar,
   };
 }

@@ -136,6 +136,23 @@ pub struct CommitDetails {
     pub changes: Vec<FileChange>,
 }
 
+/// What `head` changes since it forked from `base`, the way a merge request
+/// shows it: commits on `head` only, and files changed from the fork point.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Comparison {
+    /// Where `head` forked from `base` (their merge base).
+    pub fork: CommitId,
+    pub head: CommitId,
+    /// Newest first, at most [`Comparison::MAX_COMMITS`].
+    pub commits: Vec<CommitSummary>,
+    pub changes: Vec<FileChange>,
+}
+
+impl Comparison {
+    /// Enough to review; a longer list is cut.
+    pub const MAX_COMMITS: usize = 500;
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RefKind {
     LocalBranch,

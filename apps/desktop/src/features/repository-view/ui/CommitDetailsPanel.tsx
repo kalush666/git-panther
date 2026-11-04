@@ -1,7 +1,8 @@
-import type { FileChangeDto, PersonDto } from '../../../shared/ipc';
+import type { PersonDto } from '../../../shared/ipc';
 import { useCommitDetails } from '../api/useGraph';
 import { formatCommitTimeLong } from '../model/formatTime';
 import styles from './CommitDetailsPanel.module.css';
+import { FileChangeList } from './FileChangeList';
 
 interface CommitDetailsPanelProps {
   path: string;
@@ -9,14 +10,6 @@ interface CommitDetailsPanelProps {
   /** Opens the diff of `file` in this commit. */
   onOpenFile: (file: string) => void;
 }
-
-const CHANGE_LABELS: Record<FileChangeDto['kind'], { letter: string; label: string }> = {
-  added: { letter: 'A', label: 'Added' },
-  modified: { letter: 'M', label: 'Modified' },
-  deleted: { letter: 'D', label: 'Deleted' },
-  renamed: { letter: 'R', label: 'Renamed' },
-  typeChanged: { letter: 'T', label: 'Type changed' },
-};
 
 export function CommitDetailsPanel({ path, commitId, onOpenFile }: CommitDetailsPanelProps) {
   const details = useCommitDetails(path, commitId);
@@ -64,29 +57,7 @@ export function CommitDetailsPanel({ path, commitId, onOpenFile }: CommitDetails
       <h3 className={styles.sectionTitle}>
         {changes.length} changed {changes.length === 1 ? 'file' : 'files'}
       </h3>
-      <ul className={styles.changes}>
-        {changes.map((change) => {
-          const { letter, label } = CHANGE_LABELS[change.kind];
-          return (
-            <li key={`${change.kind}:${change.path}`}>
-              <button
-                type="button"
-                className={styles.change}
-                onClick={() => {
-                  onOpenFile(change.path);
-                }}
-              >
-                <span className={styles.changeKind} data-kind={change.kind} title={label}>
-                  {letter}
-                </span>
-                <span className={styles.changePath}>
-                  {change.kind === 'renamed' ? `${change.from} → ${change.path}` : change.path}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <FileChangeList changes={changes} onOpenFile={onOpenFile} />
     </aside>
   );
 }
