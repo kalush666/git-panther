@@ -207,6 +207,14 @@ export const commands = {
 	commitPatch: (path: string, id: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_patch", { path, id })),
 	/**  Ignores files matching `pattern` by adding it to `.gitignore`. */
 	ignorePath: (path: string, pattern: string) => typedError<null, AppError>(__TAURI_INVOKE("ignore_path", { path, pattern })),
+	/**  Starts a bisect between a `bad` and a `good` revision. */
+	bisectStart: (path: string, bad: string, good: string) => typedError<BisectStatusDto_Serialize, AppError>(__TAURI_INVOKE("bisect_start", { path, bad, good })),
+	/**  Marks the checked-out commit and moves to the next one to test. */
+	bisectMark: (path: string, verdict: BisectVerdictDto) => typedError<BisectStatusDto_Serialize, AppError>(__TAURI_INVOKE("bisect_mark", { path, verdict })),
+	/**  Whether a bisect is running and what it found. */
+	bisectStatus: (path: string) => typedError<BisectStatusDto_Serialize, AppError>(__TAURI_INVOKE("bisect_status", { path })),
+	/**  Ends the bisect and returns to where it started. */
+	bisectReset: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("bisect_reset", { path })),
 	/**  Opens the repository in the file manager, a terminal or `editor`. */
 	openIn: (path: string, target: OpenTargetDto, editor: string) => typedError<null, AppError>(__TAURI_INVOKE("open_in", { path, target, editor })),
 	/**  Starts a git flow branch and checks it out; returns its full name. */
@@ -247,6 +255,32 @@ export type AppError = {
 
 /**  Stable, machine-readable error categories the UI can switch on. */
 export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "undoOutdated" | "invalidRebasePlan" | "invalidRemoteName" | "remoteExists" | "remoteNotFound" | "worktreeFailed" | "invalidIdentity" | "hostingUnauthorized" | "hostingNotConnected" | "hostingLoginUnsupported" | "noHostedProject" | "hostingFailed" | "watchFailed" | "internal";
+
+/**  Where a bisect stands. */
+export type BisectStatusDto = BisectStatusDto_Serialize | BisectStatusDto_Deserialize;
+
+/**  Where a bisect stands. */
+export type BisectStatusDto_Deserialize = {
+	active: boolean,
+	testing?: string | null,
+	stepsLeft?: number | null,
+	firstBad?: string | null,
+	good: string[],
+	bad: string[],
+};
+
+/**  Where a bisect stands. */
+export type BisectStatusDto_Serialize = {
+	active: boolean,
+	testing: string | null,
+	stepsLeft: number | null,
+	firstBad: string | null,
+	good: string[],
+	bad: string[],
+};
+
+/**  A verdict on the commit a bisect checked out. */
+export type BisectVerdictDto = "good" | "bad" | "skip";
 
 /**  Who last changed one line. */
 export type BlameLineDto = {

@@ -10,11 +10,13 @@ import { useHostingStatus, usePipelines } from '../api/useHosting';
 import { useLfsStatus } from '../api/useLayout';
 import { useRepository } from '../api/useRepository';
 import { usePatches, type PatchActions } from '../api/usePatches';
+import { useBisect } from '../api/useBisect';
 import { useSync } from '../api/useSync';
 import { useStageFiles, useWorkingTreeStatus, type DiffSource } from '../api/useWorkingTree';
 import { describeHead } from '../model/describeHead';
 import { usePanelWidths } from '../model/workspace';
 import { BranchSidebar } from './BranchSidebar';
+import { BisectBar } from './BisectBar';
 import { CommitDetailsPanel } from './CommitDetailsPanel';
 import { CommitGraph } from './CommitGraph';
 import { ConflictEditor } from './ConflictEditor';
@@ -58,6 +60,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
   const history = useHistoryActions(path);
   const sync = useSync(path);
   const patches = usePatches(path, history.report);
+  const bisect = useBisect(path);
   const [review, setReview] = useState<ReviewTarget | null>(null);
   const [recovering, setRecovering] = useState(false);
   const showReview = (target: ReviewTarget) => {
@@ -328,6 +331,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
         </p>
       )}
       <SyncSignIn path={path} sync={sync} />
+      <BisectBar path={path} bisect={bisect} />
       {branchActions.prompt}
       {gitflow.prompt}
       {history.prompt}
@@ -433,6 +437,16 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
                   actions={branchActions}
                   history={history}
                   patches={patches}
+                  onBisect={(good) => {
+                    bisect.step.mutate(
+                      { kind: 'start', bad: 'HEAD', good },
+                      {
+                        onError: (error) => {
+                          history.report('error', error.message);
+                        },
+                      },
+                    );
+                  }}
                 />
               )}
               leadingRow={
@@ -502,11 +516,14 @@ function CommitMenu({
   actions,
   history,
   patches,
+  onBisect,
 }: {
   entry: GraphEntryDto;
   actions: BranchActions;
   history: HistoryActions;
   patches: PatchActions;
+  /** Starts a bisect from HEAD (bad) back to this commit (good). */
+  onBisect: (good: string) => void;
 }) {
   const switchable = entry.refs.filter((ref) => ref.kind !== 'tag' && !ref.isHead);
   const tags = entry.refs.filter((ref) => ref.kind === 'tag');
@@ -545,6 +562,14 @@ function CommitMenu({
         }}
       >
         Copy as patch
+      </ContextMenu.Item>
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          onBisect(entry.id);
+        }}
+      >
+        Bisect: find what broke since this commit
       </ContextMenu.Item>
       {switchable.map((ref) => (
         <ContextMenu.Item

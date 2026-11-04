@@ -5,6 +5,7 @@
 //! never depend on git engines, UI frameworks or async runtimes.
 
 pub mod account;
+pub mod bisect;
 pub mod branch;
 pub mod commit;
 pub mod conflict;

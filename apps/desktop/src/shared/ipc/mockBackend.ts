@@ -19,6 +19,7 @@ import type {
   RecentRepositoryDto,
   RepositorySummaryDto,
 } from './bindings';
+import { createMockBisect } from './mockBisect';
 import { createMockBranches } from './mockBranches';
 import { createMockHistory } from './mockHistory';
 import { createMockStashes } from './mockStashes';
@@ -131,6 +132,7 @@ function createMockBackend(): Backend {
   const branchStore = createMockBranches();
   const stashes = createMockStashes(workingTree);
   const history = createMockHistory(branchStore, workingTree);
+  const bisect = createMockBisect();
   let gitExecutable: string | null = null;
   let accounts: Account[] = [];
   let hosting: HostingAccess[] = [];
@@ -606,6 +608,25 @@ function createMockBackend(): Backend {
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
     pickPatchFile: () => Promise.resolve(MOCK_PICKED_PATCH),
     ignorePath: (_path, pattern) => Promise.resolve(workingTree.ignore(pattern)),
+    bisectStart: (_path, bad, good) => {
+      const started = bisect.start(bad, good);
+      return Promise.resolve(
+        started
+          ? ok(started)
+          : failure('gitFailed', `${good} is not an ancestor of ${bad}, so bisect cannot start.`),
+      );
+    },
+    bisectMark: (_path, verdict) => {
+      const marked = bisect.mark(verdict);
+      return Promise.resolve(
+        marked ? ok(marked) : failure('gitFailed', 'You need to start by "git bisect start".'),
+      );
+    },
+    bisectStatus: () => Promise.resolve(ok(bisect.status())),
+    bisectReset: () => {
+      bisect.reset();
+      return Promise.resolve(ok(null));
+    },
     openIn: (_path, target, editor) =>
       Promise.resolve(
         target === 'editor' && editor.trim() === 'missing-editor'

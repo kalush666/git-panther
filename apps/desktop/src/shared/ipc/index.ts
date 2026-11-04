@@ -15,6 +15,8 @@ import { tauriBackend } from './tauriBackend';
 export type {
   Account,
   Backend,
+  BisectStatus,
+  BisectVerdict,
   BlameLine,
   Branch,
   ChangedFile,

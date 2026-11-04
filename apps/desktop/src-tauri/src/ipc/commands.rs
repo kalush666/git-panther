@@ -31,8 +31,8 @@ use panther_application::accounts::SignIn;
 use panther_domain::hosting::NewPullRequest;
 
 use super::dto::{
-    ComparisonDto, FlowFinishedDto, FlowKindDto, OpenTargetDto, PipelineDto, PullRequestReviewDto,
-    ReflogEntryDto,
+    BisectStatusDto, BisectVerdictDto, ComparisonDto, FlowFinishedDto, FlowKindDto, OpenTargetDto,
+    PipelineDto, PullRequestReviewDto, ReflogEntryDto,
 };
 use panther_domain::remote::{PushOptions, RemoteName};
 
@@ -534,6 +534,50 @@ pub async fn apply_patch_file(
         Ok(copy.apply_patch(&PathBuf::from(path), &contents)?)
     })
     .await
+}
+
+/// Starts a bisect between a `bad` and a `good` revision.
+#[tauri::command]
+#[specta::specta]
+pub async fn bisect_start(
+    services: State<'_, AppServices>,
+    path: String,
+    bad: String,
+    good: String,
+) -> Result<BisectStatusDto, AppError> {
+    let bisect = services.bisect.clone();
+    run_blocking(move || Ok(bisect.start(&PathBuf::from(path), &bad, &good)?.into())).await
+}
+
+/// Marks the checked-out commit and moves to the next one to test.
+#[tauri::command]
+#[specta::specta]
+pub async fn bisect_mark(
+    services: State<'_, AppServices>,
+    path: String,
+    verdict: BisectVerdictDto,
+) -> Result<BisectStatusDto, AppError> {
+    let bisect = services.bisect.clone();
+    run_blocking(move || Ok(bisect.mark(&PathBuf::from(path), verdict.into())?.into())).await
+}
+
+/// Whether a bisect is running and what it found.
+#[tauri::command]
+#[specta::specta]
+pub async fn bisect_status(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<BisectStatusDto, AppError> {
+    let bisect = services.bisect.clone();
+    run_blocking(move || Ok(bisect.status(&PathBuf::from(path))?.into())).await
+}
+
+/// Ends the bisect and returns to where it started.
+#[tauri::command]
+#[specta::specta]
+pub async fn bisect_reset(services: State<'_, AppServices>, path: String) -> Result<(), AppError> {
+    let bisect = services.bisect.clone();
+    run_blocking(move || Ok(bisect.reset(&PathBuf::from(path))?)).await
 }
 
 /// Ignores files matching `pattern` by adding it to `.gitignore`.

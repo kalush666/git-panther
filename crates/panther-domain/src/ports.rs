@@ -6,6 +6,7 @@
 use std::path::Path;
 
 use crate::account::{Account, Password, Server};
+use crate::bisect::{BisectStatus, BisectVerdict};
 use crate::branch::{Branch, BranchName};
 use crate::commit::{
     BlameLine, CommitDetails, CommitFilter, CommitId, CommitNode, CommitSummary, Comparison,
@@ -879,4 +880,41 @@ pub enum GitProbeError {
     ExecutionFailed { reason: String },
     #[error(transparent)]
     UnrecognizedVersion(#[from] GitVersionParseError),
+}
+
+/// Runs a bisect to find the commit that introduced a problem.
+pub trait Bisector: Send + Sync {
+    /// Starts between a `bad` and a `good` revision and checks out the first
+    /// commit to test.
+    ///
+    /// # Errors
+    /// [`RepositoryError::Git`] e.g. when `good` is not an ancestor of `bad`.
+    fn start(
+        &self,
+        repository: &Path,
+        bad: &str,
+        good: &str,
+    ) -> Result<BisectStatus, RepositoryError>;
+
+    /// Records the verdict on the checked-out commit and checks out the next.
+    ///
+    /// # Errors
+    /// [`RepositoryError::Git`] when no bisect is running.
+    fn mark(
+        &self,
+        repository: &Path,
+        verdict: BisectVerdict,
+    ) -> Result<BisectStatus, RepositoryError>;
+
+    /// Whether a bisect is running, and what it found so far.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn status(&self, repository: &Path) -> Result<BisectStatus, RepositoryError>;
+
+    /// Ends the bisect and checks out where it started.
+    ///
+    /// # Errors
+    /// [`RepositoryError::Git`] e.g. when changes would be overwritten.
+    fn reset(&self, repository: &Path) -> Result<(), RepositoryError>;
 }

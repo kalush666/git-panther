@@ -24,6 +24,8 @@ import type {
   ReflogEntryDto,
   FlowKindDto,
   OpenTargetDto,
+  BisectStatusDto,
+  BisectVerdictDto,
   FlowFinishedDto,
   PipelineDto,
   PipelineStateDto,
@@ -84,6 +86,8 @@ export type Comparison = ComparisonDto;
 export type ReflogEntry = ReflogEntryDto;
 export type FlowKind = FlowKindDto;
 export type OpenTarget = OpenTargetDto;
+export type BisectStatus = BisectStatusDto;
+export type BisectVerdict = BisectVerdictDto;
 export type FlowFinished = FlowFinishedDto;
 export type Pipeline = PipelineDto;
 export type PipelineState = PipelineStateDto;
@@ -312,6 +316,13 @@ export interface Backend {
   gitflowStart(path: string, kind: FlowKind, name: string): Promise<Result<string>>;
   /** Merges a flow branch where git flow says, tags releases and hotfixes, deletes it. */
   gitflowFinish(path: string, branch: string): Promise<Result<FlowFinished>>;
+  /** Starts a bisect between a bad and a good revision; checks out the first to test. */
+  bisectStart(path: string, bad: string, good: string): Promise<Result<BisectStatus>>;
+  /** Records a verdict on the checked-out commit and checks out the next. */
+  bisectMark(path: string, verdict: BisectVerdict): Promise<Result<BisectStatus>>;
+  bisectStatus(path: string): Promise<Result<BisectStatus>>;
+  /** Ends the bisect and returns to where it started. */
+  bisectReset(path: string): Promise<Result<null>>;
   /** Adds `pattern` as a line of the repository's `.gitignore`. */
   ignorePath(path: string, pattern: string): Promise<Result<null>>;
   /** Opens the repository in the file manager, a terminal or `editor` (e.g. `code`). */
