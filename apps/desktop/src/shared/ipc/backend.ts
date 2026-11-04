@@ -21,6 +21,7 @@ import type {
   PullRequestReviewDto,
   ReviewCommentDto,
   ComparisonDto,
+  ReflogEntryDto,
   PipelineDto,
   PipelineStateDto,
   HunkDto_Serialize,
@@ -76,6 +77,7 @@ export type HostingStatus = HostingStatusDto;
 export type PullRequestReview = PullRequestReviewDto;
 export type ReviewComment = ReviewCommentDto;
 export type Comparison = ComparisonDto;
+export type ReflogEntry = ReflogEntryDto;
 export type Pipeline = PipelineDto;
 export type PipelineState = PipelineStateDto;
 export type PullRequest = PullRequestDto;
@@ -208,6 +210,8 @@ export interface Backend {
   approvePullRequest(path: string, number: number): Promise<Result<null>>;
   /** Merges the request on the server. */
   mergePullRequest(path: string, number: number): Promise<Result<null>>;
+  /** Where HEAD pointed recently; commits no branch or tag contains are `lost`. */
+  reflog(path: string): Promise<Result<ReflogEntry[]>>;
   /** What `head` changes since it forked from `base` (branches, tags or ids). */
   compareRefs(path: string, base: string, head: string): Promise<Result<Comparison>>;
   /** How `file` differs between commits `from` and `to`. */

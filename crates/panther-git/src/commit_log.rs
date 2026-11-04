@@ -2,6 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
+use panther_domain::commit::ReflogEntry;
 use panther_domain::commit::{
     BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, Comparison, RefLabel,
 };
@@ -135,6 +136,10 @@ impl CommitLog for GitCommitLog {
         head: &str,
     ) -> Result<Comparison, RepositoryError> {
         self.libgit2.compare(repository, base, head)
+    }
+
+    fn reflog(&self, repository: &Path) -> Result<Vec<ReflogEntry>, RepositoryError> {
+        self.libgit2.reflog(repository)
     }
 
     fn compare_file_diff(

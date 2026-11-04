@@ -302,3 +302,26 @@ fn compares_a_branch_with_where_it_forked() {
         );
     }
 }
+
+#[test]
+fn reflog_marks_commits_no_branch_contains_as_lost() {
+    let dir = TempDir::new().unwrap();
+    let repository = support::empty_repository(dir.path());
+    let first = support::commit(&repository, Some("HEAD"), "First", &[("a", "1")], &[]);
+    let second = support::commit(&repository, Some("HEAD"), "Second", &[("a", "2")], &[first]);
+    // A hard reset back to `first` leaves `second` on no branch.
+    let branch = repository.head().unwrap().name().unwrap().to_owned();
+    repository
+        .reference(&branch, first, true, "reset: moving to HEAD~1")
+        .unwrap();
+
+    for (name, log) in implementations() {
+        let reflog = log.reflog(dir.path()).unwrap();
+        assert_eq!(reflog[0].id, id(first), "{name}");
+        assert_eq!(reflog[0].action, "reset: moving to HEAD~1", "{name}");
+        assert!(!reflog[0].lost, "{name}");
+        let lost = reflog.iter().find(|entry| entry.id == id(second)).unwrap();
+        assert!(lost.lost, "{name}");
+        assert_eq!(lost.summary, "Second", "{name}");
+    }
+}

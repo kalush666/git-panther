@@ -9,7 +9,7 @@ use git2::{
 };
 use panther_domain::commit::{
     BlameLine, ChangeKind, CommitDetails, CommitId, CommitNode, CommitSummary, Comparison,
-    FileChange, Person, RefKind, RefLabel, body_preview,
+    FileChange, Person, RefKind, RefLabel, ReflogEntry, body_preview,
 };
 use panther_domain::ports::CommitLog;
 use panther_domain::repository::RepositoryError;
@@ -202,6 +202,49 @@ impl CommitLog for Git2CommitLog {
             commits: self.summaries(repository_path, &ids)?,
             changes,
         })
+    }
+
+    fn reflog(&self, repository: &Path) -> Result<Vec<ReflogEntry>, RepositoryError> {
+        let repository = open(repository)?;
+        let reflog = repository
+            .reflog("HEAD")
+            .map_err(|error| git_error(&error))?;
+        let mut entries = Vec::new();
+        for entry in reflog.iter().take(ReflogEntry::LIMIT) {
+            let oid = entry.id_new();
+            // Entries whose commit was pruned since cannot be recovered.
+            let Ok(commit) = repository.find_commit(oid) else {
+                continue;
+            };
+            entries.push((
+                oid,
+                ReflogEntry {
+                    id: commit_id(oid),
+                    summary: commit
+                        .summary()
+                        .ok()
+                        .flatten()
+                        .map(str::to_owned)
+                        .unwrap_or_default(),
+                    action: entry
+                        .message()
+                        .ok()
+                        .flatten()
+                        .map(str::to_owned)
+                        .unwrap_or_default(),
+                    time: entry.committer().when().seconds(),
+                    lost: false,
+                },
+            ));
+        }
+        let lost = unreachable_from_refs(&repository, entries.iter().map(|(oid, _)| *oid))?;
+        Ok(entries
+            .into_iter()
+            .map(|(oid, entry)| ReflogEntry {
+                lost: lost.contains(&oid),
+                ..entry
+            })
+            .collect())
     }
 
     fn compare_file_diff(
@@ -411,6 +454,30 @@ fn person(signature: &git2::Signature<'_>) -> Person {
         email: String::from_utf8_lossy(signature.email_bytes()).into_owned(),
         time: signature.when().seconds(),
     }
+}
+
+/// Which of `commits` no branch, remote branch or tag contains. Walks only
+/// the history the refs do not already cover.
+fn unreachable_from_refs(
+    repository: &Repository,
+    commits: impl Iterator<Item = Oid>,
+) -> Result<std::collections::HashSet<Oid>, RepositoryError> {
+    let mut walk = repository.revwalk().map_err(|error| git_error(&error))?;
+    for oid in commits {
+        walk.push(oid).map_err(|error| git_error(&error))?;
+    }
+    for reference in references(repository)? {
+        if let Some(target) = reference.target() {
+            // A tag may point at a tag object; hide the commit it names.
+            let peeled = repository
+                .find_object(target, None)
+                .and_then(|object| object.peel_to_commit())
+                .map_or(target, |commit| commit.id());
+            walk.hide(peeled).map_err(|error| git_error(&error))?;
+        }
+    }
+    walk.map(|oid| oid.map_err(|error| git_error(&error)))
+        .collect()
 }
 
 /// The commit a revision (branch, tag, id) names.

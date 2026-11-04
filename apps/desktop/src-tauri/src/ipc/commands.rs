@@ -29,7 +29,7 @@ use crate::infra::watcher::RepositoryWatcher;
 use panther_application::accounts::SignIn;
 use panther_domain::hosting::NewPullRequest;
 
-use super::dto::{ComparisonDto, PipelineDto, PullRequestReviewDto};
+use super::dto::{ComparisonDto, PipelineDto, PullRequestReviewDto, ReflogEntryDto};
 use panther_domain::remote::{PushOptions, RemoteName};
 
 /// Runs blocking work (git, disk) off the async runtime's worker threads.
@@ -1034,6 +1034,24 @@ pub async fn compare_refs(
 ) -> Result<ComparisonDto, AppError> {
     let graph = services.commit_graph.clone();
     run_blocking(move || Ok(graph.compare(&PathBuf::from(path), &base, &head)?.into())).await
+}
+
+/// Where HEAD pointed recently, for recovering lost commits.
+#[tauri::command]
+#[specta::specta]
+pub async fn reflog(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Vec<ReflogEntryDto>, AppError> {
+    let graph = services.commit_graph.clone();
+    run_blocking(move || {
+        Ok(graph
+            .reflog(&PathBuf::from(path))?
+            .into_iter()
+            .map(ReflogEntryDto::from)
+            .collect())
+    })
+    .await
 }
 
 /// How `file` differs between commits `from` and `to`.

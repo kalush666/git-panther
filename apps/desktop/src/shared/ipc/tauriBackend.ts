@@ -121,6 +121,7 @@ export const tauriBackend: Backend = {
   approvePullRequest: commands.approvePullRequest,
   mergePullRequest: commands.mergePullRequest,
   compareRefs: commands.compareRefs,
+  reflog: commands.reflog,
   compareFileDiff: commands.compareFileDiff,
   listPullRequests: commands.listPullRequests,
   listIssues: commands.listIssues,

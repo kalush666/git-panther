@@ -192,6 +192,8 @@ export const commands = {
 	compareRefs: (path: string, base: string, head: string) => typedError<ComparisonDto, AppError>(__TAURI_INVOKE("compare_refs", { path, base, head })),
 	/**  How `file` differs between commits `from` and `to`. */
 	compareFileDiff: (path: string, from: string, to: string, file: string) => typedError<FileDiffDto_Serialize, AppError>(__TAURI_INVOKE("compare_file_diff", { path, from, to, file })),
+	/**  Where HEAD pointed recently, for recovering lost commits. */
+	reflog: (path: string) => typedError<ReflogEntryDto[], AppError>(__TAURI_INVOKE("reflog", { path })),
 	/**  Forgets a code review server and its token. */
 	disconnectHosting: (server: string) => typedError<null, AppError>(__TAURI_INVOKE("disconnect_hosting", { server })),
 	/**  The repository's project on a code review server, if a remote points to one. */
@@ -576,6 +578,17 @@ export type RefLabelDto = {
 	name: string,
 	kind: RefKindDto,
 	isHead: boolean,
+};
+
+/**  One place HEAD pointed at recently. */
+export type ReflogEntryDto = {
+	id: string,
+	shortId: string,
+	summary: string,
+	action: string,
+	/**  Seconds since the Unix epoch, as a plain number like [`PersonDto::time`]. */
+	time: number,
+	lost: boolean,
 };
 
 /**  A configured remote. */

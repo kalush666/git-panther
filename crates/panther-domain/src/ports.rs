@@ -9,6 +9,7 @@ use crate::account::{Account, Password, Server};
 use crate::branch::{Branch, BranchName};
 use crate::commit::{
     BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, Comparison, RefLabel,
+    ReflogEntry,
 };
 use crate::conflict::ConflictChunk;
 use crate::git_installation::{GitVersion, GitVersionParseError};
@@ -488,6 +489,13 @@ pub trait CommitLog: Send + Sync {
         base: &str,
         head: &str,
     ) -> Result<Comparison, RepositoryError>;
+
+    /// Where HEAD pointed recently, newest first, at most
+    /// [`ReflogEntry::LIMIT`], each marked when no ref contains it any more.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn reflog(&self, repository: &Path) -> Result<Vec<ReflogEntry>, RepositoryError>;
 
     /// How `path` differs between the trees of commits `from` and `to`.
     ///

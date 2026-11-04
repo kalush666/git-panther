@@ -85,6 +85,8 @@ const WRONG_PASSWORD = 'wrong';
 /** `?mockSync=auth` makes network operations need a sign-in first. */
 /** Built at runtime so the bundle holds no literal external URL (closed-network check). */
 const MOCK_GIT_HOST = ['git', 'example', 'internal'].join('.');
+/** A commit only the reflog still knows, after a hard reset. */
+const MOCK_LOST_COMMIT = 'dead0beef'.padEnd(40, '0');
 
 const needsSignIn = () => new URLSearchParams(window.location.search).get('mockSync') === 'auth';
 
@@ -469,6 +471,38 @@ function createMockBackend(): Backend {
     mergePullRequest: (_path, number) => {
       pullRequests = pullRequests.filter((request) => request.number !== number);
       return Promise.resolve(ok(null));
+    },
+    reflog: () => {
+      const [newest, previous] = mockGraphPage(0, 2).entries;
+      const now = Math.floor(Date.now() / 1000);
+      return Promise.resolve(
+        ok([
+          {
+            id: newest?.id ?? '',
+            shortId: newest?.shortId ?? '',
+            summary: newest?.summary ?? '',
+            action: 'reset: moving to HEAD~1',
+            time: now - 60,
+            lost: false,
+          },
+          {
+            id: MOCK_LOST_COMMIT,
+            shortId: MOCK_LOST_COMMIT.slice(0, 7),
+            summary: 'Work in progress on the login form',
+            action: 'commit: Work in progress on the login form',
+            time: now - 120,
+            lost: true,
+          },
+          {
+            id: previous?.id ?? '',
+            shortId: previous?.shortId ?? '',
+            summary: previous?.summary ?? '',
+            action: 'checkout: moving from develop to main',
+            time: now - 3600,
+            lost: false,
+          },
+        ]),
+      );
     },
     compareRefs: (_path, base, head) => {
       const known = (name: string) =>

@@ -5,10 +5,10 @@ use std::path::Path;
 use panther_application::commit_graph::{GraphEntry, GraphPage};
 use panther_domain::account::Account;
 use panther_domain::branch::{Branch, BranchKind};
-use panther_domain::commit::Comparison;
 use panther_domain::commit::{
     BlameLine, ChangeKind, CommitDetails, CommitSummary, FileChange, Person, RefKind, RefLabel,
 };
+use panther_domain::commit::{Comparison, ReflogEntry};
 use panther_domain::conflict::ConflictChunk;
 use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::history::{RebaseAction, RebaseStep, ResetMode};
@@ -1113,6 +1113,33 @@ impl From<PullRequestReview> for PullRequestReviewDto {
                 .map(ReviewCommentDto::from)
                 .collect(),
             mergeable: review.mergeable,
+        }
+    }
+}
+
+/// One place HEAD pointed at recently.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReflogEntryDto {
+    pub id: String,
+    pub short_id: String,
+    pub summary: String,
+    pub action: String,
+    /// Seconds since the Unix epoch, as a plain number like [`PersonDto::time`].
+    #[specta(type = u32)]
+    pub time: i64,
+    pub lost: bool,
+}
+
+impl From<ReflogEntry> for ReflogEntryDto {
+    fn from(entry: ReflogEntry) -> Self {
+        Self {
+            short_id: entry.id.short().to_owned(),
+            id: entry.id.to_string(),
+            summary: entry.summary,
+            action: entry.action,
+            time: entry.time,
+            lost: entry.lost,
         }
     }
 }

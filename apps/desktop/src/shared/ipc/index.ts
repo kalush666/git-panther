@@ -29,6 +29,7 @@ export type {
   FileDiff,
   HunkAction,
   Pipeline,
+  ReflogEntry,
   PipelineState,
   HostingAccess,
   HostingKind,
