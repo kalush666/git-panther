@@ -455,6 +455,14 @@ function BranchRow({
                 >
                   Rebase {current} onto {branch.name}
                 </ContextMenu.Item>
+                <ContextMenu.Item
+                  className={menu.item}
+                  onSelect={() => {
+                    actions.compare(current, branch.name);
+                  }}
+                >
+                  Compare {branch.name} with {current}
+                </ContextMenu.Item>
               </>
             )}
             {isLocal && !branch.isHead && (
