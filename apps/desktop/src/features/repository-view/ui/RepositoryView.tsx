@@ -25,6 +25,7 @@ import menu from './menu.module.css';
 import styles from './RepositoryView.module.css';
 import { useBranchActions, type BranchActions } from './useBranchActions';
 import { useHistoryActions, type HistoryActions } from './useHistoryActions';
+import { useHostingActions } from './useHostingActions';
 import { useRemoteActions } from './useRemoteActions';
 
 interface RepositoryViewProps {
@@ -48,6 +49,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
   const history = useHistoryActions(path);
   const branchActions = useBranchActions(path, history.report);
   const remoteActions = useRemoteActions(path, history.report, onOpenRepository);
+  const hostingActions = useHostingActions(path, history.report, branchActions.checkout);
   const lfs = useLfsStatus(path);
   const branches = useBranches(path);
   const stage = useStageFiles(path);
@@ -201,12 +203,14 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
       {branchActions.prompt}
       {history.prompt}
       {remoteActions.prompt}
+      {hostingActions.prompt}
       <div className={styles.body}>
         <BranchSidebar
           path={path}
           actions={branchActions}
           history={history}
           remoteActions={remoteActions}
+          hostingActions={hostingActions}
           onOpenRepository={onOpenRepository}
         />
         <div className={styles.graph}>

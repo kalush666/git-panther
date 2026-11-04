@@ -57,21 +57,27 @@ Dependencies point **inward only**. The domain knows nothing about git2, Tauri, 
 
 Ports are small, capability-based traits declared in `panther-domain::ports` (see the `solid` skill for rationale):
 
-| Port                        | Capability                                                         |
-| --------------------------- | ------------------------------------------------------------------ |
-| `GitBinaryProbe`            | which git version an executable is                                 |
-| `RepositoryOpener`          | open / init a repository                                           |
-| `RepositoryCloner`          | clone with progress and cancellation                               |
-| `CommitLog`                 | history walk, commit summaries, refs, details, per-commit diffs    |
-| `WorkingTree`               | status, diffs, stage / unstage / discard files and hunks           |
-| `CommitWriter`              | create / amend commits                                             |
-| `BranchStore`               | list, create, check out, rename, delete branches                   |
-| `RemoteSync`                | remotes; fetch, pull, push (progress-reporting, cancellable)       |
-| `StashStore`                | stash list / save / apply / pop / drop                             |
-| `ConflictResolver`          | interrupted operation; keep a side, mark resolved, continue, abort |
-| `RecentRepositoryStore`     | persist the recent-repositories list                               |
-| `SettingsStore`             | persist settings the core needs (the git executable)               |
-| `HostingProvider` _(later)_ | pull requests and repo metadata on self-hosted servers             |
+| Port                    | Capability                                                                             |
+| ----------------------- | -------------------------------------------------------------------------------------- |
+| `GitBinaryProbe`        | which git version an executable is                                                     |
+| `RepositoryOpener`      | open / init a repository                                                               |
+| `RepositoryCloner`      | clone with progress and cancellation                                                   |
+| `CommitLog`             | history walk, commit summaries, refs, details, per-commit diffs                        |
+| `WorkingTree`           | status, diffs, stage / unstage / discard files and hunks                               |
+| `CommitWriter`          | create / amend commits                                                                 |
+| `BranchStore`           | list, create, check out, rename, delete branches                                       |
+| `RemoteSync`            | remotes; fetch, pull, push (progress-reporting, cancellable)                           |
+| `StashStore`            | stash list / save / apply / pop / drop                                                 |
+| `ConflictResolver`      | interrupted operation; keep a side, mark resolved, continue, abort                     |
+| `RecentRepositoryStore` | persist the recent-repositories list                                                   |
+| `SettingsStore`         | persist settings the core needs (the git executable)                                   |
+| `HistoryEditor`         | merge, rebase (incl. interactive), cherry-pick, revert, reset, HEAD snapshots for undo |
+| `TagStore`              | create, delete, push tags                                                              |
+| `RemoteConfig`          | add, re-point, remove remotes; delete remote branches                                  |
+| `RepositoryLayout`      | submodules, linked worktrees, Git LFS status                                           |
+| `CredentialStore`       | git logins and API tokens through the user's credential helper                         |
+| `IdentityConfig`        | who commits and how commits are signed                                                 |
+| `HostingProvider`       | merge / pull requests and issues on self-hosted GitLab, GitHub Enterprise              |
 
 Use cases depend only on the ports they need.
 

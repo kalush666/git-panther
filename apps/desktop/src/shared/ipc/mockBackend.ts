@@ -2,8 +2,11 @@ import type {
   Account,
   Backend,
   CloneProgress,
+  HostingAccess,
   Identity,
+  Issue,
   OnProgress,
+  PullRequest,
   Remote,
   Result,
   Submodule,
@@ -124,6 +127,34 @@ function createMockBackend(): Backend {
   const history = createMockHistory(branchStore, workingTree);
   let gitExecutable: string | null = null;
   let accounts: Account[] = [];
+  let hosting: HostingAccess[] = [];
+  let pullRequests: PullRequest[] = [
+    {
+      number: 7,
+      title: 'Add the login form',
+      author: 'Ada Byron',
+      sourceBranch: 'develop',
+      targetBranch: 'main',
+      url: `https://${MOCK_GIT_HOST}/team/demo/-/merge_requests/7`,
+      draft: false,
+    },
+  ];
+  const issues: Issue[] = [
+    {
+      number: 3,
+      title: 'Graph flickers when scrolling fast',
+      author: 'Grace Hopper',
+      url: `https://${MOCK_GIT_HOST}/team/demo/-/issues/3`,
+      labels: ['bug'],
+    },
+  ];
+  const mockServer = `https://${MOCK_GIT_HOST}`;
+  const connected = () => hosting.some((access) => access.server === mockServer);
+  const notConnected = () =>
+    failure(
+      'hostingNotConnected',
+      `Connect ${mockServer} with an access token to see its merge requests and issues.`,
+    );
   let identity: Identity | null = {
     name: 'Git Panther Demo',
     email: 'demo@example.internal',
@@ -335,6 +366,48 @@ function createMockBackend(): Backend {
       return Promise.resolve(ok(null));
     },
     pickExecutable: () => Promise.resolve(MOCK_PICKED_GIT),
+    listHosting: () => Promise.resolve(ok(hosting)),
+    connectHosting: (server, kind, token) => {
+      if (token === WRONG_PASSWORD) {
+        return Promise.resolve(
+          failure(
+            'hostingUnauthorized',
+            `${server} refused the access token. Create a new one with API access and connect again.`,
+          ),
+        );
+      }
+      const access = { server: server.replace(/\/+$/, ''), kind };
+      hosting = [...hosting.filter((existing) => existing.server !== access.server), access];
+      return Promise.resolve(ok(access));
+    },
+    disconnectHosting: (server) => {
+      hosting = hosting.filter((access) => access.server !== server);
+      return Promise.resolve(ok(null));
+    },
+    hostingStatus: () =>
+      Promise.resolve(
+        ok({
+          server: mockServer,
+          project: 'team/demo',
+          kind: hosting.find((access) => access.server === mockServer)?.kind ?? null,
+        }),
+      ),
+    listPullRequests: () => Promise.resolve(connected() ? ok(pullRequests) : notConnected()),
+    listIssues: () => Promise.resolve(connected() ? ok(issues) : notConnected()),
+    createPullRequest: (_path, source, target, title) => {
+      if (!connected()) return Promise.resolve(notConnected());
+      const created = {
+        number: 8 + pullRequests.length,
+        title,
+        author: 'Git Panther Demo',
+        sourceBranch: source,
+        targetBranch: target,
+        url: `${mockServer}/team/demo/-/merge_requests/${String(8 + pullRequests.length)}`,
+        draft: false,
+      };
+      pullRequests = [...pullRequests, created];
+      return Promise.resolve(ok(created));
+    },
     getIdentity: () => Promise.resolve(ok(identity)),
     setIdentity: (_path, next) => {
       if (!next.email.includes('@')) {
