@@ -8,6 +8,7 @@ use git2::{Diff, DiffOptions, ErrorCode, Repository, Status, StatusOptions};
 use panther_domain::repository::RepositoryError;
 use panther_domain::working_tree::{ChangedFile, DiffSide, FileDiff, FileState, WorkingTreeStatus};
 
+use super::diff::LineSelection;
 use super::diff::{file_diff, hunk_patch};
 use super::git_error;
 
@@ -152,9 +153,15 @@ pub fn patch_for_hunk(
     side: DiffSide,
     index: usize,
     header: &str,
+    selection: Option<LineSelection<'_>>,
 ) -> Result<Option<String>, RepositoryError> {
     let repository = open(repository)?;
-    hunk_patch(&single_file_diff(&repository, path, side)?, index, header)
+    hunk_patch(
+        &single_file_diff(&repository, path, side)?,
+        index,
+        header,
+        selection,
+    )
 }
 
 /// Whether `path` exists on both sides of `side`'s diff (HEAD and index for

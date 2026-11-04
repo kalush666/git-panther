@@ -221,6 +221,7 @@ mod tests {
             path: "a.txt".into(),
             index: 1,
             header: "@@ -1 +1 @@".into(),
+            lines: None,
         };
         copy.apply_hunk(Path::new(REPO), &hunk, HunkAction::Unstage)
             .unwrap();

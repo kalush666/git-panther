@@ -7,7 +7,7 @@ use std::path::Path;
 
 use crate::account::{Account, Password};
 use crate::branch::{Branch, BranchName};
-use crate::commit::{CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
+use crate::commit::{BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
 use crate::git_installation::{GitVersion, GitVersionParseError};
 use crate::history::{HeadSnapshot, ResetMode, TagName};
 use crate::recent::RecentRepositories;
@@ -277,12 +277,41 @@ pub trait CommitLog: Send + Sync {
     /// [`RepositoryError`] when the repository cannot be read.
     fn refs_fingerprint(&self, repository: &Path) -> Result<String, RepositoryError>;
 
-    /// Every commit reachable from HEAD, branches, remote branches and tags,
-    /// children before parents and newest first.
+    /// Every commit reachable from HEAD and the branches, remote branches
+    /// and tags not named in `hidden`, children before parents and newest
+    /// first.
     ///
     /// # Errors
     /// [`RepositoryError`] when the repository cannot be read.
-    fn history(&self, repository: &Path) -> Result<Vec<CommitNode>, RepositoryError>;
+    fn history(
+        &self,
+        repository: &Path,
+        hidden: &[String],
+    ) -> Result<Vec<CommitNode>, RepositoryError>;
+
+    /// Commits whose message or author contains `query` (ignoring case).
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn search(&self, repository: &Path, query: &str) -> Result<Vec<CommitId>, RepositoryError>;
+
+    /// Commits that changed `path` (following renames), newest first, at
+    /// most `limit`.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn file_history(
+        &self,
+        repository: &Path,
+        path: &str,
+        limit: usize,
+    ) -> Result<Vec<CommitId>, RepositoryError>;
+
+    /// Who last changed each line of `path` as it is in HEAD.
+    ///
+    /// # Errors
+    /// [`RepositoryError::NotFound`] if HEAD has no such file.
+    fn blame(&self, repository: &Path, path: &str) -> Result<Vec<BlameLine>, RepositoryError>;
 
     /// Summaries for `ids`, in the same order.
     ///

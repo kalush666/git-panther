@@ -36,7 +36,8 @@ pub fn apply_patch(
     let mut child = background_command(executable)
         .arg("-C")
         .arg(repository)
-        .args(["apply", "--whitespace=nowarn"])
+        // Partial hunks carry their original header; let git count lines.
+        .args(["apply", "--whitespace=nowarn", "--recount"])
         .args(flags)
         .arg("-")
         .stdin(Stdio::piped())

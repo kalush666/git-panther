@@ -67,6 +67,9 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::push_tag,
             commands::pending_undo,
             commands::undo,
+            commands::search_commits,
+            commands::file_history,
+            commands::blame_file,
         ])
         .events(tauri_specta::collect_events![dto::RepositoryChanged])
 }

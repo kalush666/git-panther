@@ -98,6 +98,9 @@ pub struct HunkRef {
     pub index: usize,
     /// The header the UI showed; must still match when the action runs.
     pub header: String,
+    /// Only these lines of the hunk (indexes into its shown lines), or the
+    /// whole hunk when `None`.
+    pub lines: Option<Vec<usize>>,
 }
 
 /// Diffs larger than this many lines are not sent to the UI in full.

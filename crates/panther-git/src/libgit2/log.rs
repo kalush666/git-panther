@@ -8,8 +8,8 @@ use git2::{
     Commit, Delta, DiffFindOptions, DiffOptions, ErrorCode, Oid, Reference, Repository, Sort,
 };
 use panther_domain::commit::{
-    ChangeKind, CommitDetails, CommitId, CommitNode, CommitSummary, FileChange, Person, RefKind,
-    RefLabel, body_preview,
+    BlameLine, ChangeKind, CommitDetails, CommitId, CommitNode, CommitSummary, FileChange, Person,
+    RefKind, RefLabel, body_preview,
 };
 use panther_domain::ports::CommitLog;
 use panther_domain::repository::RepositoryError;
@@ -29,9 +29,15 @@ pub struct Git2CommitLog;
 ///
 /// # Errors
 /// [`RepositoryError`] when the repository cannot be read.
-pub fn history_tips(repository: &Path) -> Result<Vec<CommitId>, RepositoryError> {
+pub fn history_tips(
+    repository: &Path,
+    hidden: &[String],
+) -> Result<Vec<CommitId>, RepositoryError> {
     let repository = open(repository)?;
-    Ok(tips(&repository)?.into_iter().map(commit_id).collect())
+    Ok(tips(&repository, hidden)?
+        .into_iter()
+        .map(commit_id)
+        .collect())
 }
 
 impl CommitLog for Git2CommitLog {
@@ -61,12 +67,16 @@ impl CommitLog for Git2CommitLog {
         Ok(format!("{:016x}", hasher.finish()))
     }
 
-    fn history(&self, repository: &Path) -> Result<Vec<CommitNode>, RepositoryError> {
+    fn history(
+        &self,
+        repository: &Path,
+        hidden: &[String],
+    ) -> Result<Vec<CommitNode>, RepositoryError> {
         let repository = open(repository)?;
         let mut walk = repository.revwalk().map_err(|error| git_error(&error))?;
         walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)
             .map_err(|error| git_error(&error))?;
-        for tip in tips(&repository)? {
+        for tip in tips(&repository, hidden)? {
             walk.push(tip).map_err(|error| git_error(&error))?;
         }
         walk.map(|oid| {
@@ -163,6 +173,120 @@ impl CommitLog for Git2CommitLog {
             .map_err(|error| git_error(&error))?;
         file_diff(&diff, path)
     }
+
+    fn search(&self, repository: &Path, query: &str) -> Result<Vec<CommitId>, RepositoryError> {
+        let needle = query.trim().to_lowercase();
+        if needle.is_empty() {
+            return Ok(Vec::new());
+        }
+        let repository = open(repository)?;
+        let mut matches = Vec::new();
+        for oid in walk_all(&repository)? {
+            let commit = repository
+                .find_commit(oid)
+                .map_err(|error| git_error(&error))?;
+            let author = commit.author();
+            let haystack = format!(
+                "{}\n{}\n{}",
+                String::from_utf8_lossy(commit.message_bytes()),
+                String::from_utf8_lossy(author.name_bytes()),
+                String::from_utf8_lossy(author.email_bytes()),
+            )
+            .to_lowercase();
+            if haystack.contains(&needle) {
+                matches.push(commit_id(oid));
+            }
+        }
+        Ok(matches)
+    }
+
+    fn file_history(
+        &self,
+        repository: &Path,
+        path: &str,
+        limit: usize,
+    ) -> Result<Vec<CommitId>, RepositoryError> {
+        let repository = open(repository)?;
+        let mut walk = repository.revwalk().map_err(|error| git_error(&error))?;
+        walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)
+            .map_err(|error| git_error(&error))?;
+        walk.push_head().map_err(|error| git_error(&error))?;
+        let mut touched = Vec::new();
+        for oid in walk {
+            if touched.len() >= limit {
+                break;
+            }
+            let oid = oid.map_err(|error| git_error(&error))?;
+            let commit = repository
+                .find_commit(oid)
+                .map_err(|error| git_error(&error))?;
+            let tree = commit.tree().map_err(|error| git_error(&error))?;
+            let parent_tree = commit.parent(0).ok().and_then(|parent| parent.tree().ok());
+            let mut options = DiffOptions::new();
+            options.pathspec(path).disable_pathspec_match(true);
+            let diff = repository
+                .diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), Some(&mut options))
+                .map_err(|error| git_error(&error))?;
+            if diff.deltas().next().is_some() {
+                touched.push(commit_id(oid));
+            }
+        }
+        Ok(touched)
+    }
+
+    fn blame(&self, repository: &Path, path: &str) -> Result<Vec<BlameLine>, RepositoryError> {
+        let repository = open(repository)?;
+        let not_found = || RepositoryError::NotFound {
+            path: Path::new(path).to_path_buf(),
+        };
+        let head = repository
+            .head()
+            .and_then(|head| head.peel_to_tree())
+            .map_err(|error| git_error(&error))?;
+        let blob = head
+            .get_path(Path::new(path))
+            .and_then(|entry| entry.to_object(&repository))
+            .ok()
+            .and_then(|object| object.into_blob().ok())
+            .ok_or_else(not_found)?;
+        let text = String::from_utf8_lossy(blob.content()).into_owned();
+        let blame = repository
+            .blame_file(Path::new(path), None)
+            .map_err(|error| git_error(&error))?;
+        text.lines()
+            .enumerate()
+            .map(|(index, content)| {
+                let line = u32::try_from(index + 1).unwrap_or(u32::MAX);
+                let hunk = blame
+                    .get_line(index + 1)
+                    .ok_or_else(|| git_error(&git2::Error::from_str("blame is incomplete")))?;
+                let commit = repository
+                    .find_commit(hunk.final_commit_id())
+                    .map_err(|error| git_error(&error))?;
+                // The blamed commit's author when the hunk has no signature.
+                let author = hunk.final_signature().unwrap_or_else(|| commit.author());
+                Ok(BlameLine {
+                    line,
+                    commit: commit_id(commit.id()),
+                    author: String::from_utf8_lossy(author.name_bytes()).into_owned(),
+                    time: author.when().seconds(),
+                    summary: String::from_utf8_lossy(commit.summary_bytes().unwrap_or_default())
+                        .into_owned(),
+                    content: content.to_owned(),
+                })
+            })
+            .collect()
+    }
+}
+
+/// Every commit reachable from HEAD and all refs.
+fn walk_all(repository: &Repository) -> Result<Vec<Oid>, RepositoryError> {
+    let mut walk = repository.revwalk().map_err(|error| git_error(&error))?;
+    for tip in tips(repository, &[])? {
+        walk.push(tip).map_err(|error| git_error(&error))?;
+    }
+    walk.map(|oid| oid.map_err(|error| git_error(&error)))
+        .collect()
 }
 
 fn open(path: &Path) -> Result<Repository, RepositoryError> {
@@ -184,9 +308,15 @@ fn references(
 }
 
 /// HEAD plus every branch, remote branch and tag that points at a commit.
-fn tips(repository: &Repository) -> Result<Vec<Oid>, RepositoryError> {
+/// Commits the graph starts from: HEAD plus every branch and tag not hidden.
+fn tips(repository: &Repository, hidden: &[String]) -> Result<Vec<Oid>, RepositoryError> {
     let mut tips: Vec<Oid> = references(repository)?
         .filter(|reference| ref_kind(reference).is_some())
+        .filter(|reference| {
+            reference
+                .shorthand()
+                .is_ok_and(|name| !hidden.iter().any(|hidden| hidden == name))
+        })
         .filter_map(|reference| reference.peel_to_commit().ok().map(|commit| commit.id()))
         .collect();
     if let Ok(head) = repository.head().and_then(|head| head.peel_to_commit()) {

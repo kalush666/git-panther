@@ -7,7 +7,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use panther_domain::commit::{CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
+use panther_domain::commit::{
+    BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel,
+};
 use panther_domain::ports::CommitLog;
 use panther_domain::repository::RepositoryError;
 use panther_domain::working_tree::FileDiff;
@@ -15,6 +17,15 @@ use panther_graph::{GraphLayout, GraphRow};
 
 /// Largest page a caller may request.
 pub const MAX_PAGE_SIZE: usize = 2_000;
+
+/// Most search matches returned, so a one-letter query stays cheap.
+pub const MAX_SEARCH_MATCHES: usize = 1_000;
+
+/// Most commits listed in a file's history.
+pub const MAX_FILE_HISTORY: usize = 500;
+
+/// Shortest query also matched against commit ids.
+const MIN_SHA_QUERY: usize = 4;
 
 /// One row of the commit list: the commit, its graph row and its labels.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,7 +45,11 @@ pub struct GraphPage {
 
 struct CachedHistory {
     fingerprint: String,
+    /// The refs left out of this history, sorted.
+    hidden: Vec<String>,
     nodes: Vec<CommitNode>,
+    /// Row of each commit.
+    positions: HashMap<CommitId, usize>,
     refs: HashMap<CommitId, Vec<RefLabel>>,
     rows: Vec<GraphRow>,
     layout: GraphLayout,
@@ -67,16 +82,19 @@ impl CommitGraph {
     ///
     /// # Errors
     /// Propagates [`CommitLog`] errors.
+    /// Branches and tags named in `hidden` are left out of the graph
+    /// (commits they share with visible refs still show).
     pub fn page(
         &self,
         repository: &Path,
         offset: usize,
         limit: usize,
+        hidden: &[String],
     ) -> Result<GraphPage, RepositoryError> {
         let fingerprint = self.log.refs_fingerprint(repository)?;
         let (total, ids, rows, refs) = {
             let mut cache = self.lock();
-            let history = self.fresh_history(&mut cache, repository, fingerprint)?;
+            let history = self.fresh_history(&mut cache, repository, fingerprint, hidden)?;
             let total = history.nodes.len();
             let start = offset.min(total);
             let end = start.saturating_add(limit.min(MAX_PAGE_SIZE)).min(total);
@@ -129,6 +147,65 @@ impl CommitGraph {
         self.log.commit_file_diff(repository, id, path)
     }
 
+    /// Rows of the graph (as [`Self::page`] numbers them) whose commit
+    /// message, author or id prefix matches `query`, top to bottom.
+    ///
+    /// # Errors
+    /// Propagates [`CommitLog`] errors.
+    pub fn search(
+        &self,
+        repository: &Path,
+        query: &str,
+        hidden: &[String],
+    ) -> Result<Vec<usize>, RepositoryError> {
+        let query = query.trim();
+        if query.is_empty() {
+            return Ok(Vec::new());
+        }
+        let matched = self.log.search(repository, query)?;
+        let fingerprint = self.log.refs_fingerprint(repository)?;
+        let mut cache = self.lock();
+        let history = self.fresh_history(&mut cache, repository, fingerprint, hidden)?;
+        let mut rows: Vec<usize> = matched
+            .iter()
+            .filter_map(|id| history.positions.get(id).copied())
+            .collect();
+        let query = query.to_lowercase();
+        if query.len() >= MIN_SHA_QUERY && query.chars().all(|c| c.is_ascii_hexdigit()) {
+            rows.extend(
+                history
+                    .nodes
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, node)| node.id.as_str().starts_with(&query))
+                    .map(|(row, _)| row),
+            );
+        }
+        rows.sort_unstable();
+        rows.dedup();
+        rows.truncate(MAX_SEARCH_MATCHES);
+        Ok(rows)
+    }
+
+    /// Commits that changed `path`, newest first.
+    ///
+    /// # Errors
+    /// Propagates [`CommitLog`] errors.
+    pub fn file_history(
+        &self,
+        repository: &Path,
+        path: &str,
+    ) -> Result<Vec<CommitSummary>, RepositoryError> {
+        let ids = self.log.file_history(repository, path, MAX_FILE_HISTORY)?;
+        self.log.summaries(repository, &ids)
+    }
+
+    /// # Errors
+    /// Propagates [`CommitLog::blame`] errors.
+    pub fn blame(&self, repository: &Path, path: &str) -> Result<Vec<BlameLine>, RepositoryError> {
+        self.log.blame(repository, path)
+    }
+
     /// Drops cached history, e.g. when a repository tab closes.
     pub fn forget(&self, repository: &Path) {
         self.lock().remove(repository);
@@ -139,18 +216,29 @@ impl CommitGraph {
         cache: &'cache mut HashMap<PathBuf, CachedHistory>,
         repository: &Path,
         fingerprint: String,
+        hidden: &[String],
     ) -> Result<&'cache mut CachedHistory, RepositoryError> {
+        let mut hidden = hidden.to_vec();
+        hidden.sort_unstable();
+        hidden.dedup();
         let is_stale = cache
             .get(repository)
-            .is_none_or(|cached| cached.fingerprint != fingerprint);
+            .is_none_or(|cached| cached.fingerprint != fingerprint || cached.hidden != hidden);
         if is_stale {
-            let nodes = self.log.history(repository)?;
+            let nodes = self.log.history(repository, &hidden)?;
+            let positions = nodes
+                .iter()
+                .enumerate()
+                .map(|(row, node)| (node.id.clone(), row))
+                .collect();
             let refs = group_by_target(self.log.refs(repository)?);
             cache.insert(
                 repository.to_path_buf(),
                 CachedHistory {
                     fingerprint,
+                    hidden,
                     nodes,
+                    positions,
                     refs,
                     rows: Vec::new(),
                     layout: GraphLayout::default(),
@@ -211,7 +299,32 @@ mod tests {
             Ok(self.fingerprint.lock().unwrap().clone())
         }
 
-        fn history(&self, _: &Path) -> Result<Vec<CommitNode>, RepositoryError> {
+        fn search(&self, _: &Path, query: &str) -> Result<Vec<CommitId>, RepositoryError> {
+            // Commit `n` has message "commit n".
+            Ok(query
+                .strip_prefix("commit ")
+                .and_then(|n| n.parse::<usize>().ok())
+                .map(id)
+                .into_iter()
+                .collect())
+        }
+
+        fn file_history(
+            &self,
+            _: &Path,
+            _: &str,
+            _: usize,
+        ) -> Result<Vec<CommitId>, RepositoryError> {
+            Ok(vec![id(0)])
+        }
+
+        fn blame(&self, _: &Path, _: &str) -> Result<Vec<BlameLine>, RepositoryError> {
+            Ok(Vec::new())
+        }
+
+        fn history(&self, _: &Path, hidden: &[String]) -> Result<Vec<CommitNode>, RepositoryError> {
+            // Hiding `main` (on commit 0) drops nothing but is a new history.
+            let _ = hidden;
             self.history_reads.fetch_add(1, Ordering::SeqCst);
             Ok((0..self.commits)
                 .map(|index| CommitNode {
@@ -234,7 +347,10 @@ mod tests {
                 .map(|id| CommitSummary {
                     id: id.clone(),
                     parents: Vec::new(),
-                    summary: format!("commit {}", id.short()),
+                    summary: format!(
+                        "commit {}",
+                        usize::from_str_radix(id.as_str(), 16).unwrap_or(0)
+                    ),
                     body_preview: String::new(),
                     author: Person {
                         name: "Dev".into(),
@@ -281,7 +397,7 @@ mod tests {
     #[test]
     fn returns_the_requested_window_with_labels() {
         let (graph, _) = graph(10);
-        let page = graph.page(Path::new(REPO), 0, 3).unwrap();
+        let page = graph.page(Path::new(REPO), 0, 3, &[]).unwrap();
 
         assert_eq!(page.total, 10);
         assert_eq!(page.entries.len(), 3);
@@ -293,40 +409,63 @@ mod tests {
     #[test]
     fn clamps_pages_past_the_end() {
         let (graph, _) = graph(5);
-        let page = graph.page(Path::new(REPO), 3, 100).unwrap();
+        let page = graph.page(Path::new(REPO), 3, 100, &[]).unwrap();
         assert_eq!(page.entries.len(), 2);
 
-        let beyond = graph.page(Path::new(REPO), 50, 10).unwrap();
+        let beyond = graph.page(Path::new(REPO), 50, 10, &[]).unwrap();
         assert_eq!((beyond.offset, beyond.entries.len()), (5, 0));
     }
 
     #[test]
     fn caps_the_page_size() {
         let (graph, _) = graph(MAX_PAGE_SIZE + 10);
-        let page = graph.page(Path::new(REPO), 0, usize::MAX).unwrap();
+        let page = graph.page(Path::new(REPO), 0, usize::MAX, &[]).unwrap();
         assert_eq!(page.entries.len(), MAX_PAGE_SIZE);
     }
 
     #[test]
     fn reads_history_once_until_refs_move() {
         let (graph, log) = graph(20);
-        graph.page(Path::new(REPO), 0, 5).unwrap();
-        graph.page(Path::new(REPO), 5, 5).unwrap();
+        graph.page(Path::new(REPO), 0, 5, &[]).unwrap();
+        graph.page(Path::new(REPO), 5, 5, &[]).unwrap();
         assert_eq!(log.history_reads.load(Ordering::SeqCst), 1);
 
         *log.fingerprint.lock().unwrap() = "v2".into();
-        graph.page(Path::new(REPO), 0, 5).unwrap();
+        graph.page(Path::new(REPO), 0, 5, &[]).unwrap();
         assert_eq!(log.history_reads.load(Ordering::SeqCst), 2);
     }
 
     #[test]
     fn later_pages_continue_the_same_layout() {
         let (graph, _) = graph(10);
-        let whole = graph.page(Path::new(REPO), 0, 10).unwrap();
+        let whole = graph.page(Path::new(REPO), 0, 10, &[]).unwrap();
         graph.forget(Path::new(REPO));
-        graph.page(Path::new(REPO), 0, 4).unwrap();
-        let tail = graph.page(Path::new(REPO), 4, 6).unwrap();
+        graph.page(Path::new(REPO), 0, 4, &[]).unwrap();
+        let tail = graph.page(Path::new(REPO), 4, 6, &[]).unwrap();
 
         assert_eq!(tail.entries, whole.entries[4..]);
+    }
+
+    #[test]
+    fn search_returns_graph_rows_for_messages_and_id_prefixes() {
+        let graph = CommitGraph::new(Arc::new(FakeLog::new(10)));
+        assert_eq!(graph.search(Path::new(REPO), "commit 7", &[]).unwrap(), [7]);
+        let third = id(3);
+        let prefix = &third.as_str()[..39];
+        assert_eq!(graph.search(Path::new(REPO), prefix, &[]).unwrap(), [3]);
+        assert_eq!(
+            graph.search(Path::new(REPO), "  ", &[]).unwrap(),
+            Vec::<usize>::new()
+        );
+    }
+
+    #[test]
+    fn hiding_refs_rereads_history() {
+        let log = Arc::new(FakeLog::new(5));
+        let graph = CommitGraph::new(log.clone());
+        graph.page(Path::new(REPO), 0, 5, &[]).unwrap();
+        graph.page(Path::new(REPO), 0, 5, &["main".into()]).unwrap();
+        graph.page(Path::new(REPO), 0, 5, &["main".into()]).unwrap();
+        assert_eq!(log.history_reads.load(Ordering::SeqCst), 2);
     }
 }

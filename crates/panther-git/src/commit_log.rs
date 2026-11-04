@@ -2,12 +2,14 @@
 
 use std::path::{Path, PathBuf};
 
-use panther_domain::commit::{CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
+use panther_domain::commit::{
+    BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel,
+};
 use panther_domain::ports::CommitLog;
 use panther_domain::repository::RepositoryError;
 use panther_domain::working_tree::FileDiff;
 
-use crate::cli::read_history;
+use crate::cli::{read_history, run_git};
 use crate::libgit2::{Git2CommitLog, history_tips};
 
 /// Walks history with `git rev-list` (uses the commit-graph file) and does
@@ -38,8 +40,67 @@ impl CommitLog for GitCommitLog {
         self.libgit2.refs_fingerprint(repository)
     }
 
-    fn history(&self, repository: &Path) -> Result<Vec<CommitNode>, RepositoryError> {
-        read_history(&self.executable, repository, &history_tips(repository)?)
+    fn history(
+        &self,
+        repository: &Path,
+        hidden: &[String],
+    ) -> Result<Vec<CommitNode>, RepositoryError> {
+        read_history(
+            &self.executable,
+            repository,
+            &history_tips(repository, hidden)?,
+        )
+    }
+
+    fn search(&self, repository: &Path, query: &str) -> Result<Vec<CommitId>, RepositoryError> {
+        let query = query.trim();
+        if query.is_empty() {
+            return Ok(Vec::new());
+        }
+        // `--grep` and `--author` combine with AND, so ask twice and merge.
+        let mut ids = Vec::new();
+        for filter in [format!("--grep={query}"), format!("--author={query}")] {
+            let output = run_git(
+                &self.executable,
+                repository,
+                &[
+                    "log",
+                    "--all",
+                    "--format=%H",
+                    "--regexp-ignore-case",
+                    "--fixed-strings",
+                    &filter,
+                ],
+            )
+            .map_err(|details| RepositoryError::Git { details })?;
+            ids.extend(output.lines().filter_map(|line| CommitId::parse(line).ok()));
+        }
+        ids.sort_unstable_by(|a, b| a.as_str().cmp(b.as_str()));
+        ids.dedup();
+        Ok(ids)
+    }
+
+    fn file_history(
+        &self,
+        repository: &Path,
+        path: &str,
+        limit: usize,
+    ) -> Result<Vec<CommitId>, RepositoryError> {
+        let limit = format!("--max-count={limit}");
+        let output = run_git(
+            &self.executable,
+            repository,
+            &["log", "--follow", "--format=%H", &limit, "--", path],
+        )
+        .map_err(|details| RepositoryError::Git { details })?;
+        Ok(output
+            .lines()
+            .filter_map(|line| CommitId::parse(line).ok())
+            .collect())
+    }
+
+    fn blame(&self, repository: &Path, path: &str) -> Result<Vec<BlameLine>, RepositoryError> {
+        self.libgit2.blame(repository, path)
     }
 
     fn summaries(

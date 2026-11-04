@@ -73,6 +73,7 @@ fn hunk(dir: &TempDir, side: DiffSide, index: usize) -> HunkRef {
         path: "notes.txt".into(),
         index,
         header: diff.hunks[index].header.clone(),
+        lines: None,
     }
 }
 
@@ -197,6 +198,7 @@ fn a_hunk_of_a_new_file_stages_the_whole_file() {
         path: "new.txt".into(),
         index: 0,
         header: diff.hunks[0].header.clone(),
+        lines: None,
     };
 
     tree()
@@ -313,4 +315,77 @@ fn commit_file_diff_shows_a_committed_change() {
         .unwrap();
 
     assert_eq!(diff.hunks.len(), 2);
+}
+
+/// Changes lines 2 and 3 next to each other, so both land in one hunk.
+fn edit_neighbouring_lines(dir: &TempDir) {
+    let text = numbered_lines()
+        .replace("line 2\n", "line two\n")
+        .replace("line 3\n", "line three\n");
+    fs::write(dir.path().join("notes.txt"), text).unwrap();
+}
+
+/// `hunk` limited to the shown lines whose content is in `contents`.
+fn lines_of(dir: &TempDir, side: DiffSide, contents: &[&str]) -> HunkRef {
+    let diff = tree().diff(dir.path(), "notes.txt", side).unwrap();
+    let lines = diff.hunks[0]
+        .lines
+        .iter()
+        .enumerate()
+        .filter(|(_, line)| contents.contains(&line.content.as_str()))
+        .map(|(index, _)| index)
+        .collect();
+    HunkRef {
+        lines: Some(lines),
+        ..hunk(dir, side, 0)
+    }
+}
+
+fn changed_contents(dir: &TempDir, side: DiffSide) -> Vec<String> {
+    tree()
+        .diff(dir.path(), "notes.txt", side)
+        .unwrap()
+        .hunks
+        .iter()
+        .flat_map(|hunk| hunk.lines.iter())
+        .filter(|line| line.kind != panther_domain::working_tree::LineKind::Context)
+        .map(|line| line.content.clone())
+        .collect()
+}
+
+#[test]
+fn stages_unstages_and_discards_selected_lines_of_a_hunk() {
+    let dir = repository();
+    edit_neighbouring_lines(&dir);
+
+    let selected = lines_of(&dir, DiffSide::Unstaged, &["line 2", "line two"]);
+    tree()
+        .apply_hunk(dir.path(), &selected, HunkAction::Stage)
+        .unwrap();
+    assert_eq!(
+        changed_contents(&dir, DiffSide::Staged),
+        ["line 2", "line two"]
+    );
+    assert_eq!(
+        changed_contents(&dir, DiffSide::Unstaged),
+        ["line 3", "line three"]
+    );
+
+    let staged = lines_of(&dir, DiffSide::Staged, &["line 2", "line two"]);
+    tree()
+        .apply_hunk(dir.path(), &staged, HunkAction::Unstage)
+        .unwrap();
+    assert_eq!(
+        changed_contents(&dir, DiffSide::Staged),
+        Vec::<String>::new()
+    );
+
+    let discard = lines_of(&dir, DiffSide::Unstaged, &["line 3", "line three"]);
+    tree()
+        .apply_hunk(dir.path(), &discard, HunkAction::Discard)
+        .unwrap();
+    assert_eq!(
+        changed_contents(&dir, DiffSide::Unstaged),
+        ["line 2", "line two"]
+    );
 }
