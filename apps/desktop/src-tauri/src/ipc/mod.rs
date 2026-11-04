@@ -84,6 +84,8 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::add_worktree,
             commands::remove_worktree,
             commands::lfs_status,
+            commands::get_identity,
+            commands::set_identity,
         ])
         .events(tauri_specta::collect_events![dto::RepositoryChanged])
 }

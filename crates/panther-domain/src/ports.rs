@@ -11,6 +11,7 @@ use crate::commit::{BlameLine, CommitDetails, CommitId, CommitNode, CommitSummar
 use crate::conflict::ConflictChunk;
 use crate::git_installation::{GitVersion, GitVersionParseError};
 use crate::history::{HeadSnapshot, RebaseStep, ResetMode, TagName};
+use crate::identity::Identity;
 use crate::layout::{LfsStatus, Submodule, Worktree};
 use crate::recent::RecentRepositories;
 use crate::remote::{PullStrategy, PushOptions, Remote, RemoteName};
@@ -203,6 +204,22 @@ pub trait RepositoryLayout: Send + Sync {
     /// # Errors
     /// [`RepositoryError`] when the repository cannot be read.
     fn lfs(&self, repository: &Path) -> Result<LfsStatus, RepositoryError>;
+}
+
+/// Who commits in a repository.
+pub trait IdentityConfig: Send + Sync {
+    /// The effective identity (repository, then global config), or `None`
+    /// when git does not know a name and email yet.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when git cannot be run.
+    fn identity(&self, repository: &Path) -> Result<Option<Identity>, RepositoryError>;
+
+    /// Writes `identity` into the repository's own config.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the config cannot be written.
+    fn apply(&self, repository: &Path, identity: &Identity) -> Result<(), RepositoryError>;
 }
 
 /// Saves uncommitted work aside and brings it back.

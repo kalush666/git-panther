@@ -4,6 +4,7 @@ import { ArrowDownToLine, ArrowUpFromLine, Check, ChevronDown, RefreshCw, X } fr
 import { useState } from 'react';
 
 import { serverOf, SignInDialog } from '../../../shared/accounts';
+import { useCommands } from '../../../shared/commands';
 import { isIpcError } from '../../../shared/ipc';
 import { PULL_STRATEGIES, usePullStrategyStore } from '../../../shared/preferences/pullStrategy';
 import { Button } from '../../../shared/ui/Button/Button';
@@ -36,6 +37,44 @@ export function SyncToolbar({ path }: { path: string }) {
   const head = branches.data?.find((branch) => branch.isHead);
   const remotes = useRemotes(path);
   const busy = sync.running !== null;
+  useCommands(`sync:${path}`, [
+    {
+      id: 'repository.fetch',
+      title: 'Fetch',
+      group: 'Repository',
+      enabled: !busy,
+      run: () => {
+        sync.run({ action: 'fetch' });
+      },
+    },
+    {
+      id: 'repository.pull',
+      title: 'Pull',
+      group: 'Repository',
+      enabled: !busy,
+      run: () => {
+        sync.run({ action: 'pull', strategy: usePullStrategyStore.getState().strategy });
+      },
+    },
+    {
+      id: 'repository.push',
+      title: 'Push',
+      group: 'Repository',
+      enabled: !busy,
+      run: () => {
+        sync.run({ action: 'push' });
+      },
+    },
+    {
+      id: 'repository.forcePush',
+      title: 'Force push (safe, with lease)',
+      group: 'Repository',
+      enabled: !busy,
+      run: () => {
+        sync.run({ action: 'push', options: { forceWithLease: true } });
+      },
+    },
+  ]);
 
   return (
     <div className={styles.toolbar}>

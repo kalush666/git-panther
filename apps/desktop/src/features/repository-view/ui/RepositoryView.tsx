@@ -1,12 +1,14 @@
 import * as ContextMenu from '@radix-ui/react-context-menu';
 import { ChevronRight, GitBranch, TriangleAlert, Undo2, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
+import { useCommands } from '../../../shared/commands';
 import type { GraphEntryDto } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
+import { useBranches } from '../api/useBranches';
 import { useLfsStatus } from '../api/useLayout';
 import { useRepository } from '../api/useRepository';
-import { useWorkingTreeStatus, type DiffSource } from '../api/useWorkingTree';
+import { useStageFiles, useWorkingTreeStatus, type DiffSource } from '../api/useWorkingTree';
 import { describeHead } from '../model/describeHead';
 import { BranchSidebar } from './BranchSidebar';
 import { CommitDetailsPanel } from './CommitDetailsPanel';
@@ -47,7 +49,57 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
   const branchActions = useBranchActions(path, history.report);
   const remoteActions = useRemoteActions(path, history.report, onOpenRepository);
   const lfs = useLfsStatus(path);
-  useUndoShortcut(history);
+  const branches = useBranches(path);
+  const stage = useStageFiles(path);
+  const headBranch = branches.data?.find((branch) => branch.kind === 'local' && branch.isHead);
+  useCommands(`repository:${path}`, [
+    {
+      id: 'repository.undo',
+      title: history.undoLabel ? `Undo: ${history.undoLabel}` : 'Undo',
+      group: 'Repository',
+      enabled: history.undoLabel !== null,
+      run: history.undo,
+    },
+    {
+      id: 'repository.newBranch',
+      title: 'New branch here',
+      group: 'Repository',
+      enabled: headBranch !== undefined,
+      run: () => {
+        if (headBranch) branchActions.openCreate(headBranch.target, headBranch.name);
+      },
+    },
+    {
+      id: 'repository.stageAll',
+      title: 'Stage all changes',
+      group: 'Repository',
+      enabled: (status.data?.unstaged.length ?? 0) > 0,
+      run: () => {
+        stage.mutate(status.data?.unstaged.map((file) => file.path) ?? []);
+      },
+    },
+    {
+      id: 'repository.commit',
+      title: 'Go to the commit message',
+      group: 'Repository',
+      run: () => {
+        setSelection({ kind: 'workingCopy' });
+        requestAnimationFrame(() => {
+          document.getElementById('commit-summary')?.focus();
+        });
+      },
+    },
+    ...(branches.data ?? [])
+      .filter((branch) => !branch.isHead)
+      .map((branch) => ({
+        id: `checkout:${branch.kind}:${branch.name}`,
+        title: branch.name,
+        group: branch.kind === 'local' ? 'Check out' : 'Check out remote',
+        run: () => {
+          branchActions.checkout(branch.name);
+        },
+      })),
+  ]);
   const keepSelectedCommit = useCallback((commitId: string | null) => {
     setSelectedCommitId(commitId);
   }, []);
@@ -246,27 +298,6 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
       {history.dropMenu}
     </section>
   );
-}
-
-/** Ctrl+Z (Cmd+Z on macOS) undoes the last action, except while typing. */
-function useUndoShortcut({ undo, undoLabel }: HistoryActions) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target instanceof HTMLElement ? event.target : null;
-      const typing =
-        target !== null &&
-        (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
-      if (typing || !undoLabel) return;
-      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z') {
-        event.preventDefault();
-        undo();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-    };
-  }, [undo, undoLabel]);
 }
 
 const RESET_MODES = [

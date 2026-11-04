@@ -10,6 +10,7 @@ pub mod clone_repository;
 pub mod commit_graph;
 pub mod conflicts;
 pub mod history;
+pub mod identity;
 pub mod layout;
 pub mod open_repository;
 pub mod recent_repositories;

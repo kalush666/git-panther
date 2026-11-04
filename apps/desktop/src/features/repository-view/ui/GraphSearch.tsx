@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useCommands } from '../../../shared/commands';
 import { useCommitSearch } from '../api/useGraph';
 import styles from './GraphSearch.module.css';
 
@@ -31,19 +32,17 @@ export function GraphSearch({ path, onGoTo, onMatchesChange }: GraphSearchProps)
     onMatchesChange(matches.length > 0 ? new Set(matches) : NO_ROWS);
   }, [matches, onMatchesChange]);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
-        event.preventDefault();
+  useCommands(`search:${path}`, [
+    {
+      id: 'repository.search',
+      title: 'Search commits',
+      group: 'Repository',
+      run: () => {
         inputRef.current?.focus();
         inputRef.current?.select();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-    };
-  }, []);
+      },
+    },
+  ]);
 
   const goTo = (position: number) => {
     if (matches.length === 0) return;

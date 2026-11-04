@@ -57,6 +57,7 @@ pub enum AppErrorKind {
     RemoteExists,
     RemoteNotFound,
     WorktreeFailed,
+    InvalidIdentity,
     WatchFailed,
     Internal,
 }
@@ -147,6 +148,7 @@ impl From<RepositoryError> for AppError {
             RepositoryError::RemoteExists { .. } => AppErrorKind::RemoteExists,
             RepositoryError::RemoteNotFound { .. } => AppErrorKind::RemoteNotFound,
             RepositoryError::WorktreeFailed { .. } => AppErrorKind::WorktreeFailed,
+            RepositoryError::InvalidIdentity(_) => AppErrorKind::InvalidIdentity,
         };
         Self::new(kind, error.to_string())
     }

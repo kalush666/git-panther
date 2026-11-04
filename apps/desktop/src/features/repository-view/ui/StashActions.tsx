@@ -1,4 +1,5 @@
 import { Archive, ArchiveRestore } from 'lucide-react';
+import { useCommands } from '../../../shared/commands';
 import { Button } from '../../../shared/ui/Button/Button';
 import { useApplyStash, useSaveStash, useStashes } from '../api/useStashes';
 import styles from './StashActions.module.css';
@@ -11,6 +12,26 @@ export function StashActions({ path }: { path: string }) {
   const save = useSaveStash(path);
   const apply = useApplyStash(path);
   const newest = stashes.data?.[0];
+  useCommands(`stash:${path}`, [
+    {
+      id: 'repository.stash',
+      title: 'Stash all changes',
+      group: 'Repository',
+      enabled: !save.isPending,
+      run: () => {
+        save.mutate({ message: null, includeUntracked: true });
+      },
+    },
+    {
+      id: 'repository.pop',
+      title: newest ? `Pop "${newest.message}"` : 'Pop the newest stash',
+      group: 'Repository',
+      enabled: newest !== undefined,
+      run: () => {
+        if (newest) apply.mutate({ index: newest.index, pop: true });
+      },
+    },
+  ]);
 
   return (
     <div className={styles.actions} role="group" aria-label="Stash">

@@ -210,3 +210,13 @@
 .commit .error {
   margin: 0;
 }
+
+.identity {
+  padding: var(--gp-space-2) var(--gp-space-4) 0;
+  border-top: 1px solid var(--gp-border-subtle);
+}
+
+.identity + .commit {
+  padding-top: var(--gp-space-2);
+  border-top: none;
+}

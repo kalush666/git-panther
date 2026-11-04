@@ -214,6 +214,8 @@ pub enum RepositoryError {
     RemoteNotFound { name: String },
     #[error("{path} cannot be used for a new worktree: {details}")]
     WorktreeFailed { path: PathBuf, details: String },
+    #[error(transparent)]
+    InvalidIdentity(#[from] crate::identity::InvalidIdentity),
 }
 
 #[cfg(test)]

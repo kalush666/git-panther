@@ -29,6 +29,7 @@ export type {
   FileDiff,
   HunkAction,
   HunkTarget,
+  Identity,
   LfsStatus,
   OnProgress,
   ResetMode,

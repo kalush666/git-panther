@@ -12,6 +12,7 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
 use tauri_specta::Event;
 
+use super::dto::IdentityDto;
 use super::dto::{
     AccountDto, BlameLineDto, BranchDto, CloneProgressDto, CommitDetailsDto, CommitSummaryDto,
     ConflictChunkDto, ConflictSideDto, DiffSideDto, FileDiffDto, GitInstallationDto, GraphPageDto,
@@ -786,6 +787,34 @@ pub async fn remove_worktree(
         move || Ok(layout.remove_worktree(&PathBuf::from(path), &PathBuf::from(worktree))?),
     )
     .await
+}
+
+/// Who commits in the repository, or `None` when git does not know yet.
+#[tauri::command]
+#[specta::specta]
+pub async fn get_identity(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Option<IdentityDto>, AppError> {
+    let identities = services.identities.clone();
+    run_blocking(move || {
+        Ok(identities
+            .current(&PathBuf::from(path))?
+            .map(IdentityDto::from))
+    })
+    .await
+}
+
+/// Writes who commits (and how commits are signed) into the repository's config.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_identity(
+    services: State<'_, AppServices>,
+    path: String,
+    identity: IdentityDto,
+) -> Result<(), AppError> {
+    let identities = services.identities.clone();
+    run_blocking(move || Ok(identities.apply(&PathBuf::from(path), &identity.into())?)).await
 }
 
 /// Whether the repository uses Git LFS and whether `git lfs` is installed.

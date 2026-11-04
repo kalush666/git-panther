@@ -168,6 +168,10 @@ export const commands = {
 	removeWorktree: (path: string, worktree: string) => typedError<null, AppError>(__TAURI_INVOKE("remove_worktree", { path, worktree })),
 	/**  Whether the repository uses Git LFS and whether `git lfs` is installed. */
 	lfsStatus: (path: string) => typedError<LfsStatusDto, AppError>(__TAURI_INVOKE("lfs_status", { path })),
+	/**  Who commits in the repository, or `None` when git does not know yet. */
+	getIdentity: (path: string) => typedError<IdentityDto_Serialize | null, AppError>(__TAURI_INVOKE("get_identity", { path })),
+	/**  Writes who commits (and how commits are signed) into the repository's config. */
+	setIdentity: (path: string, identity: IdentityDto_Deserialize) => typedError<null, AppError>(__TAURI_INVOKE("set_identity", { path, identity })),
 };
 
 /** Events */
@@ -191,7 +195,7 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "undoOutdated" | "invalidRebasePlan" | "invalidRemoteName" | "remoteExists" | "remoteNotFound" | "worktreeFailed" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "undoOutdated" | "invalidRebasePlan" | "invalidRemoteName" | "remoteExists" | "remoteNotFound" | "worktreeFailed" | "invalidIdentity" | "watchFailed" | "internal";
 
 /**  Who last changed one line. */
 export type BlameLineDto = {
@@ -397,6 +401,23 @@ export type HunkDto_Serialize = {
 	lines: DiffLineDto_Serialize[],
 };
 
+/**  Who commits, and with which signing key if any. */
+export type IdentityDto = IdentityDto_Serialize | IdentityDto_Deserialize;
+
+/**  Who commits, and with which signing key if any. */
+export type IdentityDto_Deserialize = {
+	name: string,
+	email: string,
+	signing?: SigningDto | null,
+};
+
+/**  Who commits, and with which signing key if any. */
+export type IdentityDto_Serialize = {
+	name: string,
+	email: string,
+	signing: SigningDto | null,
+};
+
 export type LfsStatusDto = {
 	used: boolean,
 	installed: boolean,
@@ -490,6 +511,13 @@ export type SettingsDto_Serialize = {
 	/**  The git this run uses; differs from the configured one until restart. */
 	activeGitExecutable: string,
 };
+
+export type SigningDto = {
+	format: SigningFormatDto,
+	key: string,
+};
+
+export type SigningFormatDto = "openPgp" | "ssh" | "x509";
 
 /**  One stash entry, newest first. */
 export type StashDto = {

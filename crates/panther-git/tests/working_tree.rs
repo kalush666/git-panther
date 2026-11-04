@@ -389,3 +389,31 @@ fn stages_unstages_and_discards_selected_lines_of_a_hunk() {
         ["line 2", "line two"]
     );
 }
+
+#[test]
+fn identity_is_read_and_written_in_the_repository_config() {
+    use panther_domain::identity::{Identity, Signing, SigningFormat};
+    use panther_domain::ports::IdentityConfig;
+    use panther_git::GitIdentityConfig;
+
+    let dir = repository();
+    let config = GitIdentityConfig::default();
+    let work = Identity {
+        name: "Dana Work".into(),
+        email: "dana@corp.example.internal".into(),
+        signing: Some(Signing {
+            format: SigningFormat::Ssh,
+            key: "~/.ssh/id_ed25519.pub".into(),
+        }),
+    };
+
+    config.apply(dir.path(), &work).unwrap();
+    assert_eq!(config.identity(dir.path()).unwrap(), Some(work.clone()));
+
+    let unsigned = Identity {
+        signing: None,
+        ..work
+    };
+    config.apply(dir.path(), &unsigned).unwrap();
+    assert_eq!(config.identity(dir.path()).unwrap(), Some(unsigned));
+}

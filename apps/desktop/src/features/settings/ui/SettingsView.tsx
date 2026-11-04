@@ -11,6 +11,8 @@ import { THEME_PREFERENCES, useThemeStore } from '../../../shared/preferences/th
 import { Button } from '../../../shared/ui/Button/Button';
 import { AccountsSetting } from './AccountsSetting';
 import { GitExecutableSetting } from './GitExecutableSetting';
+import { IdentitiesSetting } from './IdentitiesSetting';
+import { ShortcutsSetting } from './ShortcutsSetting';
 import { SegmentedControl } from './SegmentedControl';
 import styles from './SettingsView.module.css';
 
@@ -74,6 +76,14 @@ export function SettingsView({ onClose }: SettingsViewProps) {
             <AccountsSetting />
           </Row>
         </Group>
+        <Group title="Identities">
+          <Row
+            label="Commit as"
+            hint="Switch a repository to one of these from its commit box. Signing keys sign every commit."
+          >
+            <IdentitiesSetting />
+          </Row>
+        </Group>
         <Group title="Git">
           <Row
             label="Git executable"
@@ -91,6 +101,11 @@ export function SettingsView({ onClose }: SettingsViewProps) {
               value={pullStrategy}
               onChange={setPullStrategy}
             />
+          </Row>
+        </Group>
+        <Group title="Keyboard">
+          <Row label="Shortcuts" hint="Ctrl+K opens the command palette for everything else.">
+            <ShortcutsSetting />
           </Row>
         </Group>
       </div>
