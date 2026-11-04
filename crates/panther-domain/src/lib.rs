@@ -9,6 +9,7 @@ pub mod branch;
 pub mod commit;
 pub mod conflict;
 pub mod git_installation;
+pub mod gitflow;
 pub mod history;
 pub mod hosting;
 pub mod identity;

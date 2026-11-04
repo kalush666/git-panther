@@ -605,6 +605,29 @@ function createMockBackend(): Backend {
     undo: () => Promise.resolve(history.undo()),
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
     pickPatchFile: () => Promise.resolve(MOCK_PICKED_PATCH),
+    gitflowStart: (_path, kind, name) => {
+      const branch = `${kind}/${name.trim()}`;
+      const base = kind === 'hotfix' ? 'main' : 'develop';
+      const created = branchStore.create(branch, branchStore.targetOf(base) ?? '', true);
+      return Promise.resolve(created.status === 'ok' ? ok(branch) : created);
+    },
+    gitflowFinish: (_path, branch) => {
+      const kind = branch.split('/')[0];
+      if (!['feature', 'release', 'hotfix'].includes(kind ?? '')) {
+        return Promise.resolve(
+          failure('gitFailed', `${branch} is not a feature, release or hotfix branch.`),
+        );
+      }
+      const tagged = kind !== 'feature';
+      branchStore.checkout('develop');
+      branchStore.delete(branch, true);
+      return Promise.resolve(
+        ok({
+          mergedInto: tagged ? ['main', 'develop'] : ['develop'],
+          tag: tagged ? branch.slice(branch.indexOf('/') + 1) : null,
+        }),
+      );
+    },
     commitPatch: (_path, id) =>
       Promise.resolve(
         ok(

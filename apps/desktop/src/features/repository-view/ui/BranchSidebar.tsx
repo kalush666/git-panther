@@ -22,6 +22,7 @@ import { SubmoduleList, WorktreeList } from './LayoutLists';
 import { ReviewLists } from './ReviewLists';
 import { StashList } from './StashList';
 import type { BranchActions } from './useBranchActions';
+import { flowKindOf } from './useGitflowActions';
 import type { HistoryActions } from './useHistoryActions';
 import type { HostingActions } from './useHostingActions';
 import type { RemoteActions } from './useRemoteActions';
@@ -473,6 +474,16 @@ function BranchRow({
                 }}
               >
                 Open in a new worktree
+              </ContextMenu.Item>
+            )}
+            {isLocal && flowKindOf(branch.name) && (
+              <ContextMenu.Item
+                className={menu.item}
+                onSelect={() => {
+                  actions.finishFlow(branch.name);
+                }}
+              >
+                Finish {flowKindOf(branch.name)}…
               </ContextMenu.Item>
             )}
             {!isLocal && (

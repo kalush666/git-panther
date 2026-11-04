@@ -9,6 +9,7 @@ pub mod check_git_installation;
 pub mod clone_repository;
 pub mod commit_graph;
 pub mod conflicts;
+pub mod gitflow;
 pub mod history;
 pub mod hosting;
 pub mod identity;

@@ -602,6 +602,13 @@ pub trait HistoryEditor: Send + Sync {
     /// [`RepositoryError::OperationConflict`] or [`RepositoryError::CheckoutConflict`].
     fn merge(&self, repository: &Path, branch: &str) -> Result<(), RepositoryError>;
 
+    /// Merges `branch` with a merge commit even where a fast-forward would
+    /// do, as git flow does.
+    ///
+    /// # Errors
+    /// Like [`HistoryEditor::merge`].
+    fn merge_no_ff(&self, repository: &Path, branch: &str) -> Result<(), RepositoryError>;
+
     /// Replays the current branch's own commits on top of `onto`.
     ///
     /// # Errors

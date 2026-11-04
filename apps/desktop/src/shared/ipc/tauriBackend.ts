@@ -87,6 +87,8 @@ export const tauriBackend: Backend = {
     return typeof selection === 'string' ? selection : null;
   },
   commitPatch: commands.commitPatch,
+  gitflowStart: commands.gitflowStart,
+  gitflowFinish: commands.gitflowFinish,
   applyPatch: commands.applyPatch,
   applyPatchFile: commands.applyPatchFile,
   pickExecutable: async (title) => {

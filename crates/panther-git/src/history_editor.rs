@@ -190,6 +190,14 @@ impl HistoryEditor for GitHistoryEditor {
         self.git(repository, &["merge", "--no-edit", branch], "merge")
     }
 
+    fn merge_no_ff(&self, repository: &Path, branch: &str) -> Result<(), RepositoryError> {
+        self.git(
+            repository,
+            &["merge", "--no-ff", "--no-edit", branch],
+            "merge",
+        )
+    }
+
     fn rebase(&self, repository: &Path, onto: &str) -> Result<(), RepositoryError> {
         self.git(repository, &["rebase", onto], "rebase")
     }

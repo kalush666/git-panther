@@ -214,6 +214,9 @@ mod tests {
         fn merge(&self, _: &Path, _: &str) -> Result<(), RepositoryError> {
             unreachable!()
         }
+        fn merge_no_ff(&self, _: &Path, _: &str) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
         fn rebase(&self, _: &Path, _: &str) -> Result<(), RepositoryError> {
             unreachable!()
         }
