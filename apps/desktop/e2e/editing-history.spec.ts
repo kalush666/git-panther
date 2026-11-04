@@ -28,8 +28,7 @@ test.describe('editing history', () => {
     // Keys: Alt+Down moves the row, D drops the focused one.
     await page.keyboard.press('Alt+ArrowDown');
     await expect(steps.nth(1).getByRole('radio', { name: 'Reword' })).toBeChecked();
-    await steps.last().focus();
-    await page.keyboard.press('d');
+    await steps.last().press('d');
     await expect(steps.last().getByRole('radio', { name: 'Drop' })).toBeChecked();
 
     await panel.getByRole('button', { name: 'Start rebase' }).click();

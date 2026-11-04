@@ -526,6 +526,31 @@ function CommitMenu({
       >
         Cherry-pick commit
       </ContextMenu.Item>
+      <ContextMenu.Separator className={menu.separator} />
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          history.openReword(entry.id, `commit ${entry.shortId}`, entry.summary);
+        }}
+      >
+        Reword…
+      </ContextMenu.Item>
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          history.squash(entry.id, `commit ${entry.shortId}`);
+        }}
+      >
+        Squash into parent
+      </ContextMenu.Item>
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          history.fixup(entry.id, `commit ${entry.shortId}`);
+        }}
+      >
+        Fixup into parent (drop this message)
+      </ContextMenu.Item>
       <ContextMenu.Item
         className={menu.item}
         onSelect={() => {
@@ -534,6 +559,7 @@ function CommitMenu({
       >
         Interactive rebase of later commits…
       </ContextMenu.Item>
+      <ContextMenu.Separator className={menu.separator} />
       <ContextMenu.Item
         className={menu.item}
         onSelect={() => {

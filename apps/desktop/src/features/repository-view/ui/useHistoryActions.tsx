@@ -1,7 +1,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useEffect, useState, type ReactNode } from 'react';
 
-import type { ResetMode } from '../../../shared/ipc';
+import { ipc, unwrap, type RebaseAction, type ResetMode } from '../../../shared/ipc';
 import { InlinePrompt } from '../../../shared/ui/InlinePrompt/InlinePrompt';
 import { useBranches } from '../api/useBranches';
 import {
@@ -19,7 +19,11 @@ const OUTCOME_MS = 8_000;
 
 type Prompt =
   | { kind: 'hardReset'; commit: string; label: string }
-  | { kind: 'tag'; target: string; label: string };
+  | { kind: 'tag'; target: string; label: string }
+  | { kind: 'reword'; commit: string; label: string; summary: string };
+
+/** One commit rewritten in place: its message changed, or melded into its parent. */
+type Rewrite = { kind: 'squash' } | { kind: 'fixup' } | { kind: 'reword'; summary: string };
 
 /** A branch dropped on the checked-out one, and where the pointer was. */
 interface Drop {
@@ -46,6 +50,12 @@ export interface HistoryActions {
   rebaseTarget: RebaseTarget | null;
   openInteractiveRebase: (base: string, label: string) => void;
   closeInteractiveRebase: () => void;
+  /** Asks for a new summary line in the bar, keeping the rest of the message. */
+  openReword: (commit: string, label: string, summary: string) => void;
+  /** Melds a commit into its parent, joining the messages. */
+  squash: (commit: string, label: string) => void;
+  /** Melds a commit into its parent, keeping only the parent's message. */
+  fixup: (commit: string, label: string) => void;
   /** Whether a graph action is running. */
   isRunning: boolean;
   /** What Undo would revert, e.g. "Merge topic". */
@@ -77,6 +87,54 @@ export function useHistoryActions(path: string): HistoryActions {
 
   const report: Report = (tone, message) => {
     setOutcome({ tone, message });
+  };
+
+  /**
+   * Rewrites one commit with an interactive rebase planned here: every
+   * commit after the base is kept as it is, except `commit`.
+   */
+  const rewrite = async (commit: string, label: string, change: Rewrite) => {
+    try {
+      const details = unwrap(await ipc.commitDetails(path, commit));
+      if (details.parents.length > 1) {
+        throw new Error(`${label} is a merge commit; use Interactive rebase instead.`);
+      }
+      const parent = details.parents[0];
+      if (parent === undefined) {
+        throw new Error(`${label} is the first commit; it has no parent to change it on.`);
+      }
+      // A reword replays from the parent; a squash also rewrites the parent.
+      const base =
+        change.kind === 'reword'
+          ? parent
+          : unwrap(await ipc.commitDetails(path, parent)).parents[0];
+      if (base === undefined) {
+        throw new Error(`${label} sits on the first commit, which cannot be squashed into.`);
+      }
+      const plan = unwrap(await ipc.rebasePlan(path, base));
+      if (!plan.some((step) => step.id === commit)) {
+        throw new Error(`${label} is not on ${current}, so it cannot be changed here.`);
+      }
+      const action: RebaseAction =
+        change.kind === 'reword'
+          ? { kind: 'reword', message: replaceSummary(details.message, change.summary) }
+          : { kind: change.kind };
+      run({
+        action: 'rebaseInteractive',
+        base,
+        label,
+        steps: plan.map((step) => ({
+          commit: step.id,
+          action: step.id === commit ? action : { kind: 'pick' },
+        })),
+        done:
+          change.kind === 'reword'
+            ? `Reworded ${label}`
+            : `${change.kind === 'squash' ? 'Squashed' : 'Fixed up'} ${label} into its parent`,
+      });
+    } catch (error) {
+      report('error', error instanceof Error ? error.message : String(error));
+    }
   };
   useEffect(() => {
     if (outcome?.tone !== 'done') return;
@@ -123,6 +181,24 @@ export function useHistoryActions(path: string): HistoryActions {
             onSubmit={() => {
               run({ action: 'reset', commit: prompt.commit, label: prompt.label, mode: 'hard' });
               setPrompt(null);
+            }}
+          />
+        );
+      case 'reword':
+        return (
+          <InlinePrompt
+            key={`reword:${prompt.commit}`}
+            title={`Reword ${prompt.label}`}
+            fields={[{ label: 'Summary', initial: prompt.summary }]}
+            submitLabel="Reword"
+            error={null}
+            isPending={action.isPending}
+            onCancel={() => {
+              setPrompt(null);
+            }}
+            onSubmit={([summary = '']) => {
+              setPrompt(null);
+              void rewrite(prompt.commit, prompt.label, { kind: 'reword', summary });
             }}
           />
         );
@@ -214,6 +290,15 @@ export function useHistoryActions(path: string): HistoryActions {
       action.reset();
       setRebaseTarget({ base, label });
     },
+    openReword: (commit, label, summary) => {
+      setPrompt({ kind: 'reword', commit, label, summary });
+    },
+    squash: (commit, label) => {
+      void rewrite(commit, label, { kind: 'squash' });
+    },
+    fixup: (commit, label) => {
+      void rewrite(commit, label, { kind: 'fixup' });
+    },
     closeInteractiveRebase: () => {
       setRebaseTarget(null);
     },
@@ -239,4 +324,10 @@ export function useHistoryActions(path: string): HistoryActions {
     prompt: bar,
     dropMenu,
   };
+}
+
+/** `message` with its first line replaced by `summary`; the body stays. */
+function replaceSummary(message: string, summary: string): string {
+  const newline = message.indexOf('\n');
+  return newline === -1 ? summary : `${summary}${message.slice(newline)}`;
 }

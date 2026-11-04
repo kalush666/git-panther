@@ -66,6 +66,7 @@ export type ResetMode = ResetModeDto;
 export type CommitSummary = CommitSummaryDto;
 export type BlameLine = BlameLineDto;
 export type RebaseStep = RebaseStepDto;
+export type RebaseAction = RebaseStepDto['action'];
 export type ConflictChunk = ConflictChunkDto_Serialize;
 export type Submodule = SubmoduleDto;
 export type Worktree = WorktreeDto_Serialize;
