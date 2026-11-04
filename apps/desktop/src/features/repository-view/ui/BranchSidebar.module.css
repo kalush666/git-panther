@@ -172,3 +172,39 @@
   background: var(--gp-bg-raised);
   color: var(--gp-text-primary);
 }
+
+.sectionHeaderRow {
+  display: flex;
+  align-items: center;
+}
+
+.sectionHeaderRow .sectionHeader {
+  flex: 1;
+  min-width: 0;
+}
+
+.sectionAction {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-right: var(--gp-space-2);
+  padding: var(--gp-space-1);
+  border: none;
+  border-radius: var(--gp-radius-sm);
+  background: transparent;
+  color: var(--gp-text-muted);
+  cursor: pointer;
+}
+
+.sectionAction:hover:not(:disabled) {
+  background: var(--gp-bg-raised);
+  color: var(--gp-text-primary);
+}
+
+.sectionAction[data-attention='true'] {
+  color: var(--gp-warning);
+}
+
+.sectionAction:focus-visible {
+  outline: 2px solid var(--gp-focus-ring);
+  outline-offset: 1px;
+}

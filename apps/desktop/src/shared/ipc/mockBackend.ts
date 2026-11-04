@@ -1,5 +1,19 @@
-import type { Account, Backend, CloneProgress, OnProgress, Result } from './backend';
-import type { GitInstallationDto, RecentRepositoryDto, RepositorySummaryDto } from './bindings';
+import type {
+  Account,
+  Backend,
+  CloneProgress,
+  OnProgress,
+  Remote,
+  Result,
+  Submodule,
+  Worktree,
+} from './backend';
+import type {
+  AppErrorKind,
+  GitInstallationDto,
+  RecentRepositoryDto,
+  RepositorySummaryDto,
+} from './bindings';
 import { createMockBranches } from './mockBranches';
 import { createMockHistory } from './mockHistory';
 import { createMockStashes } from './mockStashes';
@@ -37,6 +51,10 @@ const CANCELLED: Result<never> = {
 
 function ok<T>(data: T): Result<T> {
   return { status: 'ok', data };
+}
+
+function failure(kind: AppErrorKind, message: string): Result<never> {
+  return { status: 'error', error: { kind, message } };
 }
 
 function nameOf(path: string): string {
@@ -105,6 +123,19 @@ function createMockBackend(): Backend {
   const history = createMockHistory(branchStore, workingTree);
   let gitExecutable: string | null = null;
   let accounts: Account[] = [];
+  let remotes: Remote[] = [
+    {
+      name: 'origin',
+      url: needsSignIn()
+        ? `https://${MOCK_GIT_HOST}/team/demo.git`
+        : 'git@git.example.internal:team/demo.git',
+    },
+  ];
+  let submodules: Submodule[] = [
+    { path: 'libs/design-tokens', commit: 'd'.repeat(40), state: 'current' },
+    { path: 'vendor/zlib', commit: 'e'.repeat(40), state: 'notInitialized' },
+  ];
+  let worktrees: Worktree[] = [{ path: MOCK_PICKED_FOLDER, branch: 'main', isMain: true }];
   const signedIn = () => !needsSignIn() || accounts.length > 0;
 
   /** Plays `steps` as progress, then runs `finish` unless the job was cancelled. */
@@ -206,16 +237,45 @@ function createMockBackend(): Backend {
     renameBranch: (_path, from, to) => Promise.resolve(branchStore.rename(from, to)),
     deleteBranch: (_path, name, force) =>
       Promise.resolve(history.trackDelete(() => branchStore.delete(name, force), name)),
-    listRemotes: () =>
+    listRemotes: () => Promise.resolve(ok(remotes)),
+    addRemote: (_path, name, url) => {
+      if (remotes.some((remote) => remote.name === name)) {
+        return Promise.resolve(failure('remoteExists', `A remote named "${name}" already exists.`));
+      }
+      remotes = [...remotes, { name, url }];
+      return Promise.resolve(ok(null));
+    },
+    setRemoteUrl: (_path, name, url) => {
+      remotes = remotes.map((remote) => (remote.name === name ? { name, url } : remote));
+      return Promise.resolve(ok(null));
+    },
+    removeRemote: (_path, name) => {
+      remotes = remotes.filter((remote) => remote.name !== name);
+      return Promise.resolve(ok(null));
+    },
+    deleteRemoteBranch: (_path, branch) => Promise.resolve(branchStore.deleteRemote(branch)),
+    listSubmodules: () => Promise.resolve(ok(submodules)),
+    updateSubmodules: (_path, jobId, onProgress) =>
+      runJob(jobId, SYNC_STEPS, onProgress, () => {
+        submodules = submodules.map((submodule) => ({ ...submodule, state: 'current' }));
+        return ok(null);
+      }),
+    listWorktrees: () => Promise.resolve(ok(worktrees)),
+    addWorktree: (path, branch) => {
+      const worktree = `${path}-${branch.replace(/[^\w.]/g, '-')}`;
+      worktrees = [...worktrees, { path: worktree, branch, isMain: false }];
+      return Promise.resolve(ok(worktree));
+    },
+    removeWorktree: (_path, worktree) => {
+      worktrees = worktrees.filter((candidate) => candidate.path !== worktree);
+      return Promise.resolve(ok(null));
+    },
+    lfsStatus: () =>
       Promise.resolve(
-        ok([
-          {
-            name: 'origin',
-            url: needsSignIn()
-              ? `https://${MOCK_GIT_HOST}/team/demo.git`
-              : 'git@git.example.internal:team/demo.git',
-          },
-        ]),
+        ok({
+          used: new URLSearchParams(window.location.search).get('mockLfs') === 'missing',
+          installed: false,
+        }),
       ),
     fetchRemotes: (_path, jobId, onProgress) =>
       runJob(jobId, SYNC_STEPS, onProgress, () =>
@@ -225,7 +285,7 @@ function createMockBackend(): Backend {
       runJob(jobId, SYNC_STEPS, onProgress, () =>
         signedIn() ? branchStore.pull(strategy) : AUTHENTICATION_FAILED,
       ),
-    pushBranch: (_path, jobId, onProgress) =>
+    pushBranch: (_path, _options, jobId, onProgress) =>
       runJob(jobId, SYNC_STEPS, onProgress, () =>
         signedIn() ? branchStore.push() : AUTHENTICATION_FAILED,
       ),

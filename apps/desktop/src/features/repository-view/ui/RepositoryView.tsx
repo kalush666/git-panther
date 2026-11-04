@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { GraphEntryDto } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
+import { useLfsStatus } from '../api/useLayout';
 import { useRepository } from '../api/useRepository';
 import { useWorkingTreeStatus, type DiffSource } from '../api/useWorkingTree';
 import { describeHead } from '../model/describeHead';
@@ -22,16 +23,19 @@ import menu from './menu.module.css';
 import styles from './RepositoryView.module.css';
 import { useBranchActions, type BranchActions } from './useBranchActions';
 import { useHistoryActions, type HistoryActions } from './useHistoryActions';
+import { useRemoteActions } from './useRemoteActions';
 
 interface RepositoryViewProps {
   path: string;
   onClose: () => void;
+  /** Opens another repository (a worktree or submodule) in a tab. */
+  onOpenRepository: (path: string) => void;
 }
 
 /** What the right-hand panel shows. */
 type Selection = { kind: 'workingCopy' } | { kind: 'commit'; index: number };
 
-export function RepositoryView({ path, onClose }: RepositoryViewProps) {
+export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryViewProps) {
   const repository = useRepository(path);
   const status = useWorkingTreeStatus(path);
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -41,6 +45,8 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
   const [conflictFile, setConflictFile] = useState<string | null>(null);
   const history = useHistoryActions(path);
   const branchActions = useBranchActions(path, history.report);
+  const remoteActions = useRemoteActions(path, history.report, onOpenRepository);
+  const lfs = useLfsStatus(path);
   useUndoShortcut(history);
   const keepSelectedCommit = useCallback((commitId: string | null) => {
     setSelectedCommitId(commitId);
@@ -133,10 +139,24 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
           </button>
         </div>
       )}
+      {lfs.data?.used && !lfs.data.installed && (
+        <p className={styles.notice} role="status">
+          This repository stores large files with Git LFS, but git-lfs is not installed, so those
+          files show as small pointer files. Install Git LFS (it ships with Git for Windows) and
+          restart Git Panther.
+        </p>
+      )}
       {branchActions.prompt}
       {history.prompt}
+      {remoteActions.prompt}
       <div className={styles.body}>
-        <BranchSidebar path={path} actions={branchActions} history={history} />
+        <BranchSidebar
+          path={path}
+          actions={branchActions}
+          history={history}
+          remoteActions={remoteActions}
+          onOpenRepository={onOpenRepository}
+        />
         <div className={styles.graph}>
           {history.rebaseTarget ? (
             <RebasePanel path={path} target={history.rebaseTarget} history={history} />

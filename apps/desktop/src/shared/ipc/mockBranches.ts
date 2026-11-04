@@ -66,6 +66,15 @@ export function createMockBranches() {
 
     targetOf: (name: string): string | null => local(name)?.target ?? null,
 
+    /** Deletes a remote branch such as `origin/release/1.0`. */
+    deleteRemote: (name: string): Result<null> => {
+      const before = branches.length;
+      branches = branches.filter((branch) => branch.kind !== 'remote' || branch.name !== name);
+      return branches.length < before
+        ? ok()
+        : failure('branchNotFound', `There is no branch named "${name}".`);
+    },
+
     create: (name: string, start: string, checkout: boolean): Result<null> => {
       if (/\s|\.\./.test(name) || name.trim() === '') {
         return failure('invalidBranchName', `"${name}" is not a valid branch name.`);

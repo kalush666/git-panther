@@ -7,6 +7,7 @@ import { RepositoryView } from '../features/repository-view';
 import { SettingsView } from '../features/settings';
 import { ThemeMenu } from '../features/theme';
 import { WelcomeScreen } from '../features/welcome';
+import { ipc } from '../shared/ipc';
 import { Button } from '../shared/ui/Button/Button';
 import styles from './AppShell.module.css';
 
@@ -83,6 +84,13 @@ function MainContent({ onOpenSettings }: { onOpenSettings: () => void }) {
       path={activePath}
       onClose={() => {
         closeTab(activePath);
+      }}
+      onOpenRepository={(path) => {
+        void ipc.openRepository(path).then((result) => {
+          if (result.status === 'ok') {
+            openTab({ path: result.data.path, name: result.data.name });
+          }
+        });
       }}
     />
   );
