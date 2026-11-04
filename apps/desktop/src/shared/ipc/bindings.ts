@@ -205,6 +205,10 @@ export const commands = {
 	applyPatchFile: (path: string, file: string) => typedError<null, AppError>(__TAURI_INVOKE("apply_patch_file", { path, file })),
 	/**  Commit `id` as a mail-style patch. */
 	commitPatch: (path: string, id: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_patch", { path, id })),
+	/**  Ignores files matching `pattern` by adding it to `.gitignore`. */
+	ignorePath: (path: string, pattern: string) => typedError<null, AppError>(__TAURI_INVOKE("ignore_path", { path, pattern })),
+	/**  Opens the repository in the file manager, a terminal or `editor`. */
+	openIn: (path: string, target: OpenTargetDto, editor: string) => typedError<null, AppError>(__TAURI_INVOKE("open_in", { path, target, editor })),
 	/**  Starts a git flow branch and checks it out; returns its full name. */
 	gitflowStart: (path: string, kind: FlowKindDto, name: string) => typedError<string, AppError>(__TAURI_INVOKE("gitflow_start", { path, kind, name })),
 	/**  Finishes a git flow branch: merges, tags a release or hotfix, deletes it. */
@@ -533,6 +537,9 @@ export type LfsStatusDto = {
 };
 
 export type LineKindDto = "context" | "added" | "removed";
+
+/**  Where "Open in" opens the repository. */
+export type OpenTargetDto = "fileManager" | "terminal" | "editor";
 
 /**  An operation waiting for conflicts to be resolved. */
 export type OperationDto = "merge" | "rebase" | "cherryPick" | "revert";

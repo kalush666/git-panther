@@ -1119,6 +1119,15 @@ impl From<PullRequestReview> for PullRequestReviewDto {
     }
 }
 
+/// Where "Open in" opens the repository.
+#[derive(Debug, Clone, Copy, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum OpenTargetDto {
+    FileManager,
+    Terminal,
+    Editor,
+}
+
 /// A git flow branch kind, as the UI sends it.
 #[derive(Debug, Clone, Copy, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

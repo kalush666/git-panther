@@ -605,6 +605,13 @@ function createMockBackend(): Backend {
     undo: () => Promise.resolve(history.undo()),
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
     pickPatchFile: () => Promise.resolve(MOCK_PICKED_PATCH),
+    ignorePath: (_path, pattern) => Promise.resolve(workingTree.ignore(pattern)),
+    openIn: (_path, target, editor) =>
+      Promise.resolve(
+        target === 'editor' && editor.trim() === 'missing-editor'
+          ? failure('notFound', 'Could not start "missing-editor" (set your editor in Settings)')
+          : ok(null),
+      ),
     gitflowStart: (_path, kind, name) => {
       const branch = `${kind}/${name.trim()}`;
       const base = kind === 'hotfix' ? 'main' : 'develop';

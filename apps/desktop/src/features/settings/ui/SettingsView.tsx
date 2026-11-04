@@ -7,6 +7,7 @@ import {
   useAppearanceStore,
 } from '../../../shared/preferences/appearance';
 import { AUTO_FETCH_CHOICES, useAutoFetchStore } from '../../../shared/preferences/autoFetch';
+import { DEFAULT_EDITOR, useEditorStore } from '../../../shared/preferences/editor';
 import { PULL_STRATEGIES, usePullStrategyStore } from '../../../shared/preferences/pullStrategy';
 import { THEME_PREFERENCES, useThemeStore } from '../../../shared/preferences/theme';
 import { Button } from '../../../shared/ui/Button/Button';
@@ -89,6 +90,12 @@ export function SettingsView({ onClose }: SettingsViewProps) {
         </Group>
         <Group title="Git">
           <Row
+            label="Code editor"
+            hint="Opens a repository from its Open in menu: a command like code, or the editor's full path."
+          >
+            <EditorSetting />
+          </Row>
+          <Row
             label="Git executable"
             hint="Git Panther runs your installed git, with your credentials and config."
           >
@@ -144,6 +151,25 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
         {hint && <span className={styles.hint}>{hint}</span>}
       </div>
       <div className={styles.control}>{children}</div>
+    </div>
+  );
+}
+
+function EditorSetting() {
+  const command = useEditorStore((state) => state.command);
+  const setCommand = useEditorStore((state) => state.setCommand);
+  return (
+    <div className={styles.pathRow}>
+      <input
+        className={styles.input}
+        aria-label="Code editor"
+        placeholder={DEFAULT_EDITOR}
+        spellCheck={false}
+        value={command}
+        onChange={(event) => {
+          setCommand(event.target.value);
+        }}
+      />
     </div>
   );
 }

@@ -464,3 +464,28 @@ fn a_commit_copied_as_a_patch_applies_to_the_work_tree() {
 fn read_lf(path: &Path) -> String {
     fs::read_to_string(path).unwrap().replace("\r\n", "\n")
 }
+
+#[test]
+fn ignoring_adds_one_line_to_gitignore_and_hides_the_file() {
+    let dir = TempDir::new().unwrap();
+    support::repository_with_commit(dir.path());
+    fs::write(dir.path().join(".gitignore"), "target").unwrap();
+    fs::write(dir.path().join("debug.log"), "noise").unwrap();
+    let tree = GitWorkingTree::default();
+
+    tree.ignore(dir.path(), "*.log").unwrap();
+    tree.ignore(dir.path(), "*.log").unwrap();
+
+    assert_eq!(read_lf(&dir.path().join(".gitignore")), "target\n*.log\n");
+    let untracked: Vec<String> = tree
+        .status(dir.path())
+        .unwrap()
+        .unstaged
+        .into_iter()
+        .map(|file| file.path)
+        .collect();
+    assert!(
+        !untracked.contains(&"debug.log".to_owned()),
+        "{untracked:?}"
+    );
+}

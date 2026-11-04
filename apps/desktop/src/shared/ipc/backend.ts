@@ -23,6 +23,7 @@ import type {
   ComparisonDto,
   ReflogEntryDto,
   FlowKindDto,
+  OpenTargetDto,
   FlowFinishedDto,
   PipelineDto,
   PipelineStateDto,
@@ -82,6 +83,7 @@ export type ReviewComment = ReviewCommentDto;
 export type Comparison = ComparisonDto;
 export type ReflogEntry = ReflogEntryDto;
 export type FlowKind = FlowKindDto;
+export type OpenTarget = OpenTargetDto;
 export type FlowFinished = FlowFinishedDto;
 export type Pipeline = PipelineDto;
 export type PipelineState = PipelineStateDto;
@@ -310,6 +312,10 @@ export interface Backend {
   gitflowStart(path: string, kind: FlowKind, name: string): Promise<Result<string>>;
   /** Merges a flow branch where git flow says, tags releases and hotfixes, deletes it. */
   gitflowFinish(path: string, branch: string): Promise<Result<FlowFinished>>;
+  /** Adds `pattern` as a line of the repository's `.gitignore`. */
+  ignorePath(path: string, pattern: string): Promise<Result<null>>;
+  /** Opens the repository in the file manager, a terminal or `editor` (e.g. `code`). */
+  openIn(path: string, target: OpenTarget, editor: string): Promise<Result<null>>;
   /** Asks for a .patch or .diff file. */
   pickPatchFile(title: string): Promise<string | null>;
   /** Commit `id` as a mail-style patch, as `git format-patch` writes it. */

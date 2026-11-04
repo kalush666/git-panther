@@ -29,6 +29,7 @@ export type {
   FileDiff,
   HunkAction,
   FlowKind,
+  OpenTarget,
   Pipeline,
   RebaseAction,
   ReflogEntry,

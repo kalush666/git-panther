@@ -147,6 +147,14 @@ export function createMockWorkingTree() {
       return ok(null);
     },
 
+    /** Hides untracked files that a `/path` or `*.ext` pattern matches. */
+    ignore: (pattern: string) => {
+      const matches = (path: string) =>
+        pattern.startsWith('*.') ? path.endsWith(pattern.slice(1)) : `/${path}` === pattern;
+      files = files.filter((file) => file.kind !== 'untracked' || !matches(file.path));
+      return ok(null);
+    },
+
     discard: (paths: readonly string[]) => {
       for (const file of files.filter((candidate) => paths.includes(candidate.path))) {
         file.unstaged = [];
