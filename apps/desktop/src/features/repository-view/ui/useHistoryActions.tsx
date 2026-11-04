@@ -1,5 +1,5 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import type { ResetMode } from '../../../shared/ipc';
 import { InlinePrompt } from '../../../shared/ui/InlinePrompt/InlinePrompt';
@@ -13,6 +13,9 @@ import {
 } from '../api/useHistory';
 import menu from './menu.module.css';
 import type { Report } from './useBranchActions';
+
+/** How long a success message stays; errors stay until dismissed. */
+const OUTCOME_MS = 8_000;
 
 type Prompt =
   | { kind: 'hardReset'; commit: string; label: string }
@@ -75,6 +78,15 @@ export function useHistoryActions(path: string): HistoryActions {
   const report: Report = (tone, message) => {
     setOutcome({ tone, message });
   };
+  useEffect(() => {
+    if (outcome?.tone !== 'done') return;
+    const timer = setTimeout(() => {
+      setOutcome((current) => (current === outcome ? null : current));
+    }, OUTCOME_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [outcome]);
 
   const run = (request: HistoryRequest) => {
     setOutcome(null);
