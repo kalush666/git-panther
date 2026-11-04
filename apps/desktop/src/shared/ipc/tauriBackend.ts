@@ -25,6 +25,9 @@ export const tauriBackend: Backend = {
   watchRepository: commands.watchRepository,
   unwatchRepository: commands.unwatchRepository,
   loadGraphPage: commands.loadGraphPage,
+  searchCommits: commands.searchCommits,
+  fileHistory: commands.fileHistory,
+  blameFile: commands.blameFile,
   commitDetails: commands.commitDetails,
   commitFileDiff: commands.commitFileDiff,
   workingTreeStatus: commands.workingTreeStatus,
@@ -32,8 +35,8 @@ export const tauriBackend: Backend = {
   stageFiles: commands.stageFiles,
   unstageFiles: commands.unstageFiles,
   discardFiles: commands.discardFiles,
-  applyHunk: (path, { file, index, header }, action) =>
-    commands.applyHunk(path, file, index, header, action),
+  applyHunk: (path, { file, index, header, lines }, action) =>
+    commands.applyHunk(path, file, index, header, lines ?? null, action),
   commitChanges: commands.commitChanges,
   headMessage: commands.headMessage,
   listBranches: commands.listBranches,

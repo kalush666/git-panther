@@ -13,10 +13,10 @@ use tauri::{AppHandle, State};
 use tauri_specta::Event;
 
 use super::dto::{
-    AccountDto, BranchDto, CloneProgressDto, CommitDetailsDto, ConflictSideDto, DiffSideDto,
-    FileDiffDto, GitInstallationDto, GraphPageDto, HunkActionDto, OperationDto, PullStrategyDto,
-    RecentRepositoryDto, RemoteDto, RepositoryChanged, RepositorySummaryDto, ResetModeDto,
-    SettingsDto, StashDto, WorkingTreeStatusDto,
+    AccountDto, BlameLineDto, BranchDto, CloneProgressDto, CommitDetailsDto, CommitSummaryDto,
+    ConflictSideDto, DiffSideDto, FileDiffDto, GitInstallationDto, GraphPageDto, HunkActionDto,
+    OperationDto, PullStrategyDto, RecentRepositoryDto, RemoteDto, RepositoryChanged,
+    RepositorySummaryDto, ResetModeDto, SettingsDto, StashDto, WorkingTreeStatusDto,
 };
 use super::error::{AppError, AppErrorKind};
 use crate::composition::AppServices;
@@ -274,11 +274,70 @@ pub async fn load_graph_page(
     path: String,
     offset: u32,
     limit: u32,
+    hidden: Vec<String>,
 ) -> Result<GraphPageDto, AppError> {
     let graph = services.commit_graph.clone();
     run_blocking(move || {
-        let page = graph.page(&PathBuf::from(path), widen(offset), widen(limit))?;
+        let page = graph.page(&PathBuf::from(path), widen(offset), widen(limit), &hidden)?;
         Ok(page.into())
+    })
+    .await
+}
+
+/// Graph rows whose commit matches `query` (message, author or id prefix).
+#[tauri::command]
+#[specta::specta]
+pub async fn search_commits(
+    services: State<'_, AppServices>,
+    path: String,
+    query: String,
+    hidden: Vec<String>,
+) -> Result<Vec<u32>, AppError> {
+    let graph = services.commit_graph.clone();
+    run_blocking(move || {
+        Ok(graph
+            .search(&PathBuf::from(path), &query, &hidden)?
+            .into_iter()
+            .map(|row| u32::try_from(row).unwrap_or(u32::MAX))
+            .collect())
+    })
+    .await
+}
+
+/// Commits that changed `file`, newest first.
+#[tauri::command]
+#[specta::specta]
+pub async fn file_history(
+    services: State<'_, AppServices>,
+    path: String,
+    file: String,
+) -> Result<Vec<CommitSummaryDto>, AppError> {
+    let graph = services.commit_graph.clone();
+    run_blocking(move || {
+        Ok(graph
+            .file_history(&PathBuf::from(path), &file)?
+            .into_iter()
+            .map(CommitSummaryDto::from)
+            .collect())
+    })
+    .await
+}
+
+/// Who last changed each line of `file`.
+#[tauri::command]
+#[specta::specta]
+pub async fn blame_file(
+    services: State<'_, AppServices>,
+    path: String,
+    file: String,
+) -> Result<Vec<BlameLineDto>, AppError> {
+    let graph = services.commit_graph.clone();
+    run_blocking(move || {
+        Ok(graph
+            .blame(&PathBuf::from(path), &file)?
+            .into_iter()
+            .map(BlameLineDto::from)
+            .collect())
     })
     .await
 }
@@ -393,6 +452,7 @@ pub async fn apply_hunk(
     file: String,
     index: u32,
     header: String,
+    lines: Option<Vec<u32>>,
     action: HunkActionDto,
 ) -> Result<(), AppError> {
     let copy = services.working_copy.clone();
@@ -401,6 +461,7 @@ pub async fn apply_hunk(
             path: file,
             index: widen(index),
             header,
+            lines: lines.map(|lines| lines.into_iter().map(widen).collect()),
         };
         Ok(copy.apply_hunk(&PathBuf::from(path), &hunk, action.into())?)
     })

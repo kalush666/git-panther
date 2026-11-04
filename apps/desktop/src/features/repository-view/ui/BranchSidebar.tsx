@@ -1,10 +1,20 @@
 import * as ContextMenu from '@radix-ui/react-context-menu';
-import { Check, ChevronDown, ChevronRight, Cloud, Folder, GitBranch, Search } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Cloud,
+  EyeOff,
+  Folder,
+  GitBranch,
+  Search,
+} from 'lucide-react';
 import { useState, type DragEvent } from 'react';
 
 import type { Branch } from '../../../shared/ipc';
 import { useBranches } from '../api/useBranches';
 import { buildBranchTree, filterBranches, type BranchNode } from '../model/branchTree';
+import { useHiddenRefs, useHiddenRefsStore } from '../model/hiddenRefs';
 import menu from './menu.module.css';
 import styles from './BranchSidebar.module.css';
 import { StashList } from './StashList';
@@ -20,10 +30,19 @@ interface BranchSidebarProps {
   history: HistoryActions;
 }
 
+/** Which branches the graph shows. */
+interface Visibility {
+  isHidden: (name: string) => boolean;
+  toggle: (name: string) => void;
+  /** Hides every other branch. */
+  solo: (name: string) => void;
+}
+
 /** What every branch row can do. */
 interface RowActions {
   actions: BranchActions;
   history: HistoryActions;
+  visibility: Visibility;
 }
 
 export function BranchSidebar({ path, actions, history }: BranchSidebarProps) {
@@ -32,6 +51,23 @@ export function BranchSidebar({ path, actions, history }: BranchSidebarProps) {
   const all = filterBranches(branches.data ?? [], filter);
   const local = all.filter((branch) => branch.kind === 'local');
   const remote = all.filter((branch) => branch.kind === 'remote');
+  const hidden = useHiddenRefs(path);
+  const toggleHidden = useHiddenRefsStore((state) => state.toggle);
+  const soloBranch = useHiddenRefsStore((state) => state.solo);
+  const showAll = useHiddenRefsStore((state) => state.showAll);
+  const visibility: Visibility = {
+    isHidden: (name) => hidden.includes(name),
+    toggle: (name) => {
+      toggleHidden(path, name);
+    },
+    solo: (name) => {
+      soloBranch(
+        path,
+        name,
+        (branches.data ?? []).map((branch) => branch.name),
+      );
+    },
+  };
 
   return (
     <nav className={styles.sidebar} aria-label="Branches">
@@ -47,6 +83,18 @@ export function BranchSidebar({ path, actions, history }: BranchSidebarProps) {
           }}
         />
       </label>
+      {hidden.length > 0 && (
+        <button
+          type="button"
+          className={styles.showAll}
+          onClick={() => {
+            showAll(path);
+          }}
+        >
+          <EyeOff size={13} aria-hidden />
+          {hidden.length} hidden · Show all branches
+        </button>
+      )}
       <div className={styles.sections}>
         <Section
           title="Local"
@@ -54,6 +102,7 @@ export function BranchSidebar({ path, actions, history }: BranchSidebarProps) {
           branches={local}
           actions={actions}
           history={history}
+          visibility={visibility}
         />
         <Section
           title="Remote"
@@ -61,6 +110,7 @@ export function BranchSidebar({ path, actions, history }: BranchSidebarProps) {
           branches={remote}
           actions={actions}
           history={history}
+          visibility={visibility}
         />
         <StashList path={path} />
       </div>
@@ -79,6 +129,7 @@ function Section({
   branches,
   actions,
   history,
+  visibility,
 }: {
   title: string;
   icon: React.ReactNode;
@@ -109,6 +160,7 @@ function Section({
               depth={0}
               actions={actions}
               history={history}
+              visibility={visibility}
             />
           ))}
         </ul>
@@ -125,6 +177,7 @@ function TreeNode({
   depth,
   actions,
   history,
+  visibility,
 }: {
   node: BranchNode;
   depth: number;
@@ -155,6 +208,7 @@ function TreeNode({
                 depth={depth + 1}
                 actions={actions}
                 history={history}
+                visibility={visibility}
               />
             ))}
           </ul>
@@ -169,6 +223,7 @@ function TreeNode({
       indent={indent}
       actions={actions}
       history={history}
+      visibility={visibility}
     />
   );
 }
@@ -179,12 +234,14 @@ function BranchRow({
   indent,
   actions,
   history,
+  visibility,
 }: {
   branch: Branch;
   label: string;
   indent: React.CSSProperties;
 } & RowActions) {
   const isLocal = branch.kind === 'local';
+  const isHidden = visibility.isHidden(branch.name);
   const [dropTarget, setDropTarget] = useState(false);
   const current = history.currentBranch;
   // Only the checked-out branch accepts drops: merge and rebase act on it.
@@ -199,6 +256,7 @@ function BranchRow({
             className={styles.row}
             data-head={branch.isHead}
             data-drop-target={dropTarget}
+            data-hidden={isHidden}
             style={indent}
             draggable={!branch.isHead}
             onDragStart={(event) => {
@@ -231,6 +289,9 @@ function BranchRow({
               {branch.isHead && <Check size={12} strokeWidth={2.5} aria-label="checked out" />}
             </span>
             <span className={styles.name}>{label}</span>
+            {isHidden && (
+              <EyeOff size={12} aria-label="hidden in graph" className={styles.hiddenMark} />
+            )}
             {branch.ahead > 0 && (
               <span className={styles.badge} title={`${branch.ahead} to push`}>
                 ↑{branch.ahead}
@@ -261,6 +322,23 @@ function BranchRow({
               }}
             >
               Create branch from here…
+            </ContextMenu.Item>
+            <ContextMenu.Separator className={menu.separator} />
+            <ContextMenu.Item
+              className={menu.item}
+              onSelect={() => {
+                visibility.toggle(branch.name);
+              }}
+            >
+              {isHidden ? 'Show in graph' : 'Hide in graph'}
+            </ContextMenu.Item>
+            <ContextMenu.Item
+              className={menu.item}
+              onSelect={() => {
+                visibility.solo(branch.name);
+              }}
+            >
+              Show only this branch
             </ContextMenu.Item>
             {!branch.isHead && current && (
               <>

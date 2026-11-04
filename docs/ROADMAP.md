@@ -81,9 +81,11 @@ Merge, rebase, cherry-pick, revert, reset (soft / mixed / hard), check out a com
 
 **Demo:** right-click a commit or branch for every action; a hard reset asks first. Dropping a branch on the checked-out one offers merge or rebase. Undo (button or Ctrl+Z) reverts the last commit, amend, checkout, pull, merge, rebase, cherry-pick, revert, reset or branch deletion, keeps uncommitted work, and refuses if HEAD moved since.
 
-### ⏳ M9 — Finding things
+### ✅ M9 — Finding things
 
 Search commits (message, author, SHA), hide / solo branches, file history and blame, line-level staging.
+
+**Demo:** Ctrl+F searches the graph by message, author or SHA prefix with next / previous; branches can be hidden or shown alone from their menu (remembered per repository). In the diff view, + / − signs pick single lines to stage, unstage or discard; History and Blame open per file, and clicking a commit opens its diff of that file.
 
 ### ⏳ M10 — Editing history
 

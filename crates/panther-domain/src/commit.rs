@@ -63,6 +63,20 @@ pub struct Person {
     pub time: i64,
 }
 
+/// Who last changed one line of a file, from `git blame`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlameLine {
+    /// 1-based line number in the current file.
+    pub line: u32,
+    pub commit: CommitId,
+    pub author: String,
+    /// Seconds since the Unix epoch.
+    pub time: i64,
+    /// The first line of the commit's message.
+    pub summary: String,
+    pub content: String,
+}
+
 /// What a row of the commit list shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommitSummary {

@@ -11,6 +11,7 @@ import { BranchSidebar } from './BranchSidebar';
 import { CommitDetailsPanel } from './CommitDetailsPanel';
 import { CommitGraph } from './CommitGraph';
 import { DiffViewer } from './DiffViewer';
+import { FileHistoryView, type FileView } from './FileHistoryView';
 import { StagingPanel } from './StagingPanel';
 import { StashActions } from './StashActions';
 import { SyncToolbar } from './SyncToolbar';
@@ -34,6 +35,7 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
   const [selection, setSelection] = useState<Selection | null>(null);
   const [selectedCommitId, setSelectedCommitId] = useState<string | null>(null);
   const [diff, setDiff] = useState<DiffSource | null>(null);
+  const [fileView, setFileView] = useState<FileView | null>(null);
   const branchActions = useBranchActions(path);
   const history = useHistoryActions(path);
   useUndoShortcut(history);
@@ -125,12 +127,31 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
       <div className={styles.body}>
         <BranchSidebar path={path} actions={branchActions} history={history} />
         <div className={styles.graph}>
-          {diff ? (
+          {fileView ? (
+            <FileHistoryView
+              path={path}
+              view={fileView}
+              onSwitch={setFileView}
+              onOpenCommit={(commitId, file) => {
+                setFileView(null);
+                setDiff({ kind: 'commit', file, commitId });
+              }}
+              onClose={() => {
+                setFileView(null);
+              }}
+            />
+          ) : diff ? (
             <DiffViewer
               path={path}
               source={diff}
               onClose={() => {
                 setDiff(null);
+              }}
+              onShowHistory={(file) => {
+                setFileView({ kind: 'history', file });
+              }}
+              onShowBlame={(file) => {
+                setFileView({ kind: 'blame', file });
               }}
             />
           ) : (

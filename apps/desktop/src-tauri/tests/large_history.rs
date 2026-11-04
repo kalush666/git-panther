@@ -30,12 +30,12 @@ fn opens_a_large_history_within_budget() {
     let graph = CommitGraph::new(Arc::new(GitCommitLog::default()));
 
     let started = Instant::now();
-    let first = graph.page(&repository, 0, FIRST_PAGE).unwrap();
+    let first = graph.page(&repository, 0, FIRST_PAGE, &[]).unwrap();
     let first_page = started.elapsed();
 
     let started = Instant::now();
     let middle = graph
-        .page(&repository, first.total / 2, FIRST_PAGE)
+        .page(&repository, first.total / 2, FIRST_PAGE, &[])
         .unwrap();
     let next_page = started.elapsed();
 

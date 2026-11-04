@@ -103,10 +103,20 @@ fn hunk(patch: &Patch<'_>, index: usize) -> Result<Hunk, RepositoryError> {
 ///
 /// # Errors
 /// [`RepositoryError::Git`] when libgit2 cannot produce the patch.
+/// Which lines of a hunk to keep, and whether the patch will be applied in
+/// reverse (unstaging or discarding), which decides how unselected lines
+/// are neutralised.
+#[derive(Debug, Clone, Copy)]
+pub struct LineSelection<'a> {
+    pub lines: &'a [usize],
+    pub reverse: bool,
+}
+
 pub fn hunk_patch(
     diff: &Diff<'_>,
     index: usize,
     expected_header: &str,
+    selection: Option<LineSelection<'_>>,
 ) -> Result<Option<String>, RepositoryError> {
     let Some(delta) = diff.deltas().next() else {
         return Ok(None);
@@ -133,19 +143,37 @@ pub fn hunk_patch(
     if !text.ends_with('\n') {
         text.push('\n');
     }
+    // Index among the lines the UI shows (it skips end-of-file markers).
+    let mut shown = 0;
+    // Whether the previous line made it into the patch, for its marker.
+    let mut kept_previous = true;
     for line_index in 0..line_count {
         let line = patch
             .line_in_hunk(index, line_index)
             .map_err(|error| git_error(&error))?;
-        match line.origin_value() {
-            DiffLineType::Addition => text.push('+'),
-            DiffLineType::Deletion => text.push('-'),
-            DiffLineType::Context => text.push(' '),
+        let selected = selection.is_none_or(|selection| selection.lines.contains(&shown));
+        let reverse = selection.is_some_and(|selection| selection.reverse);
+        let prefix = match (line.origin_value(), selected, reverse) {
+            (DiffLineType::Context, ..) => Some(' '),
+            (DiffLineType::Addition, true, _) => Some('+'),
+            (DiffLineType::Deletion, true, _) => Some('-'),
+            // An unselected change must leave its side untouched: in the
+            // direction of application the line already is (or stays) there.
+            (DiffLineType::Addition, false, true) | (DiffLineType::Deletion, false, false) => {
+                Some(' ')
+            }
+            (DiffLineType::Addition | DiffLineType::Deletion, false, _) => None,
             _ => {
-                text.push_str("\\ No newline at end of file\n");
+                if kept_previous {
+                    text.push_str("\\ No newline at end of file\n");
+                }
                 continue;
             }
-        }
+        };
+        shown += 1;
+        kept_previous = prefix.is_some();
+        let Some(prefix) = prefix else { continue };
+        text.push(prefix);
         text.push_str(&String::from_utf8_lossy(line.content()));
         if !text.ends_with('\n') {
             text.push('\n');

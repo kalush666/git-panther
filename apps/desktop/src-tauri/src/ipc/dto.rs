@@ -5,7 +5,9 @@ use std::path::Path;
 use panther_application::commit_graph::{GraphEntry, GraphPage};
 use panther_domain::account::Account;
 use panther_domain::branch::{Branch, BranchKind};
-use panther_domain::commit::{ChangeKind, CommitDetails, FileChange, Person, RefKind, RefLabel};
+use panther_domain::commit::{
+    BlameLine, ChangeKind, CommitDetails, CommitSummary, FileChange, Person, RefKind, RefLabel,
+};
 use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::history::ResetMode;
 use panther_domain::ports::HunkAction;
@@ -688,6 +690,55 @@ impl From<ResetModeDto> for ResetMode {
             ResetModeDto::Soft => Self::Soft,
             ResetModeDto::Mixed => Self::Mixed,
             ResetModeDto::Hard => Self::Hard,
+        }
+    }
+}
+
+/// A commit in a list outside the graph, e.g. a file's history.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitSummaryDto {
+    pub id: String,
+    pub short_id: String,
+    pub summary: String,
+    pub author: PersonDto,
+}
+
+impl From<CommitSummary> for CommitSummaryDto {
+    fn from(commit: CommitSummary) -> Self {
+        Self {
+            short_id: commit.id.short().to_owned(),
+            id: commit.id.to_string(),
+            summary: commit.summary,
+            author: commit.author.into(),
+        }
+    }
+}
+
+/// Who last changed one line.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BlameLineDto {
+    pub line: u32,
+    pub commit: String,
+    pub short_id: String,
+    pub author: String,
+    #[specta(type = u32)]
+    pub time: i64,
+    pub summary: String,
+    pub content: String,
+}
+
+impl From<BlameLine> for BlameLineDto {
+    fn from(line: BlameLine) -> Self {
+        Self {
+            line: line.line,
+            short_id: line.commit.short().to_owned(),
+            commit: line.commit.to_string(),
+            author: line.author,
+            time: line.time,
+            summary: line.summary,
+            content: line.content,
         }
     }
 }

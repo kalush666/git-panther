@@ -175,3 +175,38 @@
   background: var(--gp-diff-removed-word);
   color: inherit;
 }
+
+.hint {
+  margin: 0 0 var(--gp-space-2);
+  color: var(--gp-text-muted);
+  font-size: var(--gp-text-xs);
+}
+
+.pick {
+  width: 100%;
+  padding: 0;
+  border: none;
+  border-radius: var(--gp-radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pick:hover {
+  background: var(--gp-bg-raised);
+}
+
+.pick[aria-pressed='true'] {
+  background: var(--gp-accent);
+  color: var(--gp-on-accent);
+}
+
+.pick:focus-visible {
+  outline: 2px solid var(--gp-focus-ring);
+  outline-offset: -1px;
+}
+
+.line[data-picked='true'] .code {
+  box-shadow: inset 3px 0 0 var(--gp-accent);
+}

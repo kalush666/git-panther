@@ -9,6 +9,7 @@ use panther_domain::repository::RepositoryError;
 use panther_domain::working_tree::{CommitMessage, DiffSide, FileDiff, HunkRef, WorkingTreeStatus};
 
 use crate::cli::{PatchTarget, apply_patch, commit};
+use crate::libgit2::LineSelection;
 use crate::libgit2::working_tree as git2_tree;
 
 #[derive(Debug, Clone)]
@@ -69,6 +70,13 @@ impl WorkingTree for GitWorkingTree {
         };
         // A new or deleted file has a single hunk that is the whole file.
         if !git2_tree::has_both_sides(repository, &hunk.path, side)? {
+            if hunk.lines.is_some() {
+                return Err(RepositoryError::Git {
+                    details:
+                        "Lines of a new or deleted file can only be staged with the whole file."
+                            .into(),
+                });
+            }
             let paths = [hunk.path.clone()];
             return match action {
                 HunkAction::Stage => self.stage(repository, &paths),
@@ -76,11 +84,21 @@ impl WorkingTree for GitWorkingTree {
                 HunkAction::Discard => self.discard(repository, &paths),
             };
         }
-        let patch =
-            git2_tree::patch_for_hunk(repository, &hunk.path, side, hunk.index, &hunk.header)?
-                .ok_or_else(|| RepositoryError::HunkOutdated {
-                    path: hunk.path.clone(),
-                })?;
+        let selection = hunk.lines.as_deref().map(|lines| LineSelection {
+            lines,
+            reverse: target != PatchTarget::Index,
+        });
+        let patch = git2_tree::patch_for_hunk(
+            repository,
+            &hunk.path,
+            side,
+            hunk.index,
+            &hunk.header,
+            selection,
+        )?
+        .ok_or_else(|| RepositoryError::HunkOutdated {
+            path: hunk.path.clone(),
+        })?;
         apply_patch(&self.executable, repository, &patch, target)
     }
 }

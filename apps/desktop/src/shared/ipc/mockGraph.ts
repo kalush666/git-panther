@@ -1,4 +1,11 @@
-import type { CommitDetailsDto, GraphEntryDto, GraphPageDto, GraphRowDto } from './bindings';
+import type {
+  BlameLineDto,
+  CommitDetailsDto,
+  CommitSummaryDto,
+  GraphEntryDto,
+  GraphPageDto,
+  GraphRowDto,
+} from './bindings';
 
 /** Commits in every mock repository's history. */
 export const MOCK_HISTORY_LENGTH = 5_000;
@@ -140,4 +147,44 @@ export function mockCommitDetails(id: string): CommitDetailsDto | null {
       { kind: 'added', path: `docs/note${index}.md` },
     ],
   };
+}
+
+/** Rows whose message, author or SHA contains `query`, like the real search. */
+export function mockSearch(query: string): number[] {
+  const needle = query.trim().toLowerCase();
+  if (needle === '') return [];
+  return mockGraphPage(0, MOCK_HISTORY_LENGTH)
+    .entries.map((entry, row) => ({ entry, row }))
+    .filter(
+      ({ entry }) =>
+        entry.summary.toLowerCase().includes(needle) ||
+        entry.author.name.toLowerCase().includes(needle) ||
+        entry.id.startsWith(needle),
+    )
+    .map(({ row }) => row);
+}
+
+/** A file's history: a handful of the newest non-merge commits. */
+export function mockFileHistory(): CommitSummaryDto[] {
+  return mockGraphPage(0, 12)
+    .entries.filter((entry) => !entry.summary.startsWith('Merge'))
+    .slice(0, 5)
+    .map(({ id, shortId, summary, author }) => ({ id, shortId, summary, author }));
+}
+
+/** Twelve lines attributed to two alternating commits. */
+export function mockBlame(file: string): BlameLineDto[] {
+  const commits = mockFileHistory();
+  return Array.from({ length: 12 }, (_, index) => {
+    const commit = commits[Math.floor(index / 4) % commits.length] ?? commits[0];
+    return {
+      line: index + 1,
+      commit: commit?.id ?? '',
+      shortId: commit?.shortId ?? '',
+      author: commit?.author.name ?? '',
+      time: commit?.author.time ?? 0,
+      summary: commit?.summary ?? '',
+      content: index === 0 ? `// ${file}` : `const line${index + 1} = ${index + 1};`,
+    };
+  });
 }

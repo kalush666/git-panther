@@ -100,7 +100,7 @@ fn history_lists_children_before_parents() {
     let fixture = merged_history();
 
     for (name, log) in implementations() {
-        let history = log.history(fixture.dir.path()).unwrap();
+        let history = log.history(fixture.dir.path(), &[]).unwrap();
 
         assert_eq!(history.len(), 4, "{name}");
         assert_eq!(history[0].id, id(fixture.merge), "{name}");
@@ -199,7 +199,7 @@ fn a_repository_without_commits_has_empty_history() {
     support::empty_repository(dir.path());
 
     for (name, log) in implementations() {
-        assert_eq!(log.history(dir.path()).unwrap(), [], "{name}");
+        assert_eq!(log.history(dir.path(), &[]).unwrap(), [], "{name}");
         assert_eq!(log.refs(dir.path()).unwrap(), [], "{name}");
     }
 }
@@ -213,4 +213,54 @@ fn unknown_commits_are_reported_as_not_found() {
         Git2CommitLog.details(fixture.dir.path(), &unknown),
         Err(RepositoryError::CommitNotFound { .. })
     ));
+}
+
+#[test]
+fn search_matches_messages_and_authors_ignoring_case() {
+    let fixture = merged_history();
+    for (name, log) in implementations() {
+        let found = log.search(fixture.dir.path(), "RENAME on").unwrap();
+        assert_eq!(found, [id(fixture.topic)], "{name}");
+        let author = log.search(fixture.dir.path(), "git panther").unwrap();
+        assert!(author.len() >= 4, "{name}: {author:?}");
+        assert_eq!(log.search(fixture.dir.path(), "  ").unwrap(), [], "{name}");
+    }
+}
+
+#[test]
+fn hidden_refs_leave_their_own_commits_out() {
+    let fixture = merged_history();
+    let side = support::commit(
+        &fixture.repository,
+        Some("refs/heads/side"),
+        "Side work",
+        &[("side.txt", "side")],
+        &[fixture.base],
+    );
+    for (name, log) in implementations() {
+        let all = log.history(fixture.dir.path(), &[]).unwrap();
+        assert!(all.iter().any(|node| node.id == id(side)), "{name}");
+        let hidden = log
+            .history(fixture.dir.path(), &["side".to_owned()])
+            .unwrap();
+        assert!(!hidden.iter().any(|node| node.id == id(side)), "{name}");
+        assert_eq!(hidden.len(), all.len() - 1, "{name}");
+    }
+}
+
+#[test]
+fn file_history_and_blame_name_the_commits_that_touched_a_file() {
+    let fixture = merged_history();
+    for (name, log) in implementations() {
+        let history = log
+            .file_history(fixture.dir.path(), "main.txt", 10)
+            .unwrap();
+        assert_eq!(history, [id(fixture.main)], "{name}");
+
+        let blame = log.blame(fixture.dir.path(), "main.txt").unwrap();
+        assert_eq!(blame.len(), 1, "{name}");
+        assert_eq!(blame[0].commit, id(fixture.main), "{name}");
+        assert_eq!(blame[0].content, "main", "{name}");
+        assert_eq!(blame[0].summary, "Main work", "{name}");
+    }
 }
