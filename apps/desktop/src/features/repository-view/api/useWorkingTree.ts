@@ -67,6 +67,11 @@ export function useUnstageFiles(path: string) {
   return useRepositoryMutation(path, (files: string[]) => ipc.unstageFiles(path, files));
 }
 
+/** Adds a `.gitignore` line, so matching untracked files stop showing. */
+export function useIgnorePath(path: string) {
+  return useRepositoryMutation(path, (pattern: string) => ipc.ignorePath(path, pattern));
+}
+
 export function useDiscardFiles(path: string) {
   return useRepositoryMutation(path, (files: string[]) => ipc.discardFiles(path, files));
 }

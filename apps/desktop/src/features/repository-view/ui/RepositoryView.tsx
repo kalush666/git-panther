@@ -20,6 +20,7 @@ import { CommitGraph } from './CommitGraph';
 import { ConflictEditor } from './ConflictEditor';
 import { DiffViewer } from './DiffViewer';
 import { FileHistoryView, type FileView } from './FileHistoryView';
+import { OpenInMenu } from './OpenInMenu';
 import { RebasePanel } from './RebasePanel';
 import { RecoverView } from './RecoverView';
 import { requestTarget, ReviewPanel, type ReviewTarget } from './ReviewPanel';
@@ -292,6 +293,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
           <Undo2 size={14} aria-hidden />
           Undo
         </Button>
+        <OpenInMenu path={path} report={history.report} />
         <StashActions path={path} />
         <SyncToolbar path={path} sync={sync} offer={hostingActions.offer} />
       </header>

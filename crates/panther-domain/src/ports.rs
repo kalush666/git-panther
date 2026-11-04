@@ -93,6 +93,13 @@ pub trait WorkingTree: Send + Sync {
     /// [`RepositoryError::Git`] with git's explanation when it does not apply
     /// or applies with conflicts.
     fn apply_patch(&self, repository: &Path, patch: &str) -> Result<(), RepositoryError>;
+
+    /// Adds `pattern` as a line of the repository's top-level `.gitignore`,
+    /// creating the file if needed.
+    ///
+    /// # Errors
+    /// [`RepositoryError::Storage`] when `.gitignore` cannot be written.
+    fn ignore(&self, repository: &Path, pattern: &str) -> Result<(), RepositoryError>;
 }
 
 /// Lists and changes branches.

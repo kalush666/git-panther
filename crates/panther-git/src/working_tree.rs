@@ -61,6 +61,26 @@ impl WorkingTree for GitWorkingTree {
         apply_patch(&self.executable, repository, patch, PatchTarget::ThreeWay)
     }
 
+    fn ignore(&self, repository: &Path, pattern: &str) -> Result<(), RepositoryError> {
+        let file = repository.join(".gitignore");
+        let existing = match std::fs::read_to_string(&file) {
+            Ok(text) => text,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+            Err(error) => return Err(storage_failed(&file, &error)),
+        };
+        if existing.lines().any(|line| line.trim() == pattern) {
+            return Ok(());
+        }
+        // Keep the last line intact when the file does not end with one.
+        let separator = if existing.is_empty() || existing.ends_with('\n') {
+            ""
+        } else {
+            "\n"
+        };
+        std::fs::write(&file, format!("{existing}{separator}{pattern}\n"))
+            .map_err(|error| storage_failed(&file, &error))
+    }
+
     fn apply_hunk(
         &self,
         repository: &Path,
@@ -143,5 +163,11 @@ impl CommitWriter for GitCommitWriter {
             .ok()
             .and_then(|head| head.peel_to_commit().ok())
             .map(|commit| String::from_utf8_lossy(commit.message_bytes()).into_owned()))
+    }
+}
+
+fn storage_failed(file: &Path, error: &std::io::Error) -> RepositoryError {
+    RepositoryError::Storage {
+        details: format!("{}: {error}", file.display()),
     }
 }

@@ -9,6 +9,7 @@ import {
   loadHeadMessage,
   useCommitChanges,
   useDiscardFiles,
+  useIgnorePath,
   useStageFiles,
   useUnstageFiles,
   useWorkingTreeStatus,
@@ -44,7 +45,8 @@ export function StagingPanel({
   const stage = useStageFiles(path);
   const unstage = useUnstageFiles(path);
   const discard = useDiscardFiles(path);
-  const actionError = stage.error ?? unstage.error ?? discard.error;
+  const ignore = useIgnorePath(path);
+  const actionError = stage.error ?? unstage.error ?? discard.error ?? ignore.error;
 
   if (status.isError) {
     return (
@@ -72,6 +74,7 @@ export function StagingPanel({
             stage.mutate([file.path]);
           }}
           onShowHistory={onShowHistory}
+          onIgnore={ignore.mutate}
           bulkAction={
             <span className={styles.bulk}>
               <ConfirmButton
@@ -129,6 +132,7 @@ export function StagingPanel({
             unstage.mutate([file.path]);
           }}
           onShowHistory={onShowHistory}
+          onIgnore={ignore.mutate}
           bulkAction={
             <Button
               size="sm"
@@ -175,6 +179,8 @@ interface FileSectionProps {
   /** Space on a file: stage it, or unstage it. */
   onToggle: (file: ChangedFile) => void;
   onShowHistory: (file: string) => void;
+  /** Adds a `.gitignore` line, e.g. `/notes/todo.md` or `*.log`. */
+  onIgnore: (pattern: string) => void;
   bulkAction: ReactNode;
   rowActions: (file: ChangedFile) => ReactNode;
 }
@@ -187,6 +193,7 @@ function FileSection({
   onOpenFile,
   onToggle,
   onShowHistory,
+  onIgnore,
   bulkAction,
   rowActions,
 }: FileSectionProps) {
@@ -256,6 +263,18 @@ function FileSection({
                       >
                         Copy path
                       </ContextMenu.Item>
+                      {file.kind === 'untracked' &&
+                        ignorePatterns(file.path).map(({ pattern, label }) => (
+                          <ContextMenu.Item
+                            key={pattern}
+                            className={menu.item}
+                            onSelect={() => {
+                              onIgnore(pattern);
+                            }}
+                          >
+                            {label}
+                          </ContextMenu.Item>
+                        ))}
                     </ContextMenu.Content>
                   </ContextMenu.Portal>
                 </ContextMenu.Root>
@@ -413,4 +432,15 @@ function CommitBox({ path, stagedCount, unstaged }: CommitBoxProps) {
       </Button>
     </form>
   );
+}
+
+/** Ways to ignore an untracked file: itself, or every file with its extension. */
+function ignorePatterns(path: string): { pattern: string; label: string }[] {
+  const name = path.split('/').pop() ?? path;
+  const dot = name.lastIndexOf('.');
+  const extension = dot > 0 ? name.slice(dot) : null;
+  return [
+    { pattern: `/${path}`, label: 'Ignore this file' },
+    ...(extension ? [{ pattern: `*${extension}`, label: `Ignore all ${extension} files` }] : []),
+  ];
 }

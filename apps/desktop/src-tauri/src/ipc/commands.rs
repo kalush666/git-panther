@@ -24,13 +24,15 @@ use super::dto::{
 };
 use super::error::{AppError, AppErrorKind};
 use crate::composition::AppServices;
+use crate::infra::external::{self, OpenTarget};
 use crate::infra::jobs::JobRegistry;
 use crate::infra::watcher::RepositoryWatcher;
 use panther_application::accounts::SignIn;
 use panther_domain::hosting::NewPullRequest;
 
 use super::dto::{
-    ComparisonDto, FlowFinishedDto, FlowKindDto, PipelineDto, PullRequestReviewDto, ReflogEntryDto,
+    ComparisonDto, FlowFinishedDto, FlowKindDto, OpenTargetDto, PipelineDto, PullRequestReviewDto,
+    ReflogEntryDto,
 };
 use panther_domain::remote::{PushOptions, RemoteName};
 
@@ -532,6 +534,44 @@ pub async fn apply_patch_file(
         Ok(copy.apply_patch(&PathBuf::from(path), &contents)?)
     })
     .await
+}
+
+/// Ignores files matching `pattern` by adding it to `.gitignore`.
+#[tauri::command]
+#[specta::specta]
+pub async fn ignore_path(
+    services: State<'_, AppServices>,
+    path: String,
+    pattern: String,
+) -> Result<(), AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || Ok(copy.ignore(&PathBuf::from(path), &pattern)?)).await
+}
+
+/// Opens the repository in the file manager, a terminal or `editor`.
+#[tauri::command]
+#[specta::specta]
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Tauri injects command arguments by value"
+)]
+pub fn open_in(path: String, target: OpenTargetDto, editor: String) -> Result<(), AppError> {
+    let target = match target {
+        OpenTargetDto::FileManager => OpenTarget::FileManager,
+        OpenTargetDto::Terminal => OpenTarget::Terminal,
+        OpenTargetDto::Editor => OpenTarget::Editor(editor.clone()),
+    };
+    external::open(&PathBuf::from(&path), &target).map_err(|error| {
+        let tool = match target {
+            OpenTarget::FileManager => "the file manager".to_owned(),
+            OpenTarget::Terminal => "a terminal".to_owned(),
+            OpenTarget::Editor(_) => format!("\"{editor}\" (set your editor in Settings)"),
+        };
+        AppError::new(
+            AppErrorKind::NotFound,
+            format!("Could not start {tool}: {error}"),
+        )
+    })
 }
 
 /// Commit `id` as a mail-style patch.

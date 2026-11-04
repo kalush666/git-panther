@@ -100,6 +100,22 @@ impl WorkingCopy {
         self.tree.apply_patch(repository, patch)
     }
 
+    /// Ignores files matching `pattern` from now on (a `.gitignore` line,
+    /// e.g. `/build/out.log` or `*.log`).
+    ///
+    /// # Errors
+    /// [`RepositoryError::Git`] for an empty or multi-line pattern, or a
+    /// storage error.
+    pub fn ignore(&self, repository: &Path, pattern: &str) -> Result<(), RepositoryError> {
+        let pattern = pattern.trim();
+        if pattern.is_empty() || pattern.contains('\n') {
+            return Err(RepositoryError::Git {
+                details: "An ignore pattern is one non-empty line.".into(),
+            });
+        }
+        self.tree.ignore(repository, pattern)
+    }
+
     /// Commits the staged changes, or amends the last commit.
     ///
     /// # Errors
@@ -191,6 +207,11 @@ mod tests {
 
         fn apply_patch(&self, _: &Path, patch: &str) -> Result<(), RepositoryError> {
             self.record(format!("apply {} bytes", patch.len()));
+            Ok(())
+        }
+
+        fn ignore(&self, _: &Path, pattern: &str) -> Result<(), RepositoryError> {
+            self.record(format!("ignore {pattern}"));
             Ok(())
         }
     }
