@@ -51,7 +51,7 @@ export function useBranchActions(path: string, report: Report): BranchActions {
           <InlinePrompt
             key={`create:${prompt.start}`}
             title={`New branch at ${prompt.startLabel}`}
-            input={{ label: 'Branch name', initial: '', placeholder: 'feature/my-change' }}
+            fields={[{ label: 'Branch name', initial: '', placeholder: 'feature/my-change' }]}
             submitLabel="Create branch"
             extra={
               <label className={styles.switch}>
@@ -68,7 +68,7 @@ export function useBranchActions(path: string, report: Report): BranchActions {
             error={create.error?.message ?? null}
             isPending={create.isPending}
             onCancel={close}
-            onSubmit={(name) => {
+            onSubmit={([name = '']) => {
               create.mutate(
                 { name, start: prompt.start, checkout: switchTo },
                 {
@@ -86,12 +86,12 @@ export function useBranchActions(path: string, report: Report): BranchActions {
           <InlinePrompt
             key={`rename:${prompt.from}`}
             title={`Rename ${prompt.from} to`}
-            input={{ label: 'Branch name', initial: prompt.from }}
+            fields={[{ label: 'Branch name', initial: prompt.from }]}
             submitLabel="Rename"
             error={rename.error?.message ?? null}
             isPending={rename.isPending}
             onCancel={close}
-            onSubmit={(to) => {
+            onSubmit={([to = '']) => {
               rename.mutate(
                 { from: prompt.from, to },
                 {

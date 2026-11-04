@@ -16,6 +16,7 @@ import type {
   GraphPageDto,
   HunkActionDto,
   HunkDto_Serialize,
+  LfsStatusDto,
   OperationDto,
   PullStrategyDto,
   RebaseStepDto,
@@ -25,6 +26,8 @@ import type {
   ResetModeDto,
   SettingsDto_Serialize,
   StashDto,
+  SubmoduleDto,
+  WorktreeDto_Serialize,
   WorkingTreeStatusDto_Serialize,
 } from './bindings';
 
@@ -52,6 +55,17 @@ export type CommitSummary = CommitSummaryDto;
 export type BlameLine = BlameLineDto;
 export type RebaseStep = RebaseStepDto;
 export type ConflictChunk = ConflictChunkDto_Serialize;
+export type Submodule = SubmoduleDto;
+export type Worktree = WorktreeDto_Serialize;
+export type LfsStatus = LfsStatusDto;
+
+/** Where and how to push. */
+export interface PushOptions {
+  /** A remote other than the branch's upstream. */
+  remote?: string;
+  /** Overwrite the remote branch if it is still where it was last fetched. */
+  forceWithLease?: boolean;
+}
 
 /** Receives progress of a long-running network job. */
 export type OnProgress = (progress: CloneProgress) => void;
@@ -135,7 +149,25 @@ export interface Backend {
     onProgress: OnProgress,
   ): Promise<Result<null>>;
   /** Pushes the current branch, setting its upstream on the first push. */
-  pushBranch(path: string, jobId: string, onProgress: OnProgress): Promise<Result<null>>;
+  pushBranch(
+    path: string,
+    options: PushOptions,
+    jobId: string,
+    onProgress: OnProgress,
+  ): Promise<Result<null>>;
+  addRemote(path: string, name: string, url: string): Promise<Result<null>>;
+  setRemoteUrl(path: string, name: string, url: string): Promise<Result<null>>;
+  removeRemote(path: string, name: string): Promise<Result<null>>;
+  /** Deletes `remote/branch` on its remote. */
+  deleteRemoteBranch(path: string, branch: string): Promise<Result<null>>;
+  listSubmodules(path: string): Promise<Result<Submodule[]>>;
+  updateSubmodules(path: string, jobId: string, onProgress: OnProgress): Promise<Result<null>>;
+  /** The main working tree first. */
+  listWorktrees(path: string): Promise<Result<Worktree[]>>;
+  /** Checks `branch` out in a new worktree next to the repository; resolves to its path. */
+  addWorktree(path: string, branch: string): Promise<Result<string>>;
+  removeWorktree(path: string, worktree: string): Promise<Result<null>>;
+  lfsStatus(path: string): Promise<Result<LfsStatus>>;
   /** Newest first. */
   listStashes(path: string): Promise<Result<Stash[]>>;
   saveStash(path: string, message: string | null, includeUntracked: boolean): Promise<Result<null>>;

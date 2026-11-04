@@ -53,6 +53,10 @@ pub enum AppErrorKind {
     NothingToUndo,
     UndoOutdated,
     InvalidRebasePlan,
+    InvalidRemoteName,
+    RemoteExists,
+    RemoteNotFound,
+    WorktreeFailed,
     WatchFailed,
     Internal,
 }
@@ -139,6 +143,10 @@ impl From<RepositoryError> for AppError {
             RepositoryError::NothingToUndo => AppErrorKind::NothingToUndo,
             RepositoryError::UndoOutdated => AppErrorKind::UndoOutdated,
             RepositoryError::InvalidRebasePlan(_) => AppErrorKind::InvalidRebasePlan,
+            RepositoryError::InvalidRemoteName(_) => AppErrorKind::InvalidRemoteName,
+            RepositoryError::RemoteExists { .. } => AppErrorKind::RemoteExists,
+            RepositoryError::RemoteNotFound { .. } => AppErrorKind::RemoteNotFound,
+            RepositoryError::WorktreeFailed { .. } => AppErrorKind::WorktreeFailed,
         };
         Self::new(kind, error.to_string())
     }

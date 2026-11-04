@@ -74,6 +74,16 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::rebase_interactive,
             commands::conflict_chunks,
             commands::resolve_conflict_with,
+            commands::add_remote,
+            commands::set_remote_url,
+            commands::remove_remote,
+            commands::delete_remote_branch,
+            commands::list_submodules,
+            commands::update_submodules,
+            commands::list_worktrees,
+            commands::add_worktree,
+            commands::remove_worktree,
+            commands::lfs_status,
         ])
         .events(tauri_specta::collect_events![dto::RepositoryChanged])
 }

@@ -93,9 +93,11 @@ Interactive rebase (reorder, squash, reword, drop) and a 3-way conflict editor.
 
 **Demo:** "Interactive rebase of later commits…" on any commit opens a plan of the commits after it, oldest first, to reorder, reword, squash, fix up or drop; it runs through `git rebase -i` without ever opening an editor and can be undone. Clicking a conflicted file opens the conflict editor: each conflict shows mine and incoming side by side with use mine / incoming / both, and an editable result that is saved and staged in one step.
 
-### ⏳ M11 — Remotes and repository types
+### ✅ M11 — Remotes and repository types
 
 Add / edit / remove remotes, force push with lease, delete remote branches, push to another remote; submodules, Git LFS, worktrees.
+
+**Demo:** "+" on the Remote section adds a remote (name suggested); a remote's folder menu edits its URL or removes it; remote branches can be deleted on the server. The Push menu offers a safe force push (with lease) and pushing to any remote. "Open in a new worktree" checks a branch out next to the repository and opens it in a tab; Worktrees and Submodules appear in the sidebar when present, with one-click submodule update. Repositories that use Git LFS warn when git-lfs is missing.
 
 ### ⏳ M12 — Workflow
 

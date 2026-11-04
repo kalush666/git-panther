@@ -91,8 +91,25 @@ export const tauriBackend: Backend = {
     commands.fetchRemotes(path, jobId, progressChannel(onProgress)),
   pullBranch: (path, strategy, jobId, onProgress) =>
     commands.pullBranch(path, strategy, jobId, progressChannel(onProgress)),
-  pushBranch: (path, jobId, onProgress) =>
-    commands.pushBranch(path, jobId, progressChannel(onProgress)),
+  pushBranch: (path, { remote, forceWithLease }, jobId, onProgress) =>
+    commands.pushBranch(
+      path,
+      remote ?? null,
+      forceWithLease ?? false,
+      jobId,
+      progressChannel(onProgress),
+    ),
+  addRemote: commands.addRemote,
+  setRemoteUrl: commands.setRemoteUrl,
+  removeRemote: commands.removeRemote,
+  deleteRemoteBranch: commands.deleteRemoteBranch,
+  listSubmodules: commands.listSubmodules,
+  updateSubmodules: (path, jobId, onProgress) =>
+    commands.updateSubmodules(path, jobId, progressChannel(onProgress)),
+  listWorktrees: commands.listWorktrees,
+  addWorktree: commands.addWorktree,
+  removeWorktree: commands.removeWorktree,
+  lfsStatus: commands.lfsStatus,
   onRepositoryChanged: (listener) =>
     events.repositoryChanged.listen((event) => {
       listener(event.payload.path);

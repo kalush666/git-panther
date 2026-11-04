@@ -207,6 +207,7 @@ mod tests {
         fn push(
             &self,
             _: &Path,
+            _: &panther_domain::remote::PushOptions,
             _: &mut dyn FnMut(CloneProgress),
             _: &CancellationToken,
         ) -> Result<(), RepositoryError> {

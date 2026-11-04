@@ -7,6 +7,7 @@ import {
   EyeOff,
   Folder,
   GitBranch,
+  Plus,
   Search,
 } from 'lucide-react';
 import { useState, type DragEvent } from 'react';
@@ -17,9 +18,11 @@ import { buildBranchTree, filterBranches, type BranchNode } from '../model/branc
 import { useHiddenRefs, useHiddenRefsStore } from '../model/hiddenRefs';
 import menu from './menu.module.css';
 import styles from './BranchSidebar.module.css';
+import { SubmoduleList, WorktreeList } from './LayoutLists';
 import { StashList } from './StashList';
 import type { BranchActions } from './useBranchActions';
 import type { HistoryActions } from './useHistoryActions';
+import type { RemoteActions } from './useRemoteActions';
 
 /** Drag-and-drop payload: the dragged branch's name. */
 const BRANCH_DRAG_TYPE = 'application/x-git-panther-branch';
@@ -28,6 +31,8 @@ interface BranchSidebarProps {
   path: string;
   actions: BranchActions;
   history: HistoryActions;
+  remoteActions: RemoteActions;
+  onOpenRepository: (path: string) => void;
 }
 
 /** Which branches the graph shows. */
@@ -43,9 +48,16 @@ interface RowActions {
   actions: BranchActions;
   history: HistoryActions;
   visibility: Visibility;
+  remoteActions: RemoteActions;
 }
 
-export function BranchSidebar({ path, actions, history }: BranchSidebarProps) {
+export function BranchSidebar({
+  path,
+  actions,
+  history,
+  remoteActions,
+  onOpenRepository,
+}: BranchSidebarProps) {
   const branches = useBranches(path);
   const [filter, setFilter] = useState('');
   const all = filterBranches(branches.data ?? [], filter);
@@ -103,16 +115,31 @@ export function BranchSidebar({ path, actions, history }: BranchSidebarProps) {
           actions={actions}
           history={history}
           visibility={visibility}
+          remoteActions={remoteActions}
         />
         <Section
+          action={
+            <button
+              type="button"
+              className={styles.sectionAction}
+              aria-label="Add remote"
+              title="Add remote"
+              onClick={remoteActions.openAddRemote}
+            >
+              <Plus size={13} aria-hidden />
+            </button>
+          }
           title="Remote"
           icon={<Cloud size={13} aria-hidden />}
           branches={remote}
           actions={actions}
           history={history}
           visibility={visibility}
+          remoteActions={remoteActions}
         />
         <StashList path={path} />
+        <WorktreeList path={path} actions={remoteActions} onOpenRepository={onOpenRepository} />
+        <SubmoduleList path={path} onOpenRepository={onOpenRepository} />
       </div>
       {(branches.error ?? actions.checkoutError) && (
         <p className={styles.error} role="alert">
@@ -130,27 +157,34 @@ function Section({
   actions,
   history,
   visibility,
+  remoteActions,
+  action,
 }: {
   title: string;
   icon: React.ReactNode;
   branches: Branch[];
+  /** A button next to the section title, e.g. "Add remote". */
+  action?: React.ReactNode;
 } & RowActions) {
   const [open, setOpen] = useState(true);
   return (
     <section className={styles.section}>
-      <button
-        type="button"
-        className={styles.sectionHeader}
-        aria-expanded={open}
-        onClick={() => {
-          setOpen(!open);
-        }}
-      >
-        {open ? <ChevronDown size={13} aria-hidden /> : <ChevronRight size={13} aria-hidden />}
-        {icon}
-        <span className={styles.sectionTitle}>{title}</span>
-        <span className={styles.count}>{branches.length}</span>
-      </button>
+      <div className={styles.sectionHeaderRow}>
+        <button
+          type="button"
+          className={styles.sectionHeader}
+          aria-expanded={open}
+          onClick={() => {
+            setOpen(!open);
+          }}
+        >
+          {open ? <ChevronDown size={13} aria-hidden /> : <ChevronRight size={13} aria-hidden />}
+          {icon}
+          <span className={styles.sectionTitle}>{title}</span>
+          <span className={styles.count}>{branches.length}</span>
+        </button>
+        {action}
+      </div>
       {open && (
         <ul className={styles.tree} role="tree" aria-label={`${title} branches`}>
           {buildBranchTree(branches).map((node) => (
@@ -161,12 +195,23 @@ function Section({
               actions={actions}
               history={history}
               visibility={visibility}
+              remoteActions={remoteActions}
             />
           ))}
         </ul>
       )}
     </section>
   );
+}
+
+/** The first branch inside a folder node, to tell local from remote folders. */
+function firstBranch(node: BranchNode): Branch | undefined {
+  if (node.kind === 'branch') return node.branch;
+  for (const child of node.children) {
+    const found = firstBranch(child);
+    if (found) return found;
+  }
+  return undefined;
 }
 
 const nodeKey = (node: BranchNode) =>
@@ -178,6 +223,7 @@ function TreeNode({
   actions,
   history,
   visibility,
+  remoteActions,
 }: {
   node: BranchNode;
   depth: number;
@@ -185,20 +231,56 @@ function TreeNode({
   const [open, setOpen] = useState(true);
   const indent = { paddingLeft: `calc(var(--gp-space-3) + ${depth} * var(--gp-space-4))` };
   if (node.kind === 'folder') {
+    const folderButton = (
+      <button
+        type="button"
+        className={styles.row}
+        style={indent}
+        onClick={() => {
+          setOpen(!open);
+        }}
+      >
+        {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
+        <Folder size={13} aria-hidden />
+        <span className={styles.name}>{node.label}</span>
+      </button>
+    );
+    // A top-level folder of remote branches is the remote itself.
+    const isRemote = depth === 0 && firstBranch(node)?.kind === 'remote';
     return (
       <li role="treeitem" aria-expanded={open} aria-selected={false}>
-        <button
-          type="button"
-          className={styles.row}
-          style={indent}
-          onClick={() => {
-            setOpen(!open);
-          }}
-        >
-          {open ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
-          <Folder size={13} aria-hidden />
-          <span className={styles.name}>{node.label}</span>
-        </button>
+        {isRemote ? (
+          <ContextMenu.Root>
+            <ContextMenu.Trigger asChild>{folderButton}</ContextMenu.Trigger>
+            <ContextMenu.Portal>
+              <ContextMenu.Content
+                className={menu.content}
+                onCloseAutoFocus={(event) => {
+                  event.preventDefault();
+                }}
+              >
+                <ContextMenu.Item
+                  className={menu.item}
+                  onSelect={() => {
+                    remoteActions.openSetUrl(node.label);
+                  }}
+                >
+                  Edit URL…
+                </ContextMenu.Item>
+                <ContextMenu.Item
+                  className={`${menu.item} ${menu.danger}`}
+                  onSelect={() => {
+                    remoteActions.openRemove(node.label);
+                  }}
+                >
+                  Remove remote…
+                </ContextMenu.Item>
+              </ContextMenu.Content>
+            </ContextMenu.Portal>
+          </ContextMenu.Root>
+        ) : (
+          folderButton
+        )}
         {open && (
           <ul role="group" className={styles.tree}>
             {node.children.map((child) => (
@@ -209,6 +291,7 @@ function TreeNode({
                 actions={actions}
                 history={history}
                 visibility={visibility}
+                remoteActions={remoteActions}
               />
             ))}
           </ul>
@@ -224,6 +307,7 @@ function TreeNode({
       actions={actions}
       history={history}
       visibility={visibility}
+      remoteActions={remoteActions}
     />
   );
 }
@@ -235,6 +319,7 @@ function BranchRow({
   actions,
   history,
   visibility,
+  remoteActions,
 }: {
   branch: Branch;
   label: string;
@@ -366,6 +451,26 @@ function BranchRow({
                   Rebase {current} onto {branch.name}
                 </ContextMenu.Item>
               </>
+            )}
+            {isLocal && !branch.isHead && (
+              <ContextMenu.Item
+                className={menu.item}
+                onSelect={() => {
+                  remoteActions.addWorktree(branch.name);
+                }}
+              >
+                Open in a new worktree
+              </ContextMenu.Item>
+            )}
+            {!isLocal && (
+              <ContextMenu.Item
+                className={`${menu.item} ${menu.danger}`}
+                onSelect={() => {
+                  remoteActions.openDeleteBranch(branch.name);
+                }}
+              >
+                Delete on remote…
+              </ContextMenu.Item>
             )}
             {isLocal && (
               <>

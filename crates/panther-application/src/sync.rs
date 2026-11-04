@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use panther_domain::ports::RemoteSync;
-use panther_domain::remote::{PullStrategy, Remote};
+use panther_domain::remote::{PullStrategy, PushOptions, Remote};
 use panther_domain::repository::{CancellationToken, CloneProgress, RepositoryError};
 
 use crate::undo::{UndoLog, tracked};
@@ -65,9 +65,10 @@ impl Sync {
     pub fn push(
         &self,
         repository: &Path,
+        options: &PushOptions,
         on_progress: &mut dyn FnMut(CloneProgress),
         cancel: &CancellationToken,
     ) -> Result<(), RepositoryError> {
-        self.remote.push(repository, on_progress, cancel)
+        self.remote.push(repository, options, on_progress, cancel)
     }
 }

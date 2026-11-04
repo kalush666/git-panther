@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react';
 
-import { ipc, type CloneProgress, type PullStrategy } from '../../../shared/ipc';
+import { ipc, type CloneProgress, type PullStrategy, type PushOptions } from '../../../shared/ipc';
 import { useRepositoryMutation } from './useRepositoryMutation';
 
 export type SyncRequest =
-  { action: 'fetch' } | { action: 'pull'; strategy: PullStrategy } | { action: 'push' };
+  | { action: 'fetch' }
+  | { action: 'pull'; strategy: PullStrategy }
+  | { action: 'push'; options?: PushOptions };
 
 export type SyncAction = SyncRequest['action'];
 
@@ -24,7 +26,7 @@ export function useSync(path: string) {
         case 'pull':
           return await ipc.pullBranch(path, request.strategy, jobId, setProgress);
         case 'push':
-          return await ipc.pushBranch(path, jobId, setProgress);
+          return await ipc.pushBranch(path, request.options ?? {}, jobId, setProgress);
       }
     } finally {
       runningJob.current = null;

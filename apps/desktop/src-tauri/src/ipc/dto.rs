@@ -11,6 +11,7 @@ use panther_domain::commit::{
 use panther_domain::conflict::ConflictChunk;
 use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::history::{RebaseAction, RebaseStep, ResetMode};
+use panther_domain::layout::{LfsStatus, Submodule, SubmoduleState, Worktree};
 use panther_domain::ports::HunkAction;
 use panther_domain::remote::{PullStrategy, Remote};
 use panther_domain::repository::{CloneProgress, HeadState, RepositorySummary, repository_name};
@@ -808,6 +809,72 @@ impl From<ConflictChunk> for ConflictChunkDto {
                 base,
                 incoming,
             },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum SubmoduleStateDto {
+    Current,
+    NotInitialized,
+    OutOfDate,
+    Conflicted,
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SubmoduleDto {
+    pub path: String,
+    pub commit: String,
+    pub state: SubmoduleStateDto,
+}
+
+impl From<Submodule> for SubmoduleDto {
+    fn from(submodule: Submodule) -> Self {
+        Self {
+            path: submodule.path,
+            commit: submodule.commit.to_string(),
+            state: match submodule.state {
+                SubmoduleState::Current => SubmoduleStateDto::Current,
+                SubmoduleState::NotInitialized => SubmoduleStateDto::NotInitialized,
+                SubmoduleState::OutOfDate => SubmoduleStateDto::OutOfDate,
+                SubmoduleState::Conflicted => SubmoduleStateDto::Conflicted,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WorktreeDto {
+    pub path: String,
+    pub branch: Option<String>,
+    pub is_main: bool,
+}
+
+impl From<Worktree> for WorktreeDto {
+    fn from(worktree: Worktree) -> Self {
+        Self {
+            path: worktree.path.display().to_string(),
+            branch: worktree.branch,
+            is_main: worktree.is_main,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LfsStatusDto {
+    pub used: bool,
+    pub installed: bool,
+}
+
+impl From<LfsStatus> for LfsStatusDto {
+    fn from(status: LfsStatus) -> Self {
+        Self {
+            used: status.used,
+            installed: status.installed,
         }
     }
 }

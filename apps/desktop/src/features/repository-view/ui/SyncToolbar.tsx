@@ -34,6 +34,7 @@ export function SyncToolbar({ path }: { path: string }) {
   const strategy = usePullStrategyStore((state) => state.strategy);
   const setStrategy = usePullStrategyStore((state) => state.setStrategy);
   const head = branches.data?.find((branch) => branch.isHead);
+  const remotes = useRemotes(path);
   const busy = sync.running !== null;
 
   return (
@@ -100,22 +101,57 @@ export function SyncToolbar({ path }: { path: string }) {
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={busy}
-          onClick={() => {
-            sync.run({ action: 'push' });
-          }}
-        >
-          <ArrowUpFromLine size={ICON_SIZE} aria-hidden />
-          Push
-          {head && head.ahead > 0 ? (
-            <span className={styles.count} aria-label={`${head.ahead} to push`}>
-              {head.ahead}
-            </span>
-          ) : null}
-        </Button>
+        <div className={styles.split}>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => {
+              sync.run({ action: 'push' });
+            }}
+          >
+            <ArrowUpFromLine size={ICON_SIZE} aria-hidden />
+            Push
+            {head && head.ahead > 0 ? (
+              <span className={styles.count} aria-label={`${head.ahead} to push`}>
+                {head.ahead}
+              </span>
+            ) : null}
+          </Button>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger
+              className={styles.splitTrigger}
+              disabled={busy}
+              aria-label="More ways to push"
+            >
+              <ChevronDown size={ICON_SIZE} aria-hidden />
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content className={menu.content} align="end" sideOffset={6}>
+                <DropdownMenu.Item
+                  className={menu.item}
+                  title="Overwrites the remote branch, but only if nobody pushed to it since your last fetch"
+                  onSelect={() => {
+                    sync.run({ action: 'push', options: { forceWithLease: true } });
+                  }}
+                >
+                  Force push (safe, with lease)
+                </DropdownMenu.Item>
+                {(remotes.data ?? []).map((remote) => (
+                  <DropdownMenu.Item
+                    key={remote.name}
+                    className={menu.item}
+                    onSelect={() => {
+                      sync.run({ action: 'push', options: { remote: remote.name } });
+                    }}
+                  >
+                    Push to {remote.name}
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        </div>
       </div>
       <SyncStatus path={path} sync={sync} />
     </div>

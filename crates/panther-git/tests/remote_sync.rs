@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use panther_domain::ports::RemoteSync;
-use panther_domain::remote::PullStrategy;
+use panther_domain::remote::{PullStrategy, PushOptions};
 use panther_domain::repository::{CancellationToken, RepositoryError};
 use panther_git::GitRemoteSync;
 use tempfile::TempDir;
@@ -110,7 +110,12 @@ fn pull(repo: &Path, strategy: PullStrategy) -> Result<(), RepositoryError> {
 }
 
 fn push(repo: &Path) -> Result<(), RepositoryError> {
-    sync().push(repo, &mut |_| {}, &CancellationToken::default())
+    sync().push(
+        repo,
+        &PushOptions::default(),
+        &mut |_| {},
+        &CancellationToken::default(),
+    )
 }
 
 fn head(repo: &Path) -> String {
@@ -224,4 +229,127 @@ fn pulling_a_branch_without_upstream_is_explained() {
         pull(&remote.alice, PullStrategy::FastForwardOnly),
         Err(RepositoryError::NoUpstream { .. })
     ));
+}
+
+#[test]
+fn force_push_with_lease_replaces_a_rewritten_branch() {
+    let remote = remote();
+    commit_file(&remote.alice, "alice.txt", "alice\n");
+    push(&remote.alice).unwrap();
+    git(
+        &remote.alice,
+        &["commit", "--quiet", "--amend", "-m", "Rewritten"],
+    );
+
+    assert!(matches!(
+        push(&remote.alice),
+        Err(RepositoryError::PushRejected { .. })
+    ));
+    let force = PushOptions {
+        force_with_lease: true,
+        ..PushOptions::default()
+    };
+    sync()
+        .push(
+            &remote.alice,
+            &force,
+            &mut |_| {},
+            &CancellationToken::default(),
+        )
+        .unwrap();
+    assert_eq!(
+        git(&remote.origin, &["rev-parse", "main"]).trim(),
+        head(&remote.alice)
+    );
+}
+
+#[test]
+fn manages_remotes_and_pushes_to_a_chosen_one() {
+    use panther_domain::ports::RemoteConfig;
+    use panther_domain::remote::RemoteName;
+    use panther_git::GitRemoteConfig;
+
+    let remote = remote();
+    let config = GitRemoteConfig::default();
+    let mirror = remote.origin.with_file_name("mirror.git");
+    git(
+        remote.origin.parent().unwrap(),
+        &["init", "--quiet", "--bare", "mirror.git"],
+    );
+    let name = RemoteName::parse("mirror").unwrap();
+    config
+        .add(&remote.alice, &name, &mirror.to_string_lossy())
+        .unwrap();
+    assert!(matches!(
+        config.add(&remote.alice, &name, "elsewhere"),
+        Err(RepositoryError::RemoteExists { .. })
+    ));
+
+    let options = PushOptions {
+        remote: Some(name.clone()),
+        ..PushOptions::default()
+    };
+    sync()
+        .push(
+            &remote.alice,
+            &options,
+            &mut |_| {},
+            &CancellationToken::default(),
+        )
+        .unwrap();
+    git(&mirror, &["rev-parse", "--verify", "refs/heads/main"]);
+
+    config.delete_branch(&remote.alice, &name, "main").unwrap();
+    assert!(
+        git_fails(&mirror, &["rev-parse", "--verify", "refs/heads/main"]),
+        "the branch is gone from the mirror"
+    );
+
+    config
+        .set_url(&remote.alice, &name, "../other.git")
+        .unwrap();
+    config.remove(&remote.alice, &name).unwrap();
+    assert!(matches!(
+        config.remove(&remote.alice, &name),
+        Err(RepositoryError::RemoteNotFound { .. })
+    ));
+}
+
+#[test]
+fn lists_adds_and_removes_worktrees() {
+    use panther_domain::ports::RepositoryLayout;
+    use panther_git::GitRepositoryLayout;
+
+    let remote = remote();
+    let layout = GitRepositoryLayout::default();
+    git(&remote.alice, &["branch", "topic"]);
+    let extra = remote.alice.with_file_name("alice-topic");
+
+    layout.add_worktree(&remote.alice, &extra, "topic").unwrap();
+    let worktrees = layout.worktrees(&remote.alice).unwrap();
+    assert_eq!(worktrees.len(), 2);
+    assert!(worktrees[0].is_main);
+    assert_eq!(worktrees[1].branch.as_deref(), Some("topic"));
+
+    layout.remove_worktree(&remote.alice, &extra).unwrap();
+    assert_eq!(layout.worktrees(&remote.alice).unwrap().len(), 1);
+    assert!(!layout.lfs(&remote.alice).unwrap().used);
+    fs::write(
+        remote.alice.join(".gitattributes"),
+        "*.psd filter=lfs diff=lfs merge=lfs -text\n",
+    )
+    .unwrap();
+    assert!(layout.lfs(&remote.alice).unwrap().used);
+}
+
+/// Whether git fails in `dir`.
+fn git_fails(dir: &Path, args: &[&str]) -> bool {
+    !Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .output()
+        .expect("git runs")
+        .status
+        .success()
 }
