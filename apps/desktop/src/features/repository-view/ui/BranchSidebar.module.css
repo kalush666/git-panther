@@ -144,3 +144,31 @@
   outline-offset: -2px;
   background: var(--gp-accent-subtle);
 }
+
+.row[data-hidden='true'] .name {
+  color: var(--gp-text-muted);
+}
+
+.hiddenMark {
+  flex-shrink: 0;
+  color: var(--gp-text-muted);
+}
+
+.showAll {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-space-2);
+  margin: 0 var(--gp-space-3) var(--gp-space-2);
+  padding: var(--gp-space-1) var(--gp-space-2);
+  border: 1px dashed var(--gp-border-strong);
+  border-radius: var(--gp-radius-sm);
+  background: transparent;
+  color: var(--gp-text-secondary);
+  font-size: var(--gp-text-sm);
+  cursor: pointer;
+}
+
+.showAll:hover {
+  background: var(--gp-bg-raised);
+  color: var(--gp-text-primary);
+}

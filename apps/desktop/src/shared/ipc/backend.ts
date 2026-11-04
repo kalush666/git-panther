@@ -1,10 +1,12 @@
 import type {
   AccountDto,
   AppError,
+  BlameLineDto,
   BranchDto_Serialize,
   CloneProgressDto_Serialize,
   ChangedFileDto_Serialize,
   CommitDetailsDto,
+  CommitSummaryDto,
   ConflictSideDto,
   DiffLineDto_Serialize,
   DiffSideDto,
@@ -44,6 +46,8 @@ export type ConflictSide = ConflictSideDto;
 export type Settings = SettingsDto_Serialize;
 export type Account = AccountDto;
 export type ResetMode = ResetModeDto;
+export type CommitSummary = CommitSummaryDto;
+export type BlameLine = BlameLineDto;
 
 /** Receives progress of a long-running network job. */
 export type OnProgress = (progress: CloneProgress) => void;
@@ -53,6 +57,8 @@ export interface HunkTarget {
   file: string;
   index: number;
   header: string;
+  /** Only these lines (indexes into the hunk's lines); the whole hunk when absent. */
+  lines?: number[];
 }
 
 export interface CloneOptions {
@@ -84,7 +90,19 @@ export interface Backend {
   /** Calls `listener` with the repository path on every change; returns an unsubscribe function. */
   onRepositoryChanged(listener: (path: string) => void): Promise<() => void>;
   /** Up to `limit` rows of the commit graph starting at row `offset`. */
-  loadGraphPage(path: string, offset: number, limit: number): Promise<Result<GraphPageDto>>;
+  /** Branches and tags named in `hidden` are left out of the graph. */
+  loadGraphPage(
+    path: string,
+    offset: number,
+    limit: number,
+    hidden: string[],
+  ): Promise<Result<GraphPageDto>>;
+  /** Graph rows matching `query` (message, author or SHA prefix), top to bottom. */
+  searchCommits(path: string, query: string, hidden: string[]): Promise<Result<number[]>>;
+  /** Commits that changed `file`, newest first. */
+  fileHistory(path: string, file: string): Promise<Result<CommitSummary[]>>;
+  /** Who last changed each line of `file`. */
+  blameFile(path: string, file: string): Promise<Result<BlameLine[]>>;
   commitDetails(path: string, id: string): Promise<Result<CommitDetailsDto>>;
   commitFileDiff(path: string, id: string, file: string): Promise<Result<FileDiff>>;
   workingTreeStatus(path: string): Promise<Result<WorkingTreeStatus>>;

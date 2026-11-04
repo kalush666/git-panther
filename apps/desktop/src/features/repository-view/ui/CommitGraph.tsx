@@ -2,6 +2,7 @@ import * as ContextMenu from '@radix-ui/react-context-menu';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Check, Cloud, Laptop, Tag } from 'lucide-react';
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -19,6 +20,7 @@ import { formatCommitTime } from '../model/formatTime';
 import { ROW_HEIGHT, graphColumnWidth, paletteIndex } from '../model/graphGeometry';
 import { groupRefs, initialsOf, type RefPill } from '../model/refPills';
 import { ColumnMenu } from './ColumnMenu';
+import { GraphSearch } from './GraphSearch';
 import styles from './CommitGraph.module.css';
 import menuStyles from './menu.module.css';
 
@@ -77,6 +79,10 @@ export function CommitGraph({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const widestGraph = useRef(1);
   const [total, setTotal] = useState(0);
+  const [matches, setMatches] = useState<ReadonlySet<number>>(new Set());
+  const keepMatches = useCallback((rows: ReadonlySet<number>) => {
+    setMatches(rows);
+  }, []);
   // TanStack Virtual returns a mutable instance the React Compiler cannot
   // memoize; we do not use the compiler, so this only disables an optimization.
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -169,6 +175,14 @@ export function CommitGraph({
   const gridTemplateColumns = columnTemplate(columns, graphWidth);
   return (
     <div className={styles.graph}>
+      <GraphSearch
+        path={path}
+        onMatchesChange={keepMatches}
+        onGoTo={(row) => {
+          onSelectIndex(row);
+          virtualizer.scrollToIndex(row, { align: 'center' });
+        }}
+      />
       <div className={styles.header} style={{ gridTemplateColumns }}>
         {columns.refs && <span className={styles.headerCell}>Branch / Tag</span>}
         <span className={styles.headerCell}>Graph</span>
@@ -212,6 +226,7 @@ export function CommitGraph({
               columns={columns}
               menu={rowMenu}
               isSelected={item.index === selectedIndex}
+              isMatch={matches.has(item.index)}
               onSelect={select}
             />
           ))}
@@ -231,6 +246,8 @@ interface CommitRowProps {
   columns: ColumnVisibility;
   menu: CommitGraphProps['rowMenu'];
   isSelected: boolean;
+  /** Matches the current search. */
+  isMatch: boolean;
   onSelect: (index: number) => void;
 }
 
@@ -242,6 +259,7 @@ function CommitRow({
   columns,
   menu,
   isSelected,
+  isMatch,
   onSelect,
 }: CommitRowProps) {
   const row = (
@@ -251,6 +269,7 @@ function CommitRow({
       aria-selected={isSelected}
       className={styles.row}
       data-selected={isSelected}
+      data-match={isMatch}
       style={{ transform: `translateY(${start}px)`, gridTemplateColumns }}
       onClick={() => {
         onSelect(index);

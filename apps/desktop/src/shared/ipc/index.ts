@@ -15,10 +15,12 @@ import { tauriBackend } from './tauriBackend';
 export type {
   Account,
   Backend,
+  BlameLine,
   Branch,
   ChangedFile,
   CloneOptions,
   CloneProgress,
+  CommitSummary,
   ConflictSide,
   DiffHunk,
   DiffLine,

@@ -3,7 +3,13 @@ import type { GitInstallationDto, RecentRepositoryDto, RepositorySummaryDto } fr
 import { createMockBranches } from './mockBranches';
 import { createMockHistory } from './mockHistory';
 import { createMockStashes } from './mockStashes';
-import { mockCommitDetails, mockGraphPage } from './mockGraph';
+import {
+  mockBlame,
+  mockCommitDetails,
+  mockFileHistory,
+  mockGraphPage,
+  mockSearch,
+} from './mockGraph';
 import { createMockWorkingTree } from './mockWorkingTree';
 
 /** Folder the mock folder picker "selects". */
@@ -169,6 +175,9 @@ function createMockBackend(): Backend {
       });
     },
     loadGraphPage: (_path, offset, limit) => Promise.resolve(ok(mockGraphPage(offset, limit))),
+    searchCommits: (_path, query) => Promise.resolve(ok(mockSearch(query))),
+    fileHistory: () => Promise.resolve(ok(mockFileHistory())),
+    blameFile: (_path, file) => Promise.resolve(ok(mockBlame(file))),
     commitDetails: (_path, id) => {
       const details = mockCommitDetails(id);
       return Promise.resolve(

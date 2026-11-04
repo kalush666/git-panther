@@ -1,4 +1,4 @@
-import { ArrowLeft, Columns2, Rows3 } from 'lucide-react';
+import { ArrowLeft, Columns2, History, Rows3, ScanText } from 'lucide-react';
 import { useState } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -28,14 +28,25 @@ interface DiffViewerProps {
   path: string;
   source: DiffSource;
   onClose: () => void;
+  onShowHistory: (file: string) => void;
+  onShowBlame: (file: string) => void;
 }
 
-export function DiffViewer({ path, source, onClose }: DiffViewerProps) {
+/** Selected line indexes per hunk index. */
+type LineSelection = Record<number, number[]>;
+
+/** "1 line" / "3 lines". */
+const lineCount = (count: number) => `${count} ${count === 1 ? 'line' : 'lines'}`;
+
+export function DiffViewer({ path, source, onClose, onShowHistory, onShowBlame }: DiffViewerProps) {
   const diff = useFileDiff(path, source);
   const layout = useDiffLayout((state) => state.layout);
   const setLayout = useDiffLayout((state) => state.setLayout);
   const applyHunk = useApplyHunk(path);
   const [pendingDiscard, setPendingDiscard] = useState<number | null>(null);
+  const [selection, setSelection] = useState<LineSelection>({});
+  // Lines are picked in the unified view, on uncommitted changes only.
+  const canPickLines = source.kind === 'workingTree' && layout === 'unified';
   const sideLabel =
     source.kind === 'commit'
       ? `in ${source.commitId.slice(0, 7)}`
@@ -45,9 +56,34 @@ export function DiffViewer({ path, source, onClose }: DiffViewerProps) {
 
   const runHunk = (index: number, action: HunkAction) => {
     const hunk = diff.data?.hunks[index];
-    if (hunk) {
-      applyHunk.mutate({ hunk: { file: source.file, index, header: hunk.header }, action });
-    }
+    if (!hunk) return;
+    const lines = selection[index];
+    applyHunk.mutate(
+      {
+        hunk: {
+          file: source.file,
+          index,
+          header: hunk.header,
+          ...(lines?.length ? { lines } : {}),
+        },
+        action,
+      },
+      {
+        onSuccess: () => {
+          setSelection({});
+        },
+      },
+    );
+  };
+
+  const toggleLine = (hunkIndex: number, lineIndex: number) => {
+    setSelection((current) => {
+      const lines = current[hunkIndex] ?? [];
+      const next = lines.includes(lineIndex)
+        ? lines.filter((line) => line !== lineIndex)
+        : [...lines, lineIndex];
+      return { ...current, [hunkIndex]: next };
+    });
   };
 
   return (
@@ -62,6 +98,26 @@ export function DiffViewer({ path, source, onClose }: DiffViewerProps) {
           {source.file}
         </span>
         <span className={styles.side}>{sideLabel}</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            onShowHistory(source.file);
+          }}
+        >
+          <History size={14} aria-hidden />
+          History
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            onShowBlame(source.file);
+          }}
+        >
+          <ScanText size={14} aria-hidden />
+          Blame
+        </Button>
         <div className={styles.layoutToggle} role="radiogroup" aria-label="Diff layout">
           <LayoutButton current={layout} value="unified" label="Unified" onSelect={setLayout}>
             <Rows3 size={14} aria-hidden />
@@ -93,55 +149,80 @@ export function DiffViewer({ path, source, onClose }: DiffViewerProps) {
           !diff.data.isBinary &&
           !diff.data.isTruncated &&
           diff.data.hunks.length === 0 && <p className={styles.notice}>No changes in this file.</p>}
-        {diff.data?.hunks.map((hunk, index) => (
-          <section key={`${index}:${hunk.header}`} className={styles.hunk} aria-label={hunk.header}>
-            <header className={styles.hunkHeader}>
-              <span className={styles.hunkTitle}>{hunk.header}</span>
-              {source.kind === 'workingTree' && (
-                <span className={styles.hunkActions}>
-                  {source.side === 'unstaged' ? (
-                    <>
+        {canPickLines && diff.data && diff.data.hunks.length > 0 && (
+          <p className={styles.hint}>Click a + or − sign to pick single lines of a hunk.</p>
+        )}
+        {diff.data?.hunks.map((hunk, index) => {
+          const picked = selection[index]?.length ?? 0;
+          const scope = picked > 0 ? lineCount(picked) : 'hunk';
+          return (
+            <section
+              key={`${index}:${hunk.header}`}
+              className={styles.hunk}
+              aria-label={hunk.header}
+            >
+              <header className={styles.hunkHeader}>
+                <span className={styles.hunkTitle}>{hunk.header}</span>
+                {source.kind === 'workingTree' && (
+                  <span className={styles.hunkActions}>
+                    {source.side === 'unstaged' ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setPendingDiscard(index);
+                          }}
+                        >
+                          Discard {scope}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            runHunk(index, 'stage');
+                          }}
+                        >
+                          Stage {scope}
+                        </Button>
+                      </>
+                    ) : (
                       <Button
                         size="sm"
-                        variant="ghost"
                         onClick={() => {
-                          setPendingDiscard(index);
+                          runHunk(index, 'unstage');
                         }}
                       >
-                        Discard hunk
+                        Unstage {scope}
                       </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          runHunk(index, 'stage');
-                        }}
-                      >
-                        Stage hunk
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        runHunk(index, 'unstage');
-                      }}
-                    >
-                      Unstage hunk
-                    </Button>
-                  )}
-                </span>
+                    )}
+                  </span>
+                )}
+              </header>
+              {layout === 'unified' ? (
+                <UnifiedHunk
+                  hunk={hunk}
+                  picked={canPickLines ? (selection[index] ?? []) : null}
+                  onPick={(line) => {
+                    toggleLine(index, line);
+                  }}
+                />
+              ) : (
+                <SplitHunk hunk={hunk} />
               )}
-            </header>
-            {layout === 'unified' ? <UnifiedHunk hunk={hunk} /> : <SplitHunk hunk={hunk} />}
-          </section>
-        ))}
+            </section>
+          );
+        })}
       </div>
 
       <ConfirmDialog
         open={pendingDiscard !== null}
-        title="Discard this hunk?"
+        title={
+          pendingDiscard !== null && (selection[pendingDiscard]?.length ?? 0) > 0
+            ? `Discard ${lineCount(selection[pendingDiscard]?.length ?? 0)}?`
+            : 'Discard this hunk?'
+        }
         description="These unstaged changes will be lost. This cannot be undone."
-        confirmLabel="Discard hunk"
+        confirmLabel="Discard"
         onCancel={() => {
           setPendingDiscard(null);
         }}
@@ -221,18 +302,46 @@ function Content({ text, segments }: { text: string; segments: WordSegment[] | n
   );
 }
 
-function UnifiedHunk({ hunk }: { hunk: DiffHunk }) {
+interface UnifiedHunkProps {
+  hunk: DiffHunk;
+  /** Picked line indexes, or `null` when lines cannot be picked. */
+  picked: readonly number[] | null;
+  onPick: (line: number) => void;
+}
+
+function UnifiedHunk({ hunk, picked, onPick }: UnifiedHunkProps) {
   const partners = pairChangedLines(hunk.lines);
   return (
     <table className={styles.table}>
       <tbody>
         {hunk.lines.map((line, index) => (
-          <tr key={index} className={styles.line} data-kind={line.kind}>
+          <tr
+            key={index}
+            className={styles.line}
+            data-kind={line.kind}
+            data-picked={picked?.includes(index) ?? false}
+          >
             <td className={styles.number}>{line.oldNumber ?? ''}</td>
             <td className={styles.number}>{line.newNumber ?? ''}</td>
-            <td className={styles.sign} aria-hidden>
-              {SIGNS[line.kind]}
-            </td>
+            {picked && line.kind !== 'context' ? (
+              <td className={styles.sign}>
+                <button
+                  type="button"
+                  className={styles.pick}
+                  aria-pressed={picked.includes(index)}
+                  aria-label={`Pick line ${String(line.newNumber ?? line.oldNumber ?? '')}: ${line.content}`}
+                  onClick={() => {
+                    onPick(index);
+                  }}
+                >
+                  {SIGNS[line.kind]}
+                </button>
+              </td>
+            ) : (
+              <td className={styles.sign} aria-hidden>
+                {SIGNS[line.kind]}
+              </td>
+            )}
             <td className={styles.code}>
               <Content text={line.content} segments={segmentsFor(hunk.lines, index, partners)} />
             </td>

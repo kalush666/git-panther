@@ -450,9 +450,16 @@ mod tests {
     fn search_returns_graph_rows_for_messages_and_id_prefixes() {
         let graph = CommitGraph::new(Arc::new(FakeLog::new(10)));
         assert_eq!(graph.search(Path::new(REPO), "commit 7", &[]).unwrap(), [7]);
+        // The fake ids share all but their last digits, so use a whole one.
         let third = id(3);
-        let prefix = &third.as_str()[..39];
-        assert_eq!(graph.search(Path::new(REPO), prefix, &[]).unwrap(), [3]);
+        assert_eq!(
+            graph.search(Path::new(REPO), third.as_str(), &[]).unwrap(),
+            [3]
+        );
+        assert_eq!(
+            graph.search(Path::new(REPO), "0000", &[]).unwrap().len(),
+            10
+        );
         assert_eq!(
             graph.search(Path::new(REPO), "  ", &[]).unwrap(),
             Vec::<usize>::new()
