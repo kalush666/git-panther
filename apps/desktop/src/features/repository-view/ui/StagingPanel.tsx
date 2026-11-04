@@ -14,6 +14,7 @@ import {
 } from '../api/useWorkingTree';
 import { CHANGE_LETTERS } from '../model/changeLetters';
 import { ConflictSection } from './ConflictSection';
+import { IdentityControl } from './IdentityControl';
 import styles from './StagingPanel.module.css';
 
 /** Git's convention for a readable one-line summary. */
@@ -125,6 +126,9 @@ export function StagingPanel({ path, openFile, onOpenFile, onResolveFile }: Stag
             {actionError.message}
           </p>
         )}
+      </div>
+      <div className={styles.identity}>
+        <IdentityControl path={path} />
       </div>
       <CommitBox path={path} stagedCount={staged.length} />
     </aside>
@@ -266,6 +270,7 @@ function CommitBox({ path, stagedCount }: { path: string; stagedCount: number })
       </label>
       <div className={styles.summaryRow}>
         <input
+          id="commit-summary"
           className={styles.summary}
           aria-label="Commit summary"
           placeholder="Commit summary"

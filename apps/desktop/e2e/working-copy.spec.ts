@@ -52,7 +52,9 @@ test.describe('working copy', () => {
   });
 
   test('commits staged changes', async ({ page }) => {
-    const commitButton = panel(page).getByRole('button', { name: /^Commit|^Stage changes/ });
+    const commitButton = panel(page)
+      .getByRole('form', { name: 'Commit' })
+      .getByRole('button', { name: /^Commit|^Stage changes/ });
     await expect(commitButton).toBeDisabled();
 
     await panel(page).getByRole('button', { name: 'Stage README.md' }).click();

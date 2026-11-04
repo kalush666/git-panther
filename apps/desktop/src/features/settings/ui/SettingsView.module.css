@@ -164,3 +164,18 @@
   flex-direction: column;
   min-width: 0;
 }
+
+.iconButton {
+  display: inline-flex;
+  padding: var(--gp-space-1);
+  border: none;
+  border-radius: var(--gp-radius-sm);
+  background: transparent;
+  color: var(--gp-text-secondary);
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  background: var(--gp-bg-raised);
+  color: var(--gp-danger);
+}

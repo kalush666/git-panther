@@ -2,6 +2,7 @@ import type {
   Account,
   Backend,
   CloneProgress,
+  Identity,
   OnProgress,
   Remote,
   Result,
@@ -123,6 +124,11 @@ function createMockBackend(): Backend {
   const history = createMockHistory(branchStore, workingTree);
   let gitExecutable: string | null = null;
   let accounts: Account[] = [];
+  let identity: Identity | null = {
+    name: 'Git Panther Demo',
+    email: 'demo@example.internal',
+    signing: null,
+  };
   let remotes: Remote[] = [
     {
       name: 'origin',
@@ -329,6 +335,16 @@ function createMockBackend(): Backend {
       return Promise.resolve(ok(null));
     },
     pickExecutable: () => Promise.resolve(MOCK_PICKED_GIT),
+    getIdentity: () => Promise.resolve(ok(identity)),
+    setIdentity: (_path, next) => {
+      if (!next.email.includes('@')) {
+        return Promise.resolve(
+          failure('invalidIdentity', `"${next.email}" is not an email address.`),
+        );
+      }
+      identity = next;
+      return Promise.resolve(ok(null));
+    },
     listAccounts: () => Promise.resolve(ok(accounts)),
     signIn: (server, username, password) => {
       if (password === WRONG_PASSWORD) return Promise.resolve(AUTHENTICATION_FAILED);

@@ -99,9 +99,11 @@ Add / edit / remove remotes, force push with lease, delete remote branches, push
 
 **Demo:** "+" on the Remote section adds a remote (name suggested); a remote's folder menu edits its URL or removes it; remote branches can be deleted on the server. The Push menu offers a safe force push (with lease) and pushing to any remote. "Open in a new worktree" checks a branch out next to the repository and opens it in a tab; Worktrees and Submodules appear in the sidebar when present, with one-click submodule update. Repositories that use Git LFS warn when git-lfs is missing.
 
-### ⏳ M12 — Workflow
+### ✅ M12 — Workflow
 
 Command palette, configurable keyboard shortcuts, git identity profiles, commit signing settings.
+
+**Demo:** Ctrl+K opens the command palette: every action, every branch to check out and every tab, matched by a few letters. Common actions have shortcuts (Fetch Ctrl+Shift+F, Push Ctrl+Shift+P, Stash Ctrl+Shift+S, Undo Ctrl+Z, …), each rebindable in Settings by pressing the new keys. The commit box shows who commits; one click switches the repository to a saved identity, and editing it inline (name, email, optional GPG or SSH signing key) writes the repository's git config.
 
 ### ⏳ M13 — Hosting
 

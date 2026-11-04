@@ -1,0 +1,105 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: var(--gp-scrim);
+}
+
+.palette {
+  position: fixed;
+  top: 12vh;
+  left: 50%;
+  z-index: 31;
+  display: flex;
+  flex-direction: column;
+  width: min(calc(var(--gp-dialog-width) * 1.4), calc(100vw - var(--gp-space-6)));
+  max-height: 60vh;
+  overflow: hidden;
+  border: 1px solid var(--gp-border-subtle);
+  border-radius: var(--gp-radius-lg);
+  background: var(--gp-bg-overlay);
+  box-shadow: var(--gp-shadow-overlay);
+  transform: translateX(-50%);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-space-2);
+  padding: var(--gp-space-3) var(--gp-space-4);
+  border-bottom: 1px solid var(--gp-border-subtle);
+}
+
+.icon {
+  flex-shrink: 0;
+  color: var(--gp-text-muted);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--gp-text-primary);
+  font-size: var(--gp-text-lg);
+  outline: none;
+}
+
+.results {
+  margin: 0;
+  padding: var(--gp-space-1);
+  overflow: auto;
+  list-style: none;
+}
+
+.result {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-space-3);
+  height: var(--gp-commit-row-height);
+  padding: 0 var(--gp-space-3);
+  border-radius: var(--gp-radius-sm);
+  cursor: pointer;
+}
+
+.result[aria-selected='true'] {
+  background: var(--gp-accent-subtle);
+}
+
+.group {
+  flex-shrink: 0;
+  width: var(--gp-refs-col-width);
+  color: var(--gp-text-muted);
+  font-size: var(--gp-text-sm);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.shortcut {
+  padding: 0 var(--gp-space-1);
+  border: 1px solid var(--gp-border-strong);
+  border-radius: var(--gp-radius-sm);
+  color: var(--gp-text-secondary);
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-xs);
+}
+
+.empty {
+  padding: var(--gp-space-3);
+  color: var(--gp-text-muted);
+}

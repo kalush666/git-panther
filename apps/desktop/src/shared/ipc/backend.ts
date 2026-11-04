@@ -16,6 +16,7 @@ import type {
   GraphPageDto,
   HunkActionDto,
   HunkDto_Serialize,
+  IdentityDto_Serialize,
   LfsStatusDto,
   OperationDto,
   PullStrategyDto,
@@ -58,6 +59,7 @@ export type ConflictChunk = ConflictChunkDto_Serialize;
 export type Submodule = SubmoduleDto;
 export type Worktree = WorktreeDto_Serialize;
 export type LfsStatus = LfsStatusDto;
+export type Identity = IdentityDto_Serialize;
 
 /** Where and how to push. */
 export interface PushOptions {
@@ -168,6 +170,10 @@ export interface Backend {
   addWorktree(path: string, branch: string): Promise<Result<string>>;
   removeWorktree(path: string, worktree: string): Promise<Result<null>>;
   lfsStatus(path: string): Promise<Result<LfsStatus>>;
+  /** Who commits in the repository, or `null` when git does not know yet. */
+  getIdentity(path: string): Promise<Result<Identity | null>>;
+  /** Writes who commits (and how commits are signed) into the repository's config. */
+  setIdentity(path: string, identity: Identity): Promise<Result<null>>;
   /** Newest first. */
   listStashes(path: string): Promise<Result<Stash[]>>;
   saveStash(path: string, message: string | null, includeUntracked: boolean): Promise<Result<null>>;

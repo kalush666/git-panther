@@ -110,6 +110,8 @@ export const tauriBackend: Backend = {
   addWorktree: commands.addWorktree,
   removeWorktree: commands.removeWorktree,
   lfsStatus: commands.lfsStatus,
+  getIdentity: commands.getIdentity,
+  setIdentity: commands.setIdentity,
   onRepositoryChanged: (listener) =>
     events.repositoryChanged.listen((event) => {
       listener(event.payload.path);
