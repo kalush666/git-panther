@@ -10,13 +10,14 @@ import {
   Plus,
   Search,
 } from 'lucide-react';
-import { useState, type DragEvent } from 'react';
+import { useState } from 'react';
 
 import type { Branch } from '../../../shared/ipc';
 import { useBranches } from '../api/useBranches';
 import { buildBranchTree, filterBranches, type BranchNode } from '../model/branchTree';
 import { useHiddenRefs, useHiddenRefsStore } from '../model/hiddenRefs';
 import menu from './menu.module.css';
+import { branchDropHandlers, startBranchDrag } from '../model/branchDrag';
 import styles from './BranchSidebar.module.css';
 import { SubmoduleList, WorktreeList } from './LayoutLists';
 import { ReviewLists } from './ReviewLists';
@@ -26,9 +27,6 @@ import { flowKindOf } from './useGitflowActions';
 import type { HistoryActions } from './useHistoryActions';
 import type { HostingActions } from './useHostingActions';
 import type { RemoteActions } from './useRemoteActions';
-
-/** Drag-and-drop payload: the dragged branch's name. */
-const BRANCH_DRAG_TYPE = 'application/x-git-panther-branch';
 
 interface BranchSidebarProps {
   path: string;
@@ -335,9 +333,6 @@ function BranchRow({
   const isHidden = visibility.isHidden(branch.name);
   const [dropTarget, setDropTarget] = useState(false);
   const current = history.currentBranch;
-  // Only the checked-out branch accepts drops: merge and rebase act on it.
-  const acceptsDrop = (event: DragEvent) =>
-    branch.isHead && event.dataTransfer.types.includes(BRANCH_DRAG_TYPE);
   return (
     <li role="treeitem" aria-selected={branch.isHead}>
       <ContextMenu.Root>
@@ -349,28 +344,11 @@ function BranchRow({
             data-drop-target={dropTarget}
             data-hidden={isHidden}
             style={indent}
-            draggable={!branch.isHead}
+            draggable
             onDragStart={(event) => {
-              event.dataTransfer.setData(BRANCH_DRAG_TYPE, branch.name);
-              event.dataTransfer.effectAllowed = 'link';
+              startBranchDrag(event, branch.name);
             }}
-            onDragOver={(event) => {
-              if (!acceptsDrop(event)) return;
-              event.preventDefault();
-              event.dataTransfer.dropEffect = 'link';
-              setDropTarget(true);
-            }}
-            onDragLeave={() => {
-              setDropTarget(false);
-            }}
-            onDrop={(event) => {
-              setDropTarget(false);
-              const source = event.dataTransfer.getData(BRANCH_DRAG_TYPE);
-              if (source && source !== branch.name) {
-                event.preventDefault();
-                history.openCombine(source, event.clientX, event.clientY);
-              }
-            }}
+            {...branchDropHandlers(branch.name, setDropTarget, history.openCombine)}
             title={`${branch.name}${branch.upstream ? ` → ${branch.upstream}` : ''} (double-click to check out)`}
             onDoubleClick={() => {
               actions.checkout(branch.name);

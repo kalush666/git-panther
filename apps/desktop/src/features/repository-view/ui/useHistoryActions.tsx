@@ -28,6 +28,7 @@ type Rewrite = { kind: 'squash' } | { kind: 'fixup' } | { kind: 'reword'; summar
 /** A branch dropped on the checked-out one, and where the pointer was. */
 interface Drop {
   source: string;
+  target: string;
   x: number;
   y: number;
 }
@@ -45,7 +46,11 @@ export interface HistoryActions {
   reset: (commit: string, label: string, mode: ResetMode) => void;
   openCreateTag: (target: string, label: string) => void;
   /** Offers merge or rebase in a menu at the drop point. */
-  openCombine: (source: string, x: number, y: number) => void;
+  /**
+   * Offers merge and rebase for `source` dropped on `target`, in a menu at
+   * the drop point; checks out first when the action needs another branch.
+   */
+  openCombine: (source: string, target: string, x: number, y: number) => void;
   /** The commit whose later commits the rebase panel is planning, if open. */
   rebaseTarget: RebaseTarget | null;
   openInteractiveRebase: (base: string, label: string) => void;
@@ -235,6 +240,18 @@ export function useHistoryActions(path: string): HistoryActions {
     }
   })();
 
+  /** Checks out `branch` first when it is not the current one, then runs `request`. */
+  const runOn = async (branch: string, request: HistoryRequest) => {
+    if (branch !== currentBranch) {
+      const switched = await ipc.checkoutBranch(path, branch);
+      if (switched.status === 'error') {
+        report('error', switched.error.message);
+        return;
+      }
+    }
+    run(request);
+  };
+
   const dropMenu = drop && (
     <DropdownMenu.Root
       open
@@ -250,26 +267,42 @@ export function useHistoryActions(path: string): HistoryActions {
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content className={menu.content} align="start" sideOffset={4}>
-          <DropdownMenu.Item
-            className={menu.item}
-            onSelect={() => {
-              run({ action: 'merge', branch: drop.source });
-            }}
-          >
-            Merge {drop.source} into {current}
-          </DropdownMenu.Item>
-          <DropdownMenu.Item
-            className={menu.item}
-            onSelect={() => {
-              run({ action: 'rebase', onto: drop.source });
-            }}
-          >
-            Rebase {current} onto {drop.source}
-          </DropdownMenu.Item>
+          {dropChoices(drop, branches.data ?? []).map((choice) => (
+            <DropdownMenu.Item
+              key={choice.label}
+              className={menu.item}
+              onSelect={() => {
+                if (choice.kind === 'interactive') {
+                  openInteractive(choice.base, choice.on);
+                } else {
+                  void runOn(choice.on, choice.request);
+                }
+              }}
+            >
+              {choice.label}
+            </DropdownMenu.Item>
+          ))}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
   );
+
+  /** Interactive rebase of `branch` onto `onto`, once `branch` is checked out. */
+  const openInteractive = (onto: string, branch: string) => {
+    void (async () => {
+      if (branch !== currentBranch) {
+        const switched = await ipc.checkoutBranch(path, branch);
+        if (switched.status === 'error') {
+          report('error', switched.error.message);
+          return;
+        }
+      }
+      const base = (branches.data ?? []).find((candidate) => candidate.name === onto)?.target;
+      if (!base) return;
+      action.reset();
+      setRebaseTarget({ base, label: onto });
+    })();
+  };
 
   return {
     currentBranch,
@@ -282,8 +315,8 @@ export function useHistoryActions(path: string): HistoryActions {
       action.reset();
       setPrompt({ kind: 'tag', target, label });
     },
-    openCombine: (source, x, y) => {
-      setDrop({ source, x, y });
+    openCombine: (source, target, x, y) => {
+      setDrop({ source, target, x, y });
     },
     rebaseTarget,
     openInteractiveRebase: (base, label) => {
@@ -330,4 +363,51 @@ export function useHistoryActions(path: string): HistoryActions {
 function replaceSummary(message: string, summary: string): string {
   const newline = message.indexOf('\n');
   return newline === -1 ? summary : `${summary}${message.slice(newline)}`;
+}
+
+type DropChoice =
+  | { kind: 'run'; label: string; on: string; request: HistoryRequest }
+  | { kind: 'interactive'; label: string; on: string; base: string };
+
+/**
+ * What dropping `source` on `target` can do, the target's view first: merge
+ * the dragged branch into the one it landed on, or replay one onto the other.
+ * Remote branches can be merged or rebased onto, never changed themselves.
+ */
+export function dropChoices(
+  { source, target }: { source: string; target: string },
+  branches: readonly { name: string; kind: string }[],
+): DropChoice[] {
+  const isLocal = (name: string) =>
+    branches.some((branch) => branch.name === name && branch.kind === 'local');
+  const choices: DropChoice[] = [];
+  if (isLocal(target)) {
+    choices.push({
+      kind: 'run',
+      label: `Merge ${source} into ${target}`,
+      on: target,
+      request: { action: 'merge', branch: source },
+    });
+    choices.push({
+      kind: 'run',
+      label: `Rebase ${target} onto ${source}`,
+      on: target,
+      request: { action: 'rebase', onto: source },
+    });
+  }
+  if (isLocal(source)) {
+    choices.push({
+      kind: 'run',
+      label: `Rebase ${source} onto ${target}`,
+      on: source,
+      request: { action: 'rebase', onto: target },
+    });
+    choices.push({
+      kind: 'interactive',
+      label: `Interactive rebase ${source} onto ${target}…`,
+      on: source,
+      base: target,
+    });
+  }
+  return choices;
 }

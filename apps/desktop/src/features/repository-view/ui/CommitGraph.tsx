@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type DragEvent,
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
@@ -20,6 +21,7 @@ import { formatCommitTime } from '../model/formatTime';
 import { ROW_HEIGHT, graphColumnWidth, paletteIndex } from '../model/graphGeometry';
 import { groupRefs, initialsOf, type RefPill } from '../model/refPills';
 import { ColumnMenu } from './ColumnMenu';
+import { branchDropHandlers, startBranchDrag } from '../model/branchDrag';
 import { GraphFilter } from './GraphFilter';
 import { GraphSearch } from './GraphSearch';
 import { PipelineBadge } from './PipelineBadge';
@@ -44,6 +46,8 @@ interface CommitGraphProps {
   onCheckoutRef?: (name: string) => void;
   /** CI results by commit id, when the server is connected. */
   pipelines?: ReadonlyMap<string, Pipeline>;
+  /** A branch label dropped on another one, at the pointer. */
+  onDropBranch?: (source: string, target: string, x: number, y: number) => void;
 }
 
 /**
@@ -81,6 +85,7 @@ export function CommitGraph({
   leadingRow,
   rowMenu,
   onCheckoutRef,
+  onDropBranch,
   pipelines,
 }: CommitGraphProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -239,6 +244,7 @@ export function CommitGraph({
               columns={columns}
               menu={rowMenu}
               onCheckoutRef={onCheckoutRef}
+              onDropBranch={onDropBranch}
               isSelected={item.index === selectedIndex}
               isMatch={matches.has(item.index)}
               isDimmed={passing !== null && !passing.has(item.index)}
@@ -262,6 +268,7 @@ interface CommitRowProps {
   columns: ColumnVisibility;
   menu: CommitGraphProps['rowMenu'];
   onCheckoutRef: CommitGraphProps['onCheckoutRef'];
+  onDropBranch: CommitGraphProps['onDropBranch'];
   isSelected: boolean;
   /** Matches the current search. */
   isMatch: boolean;
@@ -279,6 +286,7 @@ function CommitRow({
   columns,
   menu,
   onCheckoutRef,
+  onDropBranch,
   isSelected,
   isMatch,
   isDimmed,
@@ -301,12 +309,14 @@ function CommitRow({
     >
       {entry ? (
         <>
-          {columns.refs && <RefPills entry={entry} onCheckout={onCheckoutRef} />}
+          {columns.refs && (
+            <RefPills entry={entry} onCheckout={onCheckoutRef} onDropBranch={onDropBranch} />
+          )}
           <span className={styles.graphCell} />
           <span className={styles.summary}>
             {/* With the label column hidden, labels lead the message instead. */}
             {!columns.refs && entry.refs.length > 0 && (
-              <RefPills entry={entry} onCheckout={onCheckoutRef} />
+              <RefPills entry={entry} onCheckout={onCheckoutRef} onDropBranch={onDropBranch} />
             )}
             {pipeline && <PipelineBadge pipeline={pipeline} />}
             <span className={styles.summaryText}>{entry.summary}</span>
@@ -351,9 +361,11 @@ function CommitRow({
 function RefPills({
   entry,
   onCheckout,
+  onDropBranch,
 }: {
   entry: GraphEntryDto;
   onCheckout: CommitGraphProps['onCheckoutRef'];
+  onDropBranch: CommitGraphProps['onDropBranch'];
 }) {
   const pills = groupRefs(entry.refs);
   const shown = pills.slice(0, VISIBLE_PILLS);
@@ -365,7 +377,12 @@ function RefPills({
   return (
     <span className={styles.refs} style={laneColor}>
       {shown.map((pill) => (
-        <RefPillLabel key={`${pill.kind}:${pill.name}`} pill={pill} onCheckout={onCheckout} />
+        <RefPillLabel
+          key={`${pill.kind}:${pill.name}`}
+          pill={pill}
+          onCheckout={onCheckout}
+          onDropBranch={onDropBranch}
+        />
       ))}
       {hidden.length > 0 && (
         <span className={styles.more} title={hidden.map((pill) => pill.name).join('\n')}>
@@ -379,10 +396,13 @@ function RefPills({
 function RefPillLabel({
   pill,
   onCheckout,
+  onDropBranch,
 }: {
   pill: RefPill;
   onCheckout: CommitGraphProps['onCheckoutRef'];
+  onDropBranch: CommitGraphProps['onDropBranch'];
 }) {
+  const [over, setOver] = useState(false);
   // A local branch checks out as is; a remote-only one through its remote.
   const target =
     pill.kind === 'tag' || pill.isHead
@@ -393,11 +413,33 @@ function RefPillLabel({
           ? `${pill.remotes[0]}/${pill.name}`
           : null;
   const where = [pill.isLocal ? 'local' : null, ...pill.remotes].filter(Boolean).join(', ');
+  // The branch this label drags as and takes drops for: local first, else its remote.
+  const branch =
+    pill.kind === 'tag'
+      ? null
+      : pill.isLocal
+        ? pill.name
+        : pill.remotes[0]
+          ? `${pill.remotes[0]}/${pill.name}`
+          : null;
+  const dragProps =
+    branch && onDropBranch
+      ? {
+          draggable: true,
+          onDragStart: (event: DragEvent) => {
+            event.stopPropagation();
+            startBranchDrag(event, branch);
+          },
+          ...branchDropHandlers(branch, setOver, onDropBranch),
+        }
+      : {};
   return (
     <span
       className={styles.pill}
       data-kind={pill.kind}
       data-head={pill.isHead}
+      data-drop-target={over}
+      {...dragProps}
       title={
         pill.kind === 'tag'
           ? `Tag ${pill.name}`

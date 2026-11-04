@@ -430,6 +430,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
               }}
               onSelectedCommitChange={keepSelectedCommit}
               onCheckoutRef={branchActions.checkout}
+              onDropBranch={history.openCombine}
               pipelines={pipelines.data}
               rowMenu={(entry) => (
                 <CommitMenu
