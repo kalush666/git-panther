@@ -1,7 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-
-import { SignInDialog, useAccounts, useSignOut } from '../../../shared/accounts';
+import { useAccounts, useSignOut } from '../../../shared/accounts';
 import { ipc, unwrap } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
 import styles from './SettingsView.module.css';
@@ -10,13 +8,15 @@ import styles from './SettingsView.module.css';
 export function AccountsSetting() {
   const accounts = useAccounts();
   const signOut = useSignOut();
-  const [signingIn, setSigningIn] = useState(false);
   const list = accounts.data ?? [];
 
   return (
     <div className={styles.gitSetting}>
       {list.length === 0 ? (
-        <p className={styles.hint}>Not signed in to any server.</p>
+        <p className={styles.hint}>
+          Not signed in to any server. Git Panther asks for your personal number and password the
+          first time a server needs them.
+        </p>
       ) : (
         <ul className={styles.accounts} aria-label="Accounts">
           {list.map((account) => (
@@ -45,26 +45,6 @@ export function AccountsSetting() {
         </p>
       )}
       <HostingConnections />
-      <div className={styles.pathRow}>
-        <Button
-          size="sm"
-          onClick={() => {
-            setSigningIn(true);
-          }}
-        >
-          Sign in…
-        </Button>
-      </div>
-      {signingIn && (
-        <SignInDialog
-          onCancel={() => {
-            setSigningIn(false);
-          }}
-          onSignedIn={() => {
-            setSigningIn(false);
-          }}
-        />
-      )}
     </div>
   );
 }

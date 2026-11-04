@@ -1,2 +1,2 @@
-export { SignInDialog } from './SignInDialog';
-export { serverOf, useAccounts, useSignIn, useSignOut } from './useAccounts';
+export { SignInPrompt } from './SignInPrompt';
+export { serverOf, useAccounts, useSignOut } from './useAccounts';

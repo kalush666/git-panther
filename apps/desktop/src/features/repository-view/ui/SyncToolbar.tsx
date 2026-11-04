@@ -2,9 +2,9 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowDownToLine, ArrowUpFromLine, Check, ChevronDown, RefreshCw, X } from 'lucide-react';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
-import { serverOf, SignInDialog } from '../../../shared/accounts';
+import { serverOf, SignInPrompt } from '../../../shared/accounts';
 import { useCommands } from '../../../shared/commands';
 import { ipc, isIpcError } from '../../../shared/ipc';
 import { useAutoFetchStore } from '../../../shared/preferences/autoFetch';
@@ -13,7 +13,7 @@ import { Button } from '../../../shared/ui/Button/Button';
 import { useBranches } from '../api/useBranches';
 import { useRemotes } from '../api/useRemotes';
 import { repositoryQueryKey } from '../api/useRepository';
-import { useSync, type SyncAction } from '../api/useSync';
+import type { useSync, SyncAction } from '../api/useSync';
 import menu from './menu.module.css';
 import styles from './SyncToolbar.module.css';
 
@@ -31,9 +31,10 @@ const DONE_LABEL: Record<SyncAction, string> = {
 
 const ICON_SIZE = 14;
 
+type Sync = ReturnType<typeof useSync>;
+
 /** Fetch, Pull and Push for the open repository, with progress and errors. */
-export function SyncToolbar({ path }: { path: string }) {
-  const sync = useSync(path);
+export function SyncToolbar({ path, sync }: { path: string; sync: Sync }) {
   useAutoFetch(path, sync.running === null);
   const branches = useBranches(path);
   const strategy = usePullStrategyStore((state) => state.strategy);
@@ -201,11 +202,41 @@ export function SyncToolbar({ path }: { path: string }) {
   );
 }
 
-function SyncStatus({ path, sync }: { path: string; sync: ReturnType<typeof useSync> }) {
+/** The HTTPS server of the repository's remotes, if it has one. */
+function useRemoteServer(path: string): string | null {
   const remotes = useRemotes(path);
-  const [signingIn, setSigningIn] = useState(false);
-  const server =
-    remotes.data?.map((remote) => serverOf(remote.url)).find((found) => found !== null) ?? '';
+  return (
+    remotes.data?.map((remote) => serverOf(remote.url)).find((found) => found !== null) ?? null
+  );
+}
+
+/** True when the last sync was refused and the sign-in bar is asking instead. */
+function asksToSignIn(sync: Sync, server: string | null): server is string {
+  return server !== null && sync.running === null && isIpcError(sync.error, 'authenticationFailed');
+}
+
+/**
+ * Shown under the header when the server refused a fetch, pull or push: just
+ * the personal number and password, then the same sync runs again.
+ */
+export function SyncSignIn({ path, sync }: { path: string; sync: Sync }) {
+  const server = useRemoteServer(path);
+  const action = sync.error ? sync.attempted : null;
+  if (!asksToSignIn(sync, server) || action === null) return null;
+  return (
+    <SignInPrompt
+      key={server}
+      server={server}
+      purpose={`to ${action}`}
+      repository={path}
+      onCancel={sync.dismiss}
+      onSignedIn={sync.retry}
+    />
+  );
+}
+
+function SyncStatus({ path, sync }: { path: string; sync: Sync }) {
+  const server = useRemoteServer(path);
 
   if (sync.running) {
     const percent = sync.progress?.percent;
@@ -222,37 +253,13 @@ function SyncStatus({ path, sync }: { path: string; sync: ReturnType<typeof useS
       </div>
     );
   }
+  if (asksToSignIn(sync, server)) return null;
   if (sync.error && !isIpcError(sync.error, 'cancelled')) {
     return (
       <div className={styles.error} role="alert">
         <span className={styles.errorText} title={sync.error.message}>
           {sync.error.message}
         </span>
-        {isIpcError(sync.error, 'authenticationFailed') && (
-          <Button
-            size="sm"
-            variant="secondary"
-            className={styles.errorAction}
-            onClick={() => {
-              setSigningIn(true);
-            }}
-          >
-            Sign in…
-          </Button>
-        )}
-        {signingIn && (
-          <SignInDialog
-            initialServer={server}
-            repository={path}
-            onCancel={() => {
-              setSigningIn(false);
-            }}
-            onSignedIn={() => {
-              setSigningIn(false);
-              sync.retry();
-            }}
-          />
-        )}
         <button
           type="button"
           className={styles.dismiss}

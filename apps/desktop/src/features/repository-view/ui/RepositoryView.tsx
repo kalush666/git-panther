@@ -8,6 +8,7 @@ import { Button } from '../../../shared/ui/Button/Button';
 import { useBranches } from '../api/useBranches';
 import { useLfsStatus } from '../api/useLayout';
 import { useRepository } from '../api/useRepository';
+import { useSync } from '../api/useSync';
 import { useStageFiles, useWorkingTreeStatus, type DiffSource } from '../api/useWorkingTree';
 import { describeHead } from '../model/describeHead';
 import { usePanelWidths } from '../model/workspace';
@@ -21,7 +22,7 @@ import { RebasePanel } from './RebasePanel';
 import { ResizeHandle } from './ResizeHandle';
 import { StagingPanel } from './StagingPanel';
 import { StashActions } from './StashActions';
-import { SyncToolbar } from './SyncToolbar';
+import { SyncSignIn, SyncToolbar } from './SyncToolbar';
 import { WorkingCopyRow } from './WorkingCopyRow';
 import menu from './menu.module.css';
 import styles from './RepositoryView.module.css';
@@ -49,6 +50,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
   const [fileView, setFileView] = useState<FileView | null>(null);
   const [conflictFile, setConflictFile] = useState<string | null>(null);
   const history = useHistoryActions(path);
+  const sync = useSync(path);
   const branchActions = useBranchActions(path, history.report);
   const remoteActions = useRemoteActions(path, history.report, onOpenRepository);
   const hostingActions = useHostingActions(path, history.report, branchActions.checkout);
@@ -202,7 +204,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
           Undo
         </Button>
         <StashActions path={path} />
-        <SyncToolbar path={path} />
+        <SyncToolbar path={path} sync={sync} />
       </header>
       {history.outcome && (
         <div
@@ -234,6 +236,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
           restart Git Panther.
         </p>
       )}
+      <SyncSignIn path={path} sync={sync} />
       {branchActions.prompt}
       {history.prompt}
       {remoteActions.prompt}

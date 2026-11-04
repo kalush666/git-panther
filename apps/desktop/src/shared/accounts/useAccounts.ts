@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 import { ipc, unwrap } from '../ipc';
 
@@ -19,11 +21,23 @@ export function useAccounts() {
   });
 }
 
+/** The personal number last signed in with, offered on the next sign-in. */
+const useLastUsernameStore = create<{ username: string }>()(
+  persist(() => ({ username: '' }), { name: 'git-panther.last-username' }),
+);
+
+export function useLastUsername(): string {
+  return useLastUsernameStore((state) => state.username);
+}
+
 export function useSignIn() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ server, username, password, repository }: SignInInput) =>
       unwrap(await ipc.signIn(server, username, password, repository)),
+    onSuccess: (account) => {
+      useLastUsernameStore.setState({ username: account.username });
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey: accountsKey }),
   });
 }
@@ -41,4 +55,9 @@ export function useSignOut() {
 export function serverOf(url: string): string | null {
   const match = /^(https?):\/\/(?:[^@/]+@)?([^/?#]+)/i.exec(url.trim());
   return match ? `${match[1]?.toLowerCase() ?? 'https'}://${match[2]?.toLowerCase() ?? ''}` : null;
+}
+
+/** `https://gitlab.example.internal` → `gitlab.example.internal`. */
+export function hostOf(server: string): string {
+  return server.replace(/^\w+:\/\//, '');
 }

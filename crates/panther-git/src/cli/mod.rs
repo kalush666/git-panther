@@ -24,10 +24,13 @@ pub use run::{run_git, run_git_with_env};
 pub use sync::{classify as classify_sync_failure, pull_args, run_sync};
 
 /// Builds a git command that never flashes a console window on Windows and
-/// never blocks waiting for terminal input.
+/// never blocks waiting for input. Git Credential Manager may not open its
+/// own login window either: a refused operation fails, and Git Panther asks
+/// for the personal number and password in its sign-in bar instead.
 pub fn background_command(executable: &Path) -> Command {
     let mut command = Command::new(executable);
     command.env("GIT_TERMINAL_PROMPT", "0");
+    command.env("GCM_INTERACTIVE", "never");
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;

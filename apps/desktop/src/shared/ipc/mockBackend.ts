@@ -224,7 +224,9 @@ function createMockBackend(): Backend {
       );
     },
     cloneRepository: ({ destination, jobId }, onProgress) =>
-      runJob(jobId, CLONE_STEPS, onProgress, () => remember(summary(destination))),
+      signedIn()
+        ? runJob(jobId, CLONE_STEPS, onProgress, () => remember(summary(destination)))
+        : Promise.resolve(AUTHENTICATION_FAILED),
     cancelJob: (jobId) => {
       cancelledJobs.add(jobId);
       return Promise.resolve(ok(null));
