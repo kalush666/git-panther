@@ -7,13 +7,23 @@ use panther_domain::ports::StashStore;
 use panther_domain::repository::RepositoryError;
 use panther_domain::stash::Stash;
 
+use crate::undo::UndoLog;
+
 pub struct Stashes {
     store: Arc<dyn StashStore>,
+    undo: Option<Arc<UndoLog>>,
 }
 
 impl Stashes {
     pub fn new(store: Arc<dyn StashStore>) -> Self {
-        Self { store }
+        Self { store, undo: None }
+    }
+
+    /// Makes dropping a stash undoable.
+    #[must_use]
+    pub fn with_undo(mut self, undo: Arc<UndoLog>) -> Self {
+        self.undo = Some(undo);
+        self
     }
 
     /// # Errors
@@ -52,6 +62,18 @@ impl Stashes {
     /// # Errors
     /// Propagates [`StashStore::remove`] errors.
     pub fn remove(&self, repository: &Path, index: usize) -> Result<(), RepositoryError> {
-        self.store.remove(repository, index)
+        let dropped = self.undo.as_ref().and_then(|_| {
+            self.store
+                .stashes(repository)
+                .ok()?
+                .into_iter()
+                .find(|stash| stash.index == index)
+        });
+        match (self.undo.as_deref(), dropped) {
+            (Some(undo), Some(stash)) => {
+                undo.track_stash_drop(repository, stash, || self.store.remove(repository, index))
+            }
+            _ => self.store.remove(repository, index),
+        }
     }
 }

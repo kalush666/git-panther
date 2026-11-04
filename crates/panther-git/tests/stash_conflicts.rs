@@ -232,3 +232,20 @@ fn keeping_the_side_that_deleted_a_file_deletes_it() {
     assert!(!repo.join("notes.txt").exists());
     assert_eq!(conflicted(repo), Vec::<String>::new());
 }
+
+#[test]
+fn a_dropped_stash_can_be_restored() {
+    let dir = repository();
+    let repo = dir.path();
+    fs::write(repo.join("notes.txt"), "keep me\n").unwrap();
+    stash().save(repo, Some("precious"), false).unwrap();
+    let dropped = stash().stashes(repo).unwrap().remove(0);
+
+    stash().remove(repo, 0).unwrap();
+    stash().restore(repo, &dropped).unwrap();
+
+    let back = stash().stashes(repo).unwrap();
+    assert_eq!(back.len(), 1);
+    assert_eq!(back[0].id, dropped.id);
+    assert!(back[0].message.contains("precious"));
+}

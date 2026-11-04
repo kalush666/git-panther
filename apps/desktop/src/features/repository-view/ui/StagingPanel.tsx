@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 
 import type { ChangedFile, DiffSide } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
-import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog/ConfirmDialog';
+import { ConfirmButton } from '../../../shared/ui/ConfirmButton/ConfirmButton';
 import {
   loadHeadMessage,
   useCommitChanges,
@@ -32,7 +32,6 @@ export function StagingPanel({ path, openFile, onOpenFile, onResolveFile }: Stag
   const stage = useStageFiles(path);
   const unstage = useUnstageFiles(path);
   const discard = useDiscardFiles(path);
-  const [pendingDiscard, setPendingDiscard] = useState<string[] | null>(null);
   const actionError = stage.error ?? unstage.error ?? discard.error;
 
   if (status.isError) {
@@ -71,14 +70,16 @@ export function StagingPanel({ path, openFile, onOpenFile, onResolveFile }: Stag
           }
           rowActions={(file) => (
             <>
-              <RowButton
+              <ConfirmButton
+                bare
                 label={`Discard changes to ${file.path}`}
-                onClick={() => {
-                  setPendingDiscard([file.path]);
+                confirmLabel="Discard?"
+                onConfirm={() => {
+                  discard.mutate([file.path]);
                 }}
               >
                 <Trash2 size={13} />
-              </RowButton>
+              </ConfirmButton>
               <RowButton
                 label={`Stage ${file.path}`}
                 onClick={() => {
@@ -126,26 +127,6 @@ export function StagingPanel({ path, openFile, onOpenFile, onResolveFile }: Stag
         )}
       </div>
       <CommitBox path={path} stagedCount={staged.length} />
-      <ConfirmDialog
-        open={pendingDiscard !== null}
-        title="Discard changes?"
-        description={
-          <>
-            Unstaged changes to <strong>{pendingDiscard?.join(', ')}</strong> will be lost. New
-            files are deleted. This cannot be undone.
-          </>
-        }
-        confirmLabel="Discard"
-        onCancel={() => {
-          setPendingDiscard(null);
-        }}
-        onConfirm={() => {
-          if (pendingDiscard) {
-            discard.mutate(pendingDiscard);
-          }
-          setPendingDiscard(null);
-        }}
-      />
     </aside>
   );
 }

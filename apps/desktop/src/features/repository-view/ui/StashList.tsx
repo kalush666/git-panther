@@ -2,8 +2,6 @@ import * as ContextMenu from '@radix-ui/react-context-menu';
 import { Archive, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
-import type { Stash } from '../../../shared/ipc';
-import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog/ConfirmDialog';
 import { useApplyStash, useDropStash, useStashes } from '../api/useStashes';
 import styles from './BranchSidebar.module.css';
 import menu from './menu.module.css';
@@ -14,7 +12,6 @@ export function StashList({ path }: { path: string }) {
   const apply = useApplyStash(path);
   const drop = useDropStash(path);
   const [open, setOpen] = useState(true);
-  const [pendingDrop, setPendingDrop] = useState<Stash | null>(null);
   const entries = stashes.data ?? [];
   const error = stashes.error ?? apply.error ?? drop.error;
 
@@ -51,7 +48,13 @@ export function StashList({ path }: { path: string }) {
                   </button>
                 </ContextMenu.Trigger>
                 <ContextMenu.Portal>
-                  <ContextMenu.Content className={menu.content}>
+                  <ContextMenu.Content
+                    className={menu.content}
+                    // Actions may open an input bar; keep focus there, not on the row.
+                    onCloseAutoFocus={(event) => {
+                      event.preventDefault();
+                    }}
+                  >
                     <ContextMenu.Item
                       className={menu.item}
                       onSelect={() => {
@@ -72,10 +75,10 @@ export function StashList({ path }: { path: string }) {
                     <ContextMenu.Item
                       className={`${menu.item} ${menu.danger}`}
                       onSelect={() => {
-                        setPendingDrop(stash);
+                        drop.mutate(stash.index);
                       }}
                     >
-                      Drop stash…
+                      Drop stash
                     </ContextMenu.Item>
                   </ContextMenu.Content>
                 </ContextMenu.Portal>
@@ -89,24 +92,6 @@ export function StashList({ path }: { path: string }) {
           {error.message}
         </p>
       )}
-      <ConfirmDialog
-        open={pendingDrop !== null}
-        title="Drop stash?"
-        description={
-          <>
-            <strong>{pendingDrop?.message}</strong> will be deleted. Its changes are lost unless you
-            applied them.
-          </>
-        }
-        confirmLabel="Drop"
-        onCancel={() => {
-          setPendingDrop(null);
-        }}
-        onConfirm={() => {
-          if (pendingDrop) drop.mutate(pendingDrop.index);
-          setPendingDrop(null);
-        }}
-      />
     </section>
   );
 }

@@ -41,10 +41,11 @@ test.describe('working copy', () => {
 
   test('discards a file only after confirming', async ({ page }) => {
     await panel(page).getByRole('button', { name: 'Discard changes to notes/todo.md' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Discard changes?' });
-    await expect(dialog).toContainText('cannot be undone');
-
-    await dialog.getByRole('button', { name: 'Discard' }).click();
+    // The first click only arms the button; nothing is lost yet.
+    await expect(
+      panel(page).getByRole('button', { name: 'U notes/todo.md', exact: true }),
+    ).toBeVisible();
+    await panel(page).getByRole('button', { name: 'Discard?' }).click();
 
     await expect(panel(page).getByRole('button', { name: 'notes/todo.md' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Working copy/ })).toContainText('2 changes');

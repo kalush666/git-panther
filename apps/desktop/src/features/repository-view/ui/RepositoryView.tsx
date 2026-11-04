@@ -13,6 +13,7 @@ import { CommitGraph } from './CommitGraph';
 import { ConflictEditor } from './ConflictEditor';
 import { DiffViewer } from './DiffViewer';
 import { FileHistoryView, type FileView } from './FileHistoryView';
+import { RebasePanel } from './RebasePanel';
 import { StagingPanel } from './StagingPanel';
 import { StashActions } from './StashActions';
 import { SyncToolbar } from './SyncToolbar';
@@ -38,8 +39,8 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
   const [diff, setDiff] = useState<DiffSource | null>(null);
   const [fileView, setFileView] = useState<FileView | null>(null);
   const [conflictFile, setConflictFile] = useState<string | null>(null);
-  const branchActions = useBranchActions(path);
   const history = useHistoryActions(path);
+  const branchActions = useBranchActions(path, history.report);
   useUndoShortcut(history);
   const keepSelectedCommit = useCallback((commitId: string | null) => {
     setSelectedCommitId(commitId);
@@ -116,6 +117,12 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
           role={history.outcome.tone === 'error' ? 'alert' : 'status'}
         >
           <span className={styles.outcomeText}>{history.outcome.message}</span>
+          {history.outcome.tone === 'done' && history.undoLabel && (
+            <Button size="sm" variant="ghost" onClick={history.undo}>
+              <Undo2 size={14} aria-hidden />
+              Undo
+            </Button>
+          )}
           <button
             type="button"
             className={styles.dismiss}
@@ -126,10 +133,14 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
           </button>
         </div>
       )}
+      {branchActions.prompt}
+      {history.prompt}
       <div className={styles.body}>
         <BranchSidebar path={path} actions={branchActions} history={history} />
         <div className={styles.graph}>
-          {conflictFile ? (
+          {history.rebaseTarget ? (
+            <RebasePanel path={path} target={history.rebaseTarget} history={history} />
+          ) : conflictFile ? (
             <ConflictEditor
               key={conflictFile}
               path={path}
@@ -212,8 +223,7 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
           />
         )}
       </div>
-      {branchActions.dialogs}
-      {history.dialogs}
+      {history.dropMenu}
     </section>
   );
 }

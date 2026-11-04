@@ -14,25 +14,28 @@ test.describe('editing history', () => {
     await commitRow(page, 'Change number 4996').click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Interactive rebase of later commits…' }).click();
 
-    const dialog = page.getByRole('dialog', { name: 'Interactive rebase' });
-    const steps = dialog.getByRole('list', { name: 'Rebase steps' }).getByRole('listitem');
+    const panel = page.getByRole('region', { name: 'Interactive rebase' });
+    const steps = panel.getByRole('list', { name: 'Rebase steps' }).getByRole('listitem');
     await expect(steps).toHaveCount(5);
 
+    // One click picks an action; the reword message is edited in the row.
     const first = steps.first();
-    const firstSha = (await first.locator('select').getAttribute('aria-label'))?.replace(
-      'Action for ',
-      '',
-    );
-    await first.getByRole('combobox').selectOption('reword');
+    await first.getByRole('radio', { name: 'Reword' }).click();
     await first.getByRole('textbox').fill('A better message');
-    await dialog.getByRole('button', { name: `Move ${firstSha ?? ''} down` }).click();
-    await expect(steps.nth(1).getByRole('combobox')).toHaveValue('reword');
-    await steps.last().getByRole('combobox').selectOption('drop');
+    await first.getByRole('textbox').press('Enter');
+    await expect(first).toBeFocused();
 
-    await dialog.getByRole('button', { name: 'Start rebase' }).click();
-    await expect(dialog).toBeHidden();
+    // Keys: Alt+Down moves the row, D drops the focused one.
+    await page.keyboard.press('Alt+ArrowDown');
+    await expect(steps.nth(1).getByRole('radio', { name: 'Reword' })).toBeChecked();
+    await steps.last().focus();
+    await page.keyboard.press('d');
+    await expect(steps.last().getByRole('radio', { name: 'Drop' })).toBeChecked();
+
+    await panel.getByRole('button', { name: 'Start rebase' }).click();
+    await expect(panel).toBeHidden();
     await expect(page.getByText(/^Rebased the commits after commit \w+$/)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeEnabled();
+    await expect(page.getByRole('status').getByRole('button', { name: 'Undo' })).toBeEnabled();
   });
 
   test('resolves a conflict in the editor', async ({ page }) => {

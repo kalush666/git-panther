@@ -52,10 +52,17 @@ export function createMockStashes(workingTree: ReturnType<typeof createMockWorki
       return restored;
     },
 
-    drop: (index: number): Result<null> => {
+    /** Drops entry `index`; `onDropped` receives a way to put it back, for Undo. */
+    drop: (
+      index: number,
+      onDropped: (message: string, restore: () => void) => void,
+    ): Result<null> => {
       const entry = find(index);
       if (!entry) return notFound(index);
       entries = entries.filter((candidate) => candidate !== entry);
+      onDropped(entry.message, () => {
+        entries = [entry, ...entries];
+      });
       return { status: 'ok', data: null };
     },
   };

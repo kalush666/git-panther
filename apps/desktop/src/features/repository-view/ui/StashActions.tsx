@@ -1,9 +1,6 @@
 import { Archive, ArchiveRestore } from 'lucide-react';
-import { useState } from 'react';
-
 import { Button } from '../../../shared/ui/Button/Button';
 import { useApplyStash, useSaveStash, useStashes } from '../api/useStashes';
-import { StashDialog } from './StashDialog';
 import styles from './StashActions.module.css';
 
 const ICON_SIZE = 14;
@@ -13,7 +10,6 @@ export function StashActions({ path }: { path: string }) {
   const stashes = useStashes(path);
   const save = useSaveStash(path);
   const apply = useApplyStash(path);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const newest = stashes.data?.[0];
 
   return (
@@ -21,9 +17,10 @@ export function StashActions({ path }: { path: string }) {
       <Button
         size="sm"
         variant="ghost"
+        disabled={save.isPending}
+        title="Stash all changes, new files included"
         onClick={() => {
-          save.reset();
-          setDialogOpen(true);
+          save.mutate({ message: null, includeUntracked: true });
         }}
       >
         <Archive size={ICON_SIZE} aria-hidden />
@@ -41,29 +38,10 @@ export function StashActions({ path }: { path: string }) {
         <ArchiveRestore size={ICON_SIZE} aria-hidden />
         Pop
       </Button>
-      {apply.error && (
-        <p className={styles.error} role="alert" title={apply.error.message}>
-          {apply.error.message}
+      {(save.error ?? apply.error) && (
+        <p className={styles.error} role="alert" title={(save.error ?? apply.error)?.message}>
+          {(save.error ?? apply.error)?.message}
         </p>
-      )}
-      {dialogOpen && (
-        <StashDialog
-          error={save.error?.message ?? null}
-          isPending={save.isPending}
-          onCancel={() => {
-            setDialogOpen(false);
-          }}
-          onSubmit={(message, includeUntracked) => {
-            save.mutate(
-              { message, includeUntracked },
-              {
-                onSuccess: () => {
-                  setDialogOpen(false);
-                },
-              },
-            );
-          }}
-        />
       )}
     </div>
   );

@@ -162,6 +162,12 @@ pub trait StashStore: Send + Sync {
     /// # Errors
     /// [`RepositoryError::StashNotFound`].
     fn remove(&self, repository: &Path, index: usize) -> Result<(), RepositoryError>;
+
+    /// Puts a dropped stash commit back on top of the stash, e.g. to undo a drop.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the commit is gone (garbage-collected).
+    fn restore(&self, repository: &Path, stash: &Stash) -> Result<(), RepositoryError>;
 }
 
 /// Finishes or abandons an operation that stopped with conflicts.

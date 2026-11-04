@@ -233,7 +233,12 @@ function createMockBackend(): Backend {
     saveStash: (_path, message, includeUntracked) =>
       Promise.resolve(stashes.save(message, includeUntracked, branchStore.headName())),
     applyStash: (_path, index, pop) => Promise.resolve(stashes.apply(index, pop)),
-    dropStash: (_path, index) => Promise.resolve(stashes.drop(index)),
+    dropStash: (_path, index) =>
+      Promise.resolve(
+        stashes.drop(index, (message, restore) =>
+          history.remember(`Drop stash "${message}"`, restore),
+        ),
+      ),
     repositoryOperation: () => Promise.resolve(workingTree.operation()),
     resolveConflict: (_path, file) => Promise.resolve(workingTree.resolve([file])),
     markResolved: (_path, files) => Promise.resolve(workingTree.resolve(files)),

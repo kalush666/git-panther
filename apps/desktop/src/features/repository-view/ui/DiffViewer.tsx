@@ -5,7 +5,7 @@ import { persist } from 'zustand/middleware';
 
 import type { DiffHunk, DiffLine, HunkAction } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
-import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog/ConfirmDialog';
+import { ConfirmButton } from '../../../shared/ui/ConfirmButton/ConfirmButton';
 import { useApplyHunk, useFileDiff, type DiffSource } from '../api/useWorkingTree';
 import { pairChangedLines, splitRows, wordDiff, type WordSegment } from '../model/wordDiff';
 import styles from './DiffViewer.module.css';
@@ -43,7 +43,6 @@ export function DiffViewer({ path, source, onClose, onShowHistory, onShowBlame }
   const layout = useDiffLayout((state) => state.layout);
   const setLayout = useDiffLayout((state) => state.setLayout);
   const applyHunk = useApplyHunk(path);
-  const [pendingDiscard, setPendingDiscard] = useState<number | null>(null);
   const [selection, setSelection] = useState<LineSelection>({});
   // Lines are picked in the unified view, on uncommitted changes only.
   const canPickLines = source.kind === 'workingTree' && layout === 'unified';
@@ -167,15 +166,14 @@ export function DiffViewer({ path, source, onClose, onShowHistory, onShowBlame }
                   <span className={styles.hunkActions}>
                     {source.side === 'unstaged' ? (
                       <>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setPendingDiscard(index);
+                        <ConfirmButton
+                          confirmLabel={`Discard ${scope}? Click again`}
+                          onConfirm={() => {
+                            runHunk(index, 'discard');
                           }}
                         >
                           Discard {scope}
-                        </Button>
+                        </ConfirmButton>
                         <Button
                           size="sm"
                           onClick={() => {
@@ -213,26 +211,6 @@ export function DiffViewer({ path, source, onClose, onShowHistory, onShowBlame }
           );
         })}
       </div>
-
-      <ConfirmDialog
-        open={pendingDiscard !== null}
-        title={
-          pendingDiscard !== null && (selection[pendingDiscard]?.length ?? 0) > 0
-            ? `Discard ${lineCount(selection[pendingDiscard]?.length ?? 0)}?`
-            : 'Discard this hunk?'
-        }
-        description="These unstaged changes will be lost. This cannot be undone."
-        confirmLabel="Discard"
-        onCancel={() => {
-          setPendingDiscard(null);
-        }}
-        onConfirm={() => {
-          if (pendingDiscard !== null) {
-            runHunk(pendingDiscard, 'discard');
-          }
-          setPendingDiscard(null);
-        }}
-      />
     </section>
   );
 }
