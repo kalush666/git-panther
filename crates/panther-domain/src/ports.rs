@@ -84,6 +84,15 @@ pub trait WorkingTree: Send + Sync {
         hunk: &HunkRef,
         action: HunkAction,
     ) -> Result<(), RepositoryError>;
+
+    /// Applies a whole patch (from `git format-patch` or `git diff`) to the
+    /// work tree and index, merging with the file's history where it no
+    /// longer matches exactly.
+    ///
+    /// # Errors
+    /// [`RepositoryError::Git`] with git's explanation when it does not apply
+    /// or applies with conflicts.
+    fn apply_patch(&self, repository: &Path, patch: &str) -> Result<(), RepositoryError>;
 }
 
 /// Lists and changes branches.
@@ -489,6 +498,12 @@ pub trait CommitLog: Send + Sync {
         base: &str,
         head: &str,
     ) -> Result<Comparison, RepositoryError>;
+
+    /// Commit `id` as a mail-style patch, the way `git format-patch` writes it.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] if `id` is unknown.
+    fn patch(&self, repository: &Path, id: &CommitId) -> Result<String, RepositoryError>;
 
     /// Commits on any ref that pass `filter`, in no particular order.
     ///

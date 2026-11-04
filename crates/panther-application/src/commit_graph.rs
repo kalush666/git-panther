@@ -224,6 +224,14 @@ impl CommitGraph {
         Ok(rows)
     }
 
+    /// Commit `id` as a patch to copy or send.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] if `id` is unknown.
+    pub fn patch(&self, repository: &Path, id: &CommitId) -> Result<String, RepositoryError> {
+        self.log.patch(repository, id)
+    }
+
     /// Rows of the graph whose commit passes `filter`, top to bottom; every
     /// row when the filter is empty.
     ///
@@ -460,6 +468,10 @@ mod tests {
 
         fn filter(&self, _: &Path, _: &CommitFilter) -> Result<Vec<CommitId>, RepositoryError> {
             Ok(Vec::new())
+        }
+
+        fn patch(&self, _: &Path, id: &CommitId) -> Result<String, RepositoryError> {
+            Err(RepositoryError::CommitNotFound { id: id.to_string() })
         }
 
         fn compare_file_diff(

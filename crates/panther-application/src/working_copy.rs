@@ -87,6 +87,19 @@ impl WorkingCopy {
         self.tree.apply_hunk(repository, hunk, action)
     }
 
+    /// Applies a whole patch to the work tree and index.
+    ///
+    /// # Errors
+    /// [`RepositoryError::Git`] when the patch is empty or does not apply.
+    pub fn apply_patch(&self, repository: &Path, patch: &str) -> Result<(), RepositoryError> {
+        if patch.trim().is_empty() {
+            return Err(RepositoryError::Git {
+                details: "The patch is empty.".into(),
+            });
+        }
+        self.tree.apply_patch(repository, patch)
+    }
+
     /// Commits the staged changes, or amends the last commit.
     ///
     /// # Errors
@@ -173,6 +186,11 @@ mod tests {
             action: HunkAction,
         ) -> Result<(), RepositoryError> {
             self.record(format!("{action:?} {}#{}", hunk.path, hunk.index));
+            Ok(())
+        }
+
+        fn apply_patch(&self, _: &Path, patch: &str) -> Result<(), RepositoryError> {
+            self.record(format!("apply {} bytes", patch.len()));
             Ok(())
         }
     }

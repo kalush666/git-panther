@@ -77,6 +77,18 @@ export const tauriBackend: Backend = {
   resolveConflictWith: commands.resolveConflictWith,
   pendingUndo: commands.pendingUndo,
   undo: commands.undo,
+  pickPatchFile: async (title) => {
+    const selection = await open({
+      directory: false,
+      multiple: false,
+      title,
+      filters: [{ name: 'Patches', extensions: ['patch', 'diff'] }],
+    });
+    return typeof selection === 'string' ? selection : null;
+  },
+  commitPatch: commands.commitPatch,
+  applyPatch: commands.applyPatch,
+  applyPatchFile: commands.applyPatchFile,
   pickExecutable: async (title) => {
     const windows = navigator.userAgent.includes('Windows');
     const selection = await open({

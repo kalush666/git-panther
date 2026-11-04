@@ -502,6 +502,48 @@ pub async fn apply_hunk(
     .await
 }
 
+/// Applies a patch (pasted or read from a file) to the work tree and index.
+#[tauri::command]
+#[specta::specta]
+pub async fn apply_patch(
+    services: State<'_, AppServices>,
+    path: String,
+    contents: String,
+) -> Result<(), AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || Ok(copy.apply_patch(&PathBuf::from(path), &contents)?)).await
+}
+
+/// Applies the patch in `file` to the work tree and index.
+#[tauri::command]
+#[specta::specta]
+pub async fn apply_patch_file(
+    services: State<'_, AppServices>,
+    path: String,
+    file: String,
+) -> Result<(), AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || {
+        let contents = std::fs::read_to_string(&file).map_err(|error| RepositoryError::Git {
+            details: format!("Could not read {file}: {error}"),
+        })?;
+        Ok(copy.apply_patch(&PathBuf::from(path), &contents)?)
+    })
+    .await
+}
+
+/// Commit `id` as a mail-style patch.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_patch(
+    services: State<'_, AppServices>,
+    path: String,
+    id: String,
+) -> Result<String, AppError> {
+    let graph = services.commit_graph.clone();
+    run_blocking(move || Ok(graph.patch(&PathBuf::from(path), &commit_id(&id)?)?)).await
+}
+
 /// Commits staged changes (or amends HEAD) and returns the new commit id.
 #[tauri::command]
 #[specta::specta]

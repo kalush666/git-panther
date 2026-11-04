@@ -57,6 +57,10 @@ impl WorkingTree for GitWorkingTree {
         git2_tree::discard(repository, paths)
     }
 
+    fn apply_patch(&self, repository: &Path, patch: &str) -> Result<(), RepositoryError> {
+        apply_patch(&self.executable, repository, patch, PatchTarget::ThreeWay)
+    }
+
     fn apply_hunk(
         &self,
         repository: &Path,

@@ -205,6 +205,14 @@ impl CommitLog for Git2CommitLog {
         })
     }
 
+    fn patch(&self, repository: &Path, id: &CommitId) -> Result<String, RepositoryError> {
+        let repository = open(repository)?;
+        let commit = find_commit(&repository, id)?;
+        let email = git2::Email::from_commit(&commit, &mut git2::EmailCreateOptions::new())
+            .map_err(|error| git_error(&error))?;
+        Ok(String::from_utf8_lossy(email.as_slice()).into_owned())
+    }
+
     fn filter(
         &self,
         repository: &Path,
