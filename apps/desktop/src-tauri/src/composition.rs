@@ -9,16 +9,18 @@ use panther_application::check_git_installation::CheckGitInstallation;
 use panther_application::clone_repository::CloneRepository;
 use panther_application::commit_graph::CommitGraph;
 use panther_application::conflicts::Conflicts;
+use panther_application::history::History;
 use panther_application::open_repository::OpenRepository;
 use panther_application::recent_repositories::RecentRepositoryList;
 use panther_application::settings::AppSettings;
 use panther_application::stashes::Stashes;
 use panther_application::sync::Sync;
+use panther_application::undo::UndoLog;
 use panther_application::working_copy::WorkingCopy;
 use panther_git::{
     Git2RepositoryOpener, GitBranchStore, GitCliCloner, GitCommitLog, GitCommitWriter,
-    GitConflictResolver, GitCredentialStore, GitRemoteSync, GitStashStore, GitWorkingTree,
-    SystemGitProbe,
+    GitConflictResolver, GitCredentialStore, GitHistoryEditor, GitRemoteSync, GitStashStore,
+    GitTagStore, GitWorkingTree, SystemGitProbe,
 };
 
 use crate::infra::recent_store::JsonRecentRepositoryStore;
@@ -41,6 +43,7 @@ pub struct AppServices {
     pub conflicts: Arc<Conflicts>,
     pub settings: Arc<AppSettings>,
     pub accounts: Arc<Accounts>,
+    pub history: Arc<History>,
 }
 
 impl AppServices {
@@ -67,6 +70,11 @@ impl AppServices {
             .unwrap_or_default()
             .git_executable()
             .to_path_buf();
+        let history_editor = Arc::new(GitHistoryEditor::new(git.clone()));
+        let undo = Arc::new(UndoLog::new(
+            history_editor.clone(),
+            Arc::new(GitBranchStore::new(git.clone())),
+        ));
         Self {
             check_git_installation: Arc::new(CheckGitInstallation::new(
                 Arc::new(SystemGitProbe),
@@ -77,21 +85,33 @@ impl AppServices {
                 Arc::clone(&open_repository),
             )),
             commit_graph: Arc::new(CommitGraph::new(Arc::new(GitCommitLog::new(git.clone())))),
-            branches: Arc::new(Branches::new(Arc::new(GitBranchStore::new(git.clone())))),
+            branches: Arc::new(
+                Branches::new(Arc::new(GitBranchStore::new(git.clone()))).with_undo(undo.clone()),
+            ),
+            history: Arc::new(History::new(
+                history_editor,
+                Arc::new(GitTagStore::new(git.clone())),
+                undo.clone(),
+            )),
             accounts: Arc::new(Accounts::new(
                 Arc::new(GitCredentialStore::new(git.clone())),
                 settings_store,
                 Arc::new(GitRemoteSync::new(git.clone())),
             )),
-            sync: Arc::new(Sync::new(Arc::new(GitRemoteSync::new(git.clone())))),
+            sync: Arc::new(
+                Sync::new(Arc::new(GitRemoteSync::new(git.clone()))).with_undo(undo.clone()),
+            ),
             stashes: Arc::new(Stashes::new(Arc::new(GitStashStore::new(git.clone())))),
             conflicts: Arc::new(Conflicts::new(Arc::new(GitConflictResolver::new(
                 git.clone(),
             )))),
-            working_copy: Arc::new(WorkingCopy::new(
-                Arc::new(GitWorkingTree::new(git.clone())),
-                Arc::new(GitCommitWriter::new(git)),
-            )),
+            working_copy: Arc::new(
+                WorkingCopy::new(
+                    Arc::new(GitWorkingTree::new(git.clone())),
+                    Arc::new(GitCommitWriter::new(git)),
+                )
+                .with_undo(undo),
+            ),
             settings,
             open_repository,
             recent_repositories,

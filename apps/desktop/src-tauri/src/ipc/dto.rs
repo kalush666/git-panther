@@ -7,6 +7,7 @@ use panther_domain::account::Account;
 use panther_domain::branch::{Branch, BranchKind};
 use panther_domain::commit::{ChangeKind, CommitDetails, FileChange, Person, RefKind, RefLabel};
 use panther_domain::git_installation::{GitInstallation, GitVersion};
+use panther_domain::history::ResetMode;
 use panther_domain::ports::HunkAction;
 use panther_domain::remote::{PullStrategy, Remote};
 use panther_domain::repository::{CloneProgress, HeadState, RepositorySummary, repository_name};
@@ -668,6 +669,25 @@ impl From<Account> for AccountDto {
         Self {
             server: account.server.to_string(),
             username: account.username,
+        }
+    }
+}
+
+/// How far a reset goes beyond moving the branch.
+#[derive(Debug, Clone, Copy, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ResetModeDto {
+    Soft,
+    Mixed,
+    Hard,
+}
+
+impl From<ResetModeDto> for ResetMode {
+    fn from(mode: ResetModeDto) -> Self {
+        match mode {
+            ResetModeDto::Soft => Self::Soft,
+            ResetModeDto::Mixed => Self::Mixed,
+            ResetModeDto::Hard => Self::Hard,
         }
     }
 }

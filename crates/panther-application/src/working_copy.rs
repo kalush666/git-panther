@@ -8,14 +8,28 @@ use panther_domain::ports::{CommitWriter, HunkAction, WorkingTree};
 use panther_domain::repository::RepositoryError;
 use panther_domain::working_tree::{CommitMessage, DiffSide, FileDiff, HunkRef, WorkingTreeStatus};
 
+use crate::undo::{UndoLog, tracked};
+
 pub struct WorkingCopy {
     tree: Arc<dyn WorkingTree>,
     writer: Arc<dyn CommitWriter>,
+    undo: Option<Arc<UndoLog>>,
 }
 
 impl WorkingCopy {
     pub fn new(tree: Arc<dyn WorkingTree>, writer: Arc<dyn CommitWriter>) -> Self {
-        Self { tree, writer }
+        Self {
+            tree,
+            writer,
+            undo: None,
+        }
+    }
+
+    /// Makes commits undoable.
+    #[must_use]
+    pub fn with_undo(mut self, undo: Arc<UndoLog>) -> Self {
+        self.undo = Some(undo);
+        self
     }
 
     /// # Errors
@@ -88,7 +102,10 @@ impl WorkingCopy {
             CommitMessage::parse(message).map_err(|error| RepositoryError::CommitFailed {
                 details: error.to_string(),
             })?;
-        self.writer.commit(repository, &message, amend)
+        let label = || if amend { "Amend commit" } else { "Commit" }.to_owned();
+        tracked(self.undo.as_deref(), repository, label, || {
+            self.writer.commit(repository, &message, amend)
+        })
     }
 
     /// # Errors

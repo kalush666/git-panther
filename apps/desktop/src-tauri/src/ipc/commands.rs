@@ -15,8 +15,8 @@ use tauri_specta::Event;
 use super::dto::{
     AccountDto, BranchDto, CloneProgressDto, CommitDetailsDto, ConflictSideDto, DiffSideDto,
     FileDiffDto, GitInstallationDto, GraphPageDto, HunkActionDto, OperationDto, PullStrategyDto,
-    RecentRepositoryDto, RemoteDto, RepositoryChanged, RepositorySummaryDto, SettingsDto, StashDto,
-    WorkingTreeStatusDto,
+    RecentRepositoryDto, RemoteDto, RepositoryChanged, RepositorySummaryDto, ResetModeDto,
+    SettingsDto, StashDto, WorkingTreeStatusDto,
 };
 use super::error::{AppError, AppErrorKind};
 use crate::composition::AppServices;
@@ -750,6 +750,139 @@ pub async fn sign_out(
 ) -> Result<(), AppError> {
     let accounts = services.accounts.clone();
     run_blocking(move || Ok(accounts.sign_out(&server, &username)?)).await
+}
+
+/// Merges `branch` into the current branch.
+#[tauri::command]
+#[specta::specta]
+pub async fn merge_branch(
+    services: State<'_, AppServices>,
+    path: String,
+    branch: String,
+) -> Result<(), AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.merge(&PathBuf::from(path), &branch)?)).await
+}
+
+/// Replays the current branch's own commits on top of `onto`.
+#[tauri::command]
+#[specta::specta]
+pub async fn rebase_onto(
+    services: State<'_, AppServices>,
+    path: String,
+    onto: String,
+) -> Result<(), AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.rebase(&PathBuf::from(path), &onto)?)).await
+}
+
+/// Applies the changes of `commit` on the current branch.
+#[tauri::command]
+#[specta::specta]
+pub async fn cherry_pick(
+    services: State<'_, AppServices>,
+    path: String,
+    commit: String,
+) -> Result<(), AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.cherry_pick(&PathBuf::from(path), &commit)?)).await
+}
+
+/// Adds a commit undoing `commit`.
+#[tauri::command]
+#[specta::specta]
+pub async fn revert_commit(
+    services: State<'_, AppServices>,
+    path: String,
+    commit: String,
+) -> Result<(), AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.revert(&PathBuf::from(path), &commit)?)).await
+}
+
+/// Moves the current branch to `commit`.
+#[tauri::command]
+#[specta::specta]
+pub async fn reset_to_commit(
+    services: State<'_, AppServices>,
+    path: String,
+    commit: String,
+    mode: ResetModeDto,
+) -> Result<(), AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.reset(&PathBuf::from(path), &commit, mode.into())?)).await
+}
+
+/// Checks out `commit` without a branch.
+#[tauri::command]
+#[specta::specta]
+pub async fn checkout_commit(
+    services: State<'_, AppServices>,
+    path: String,
+    commit: String,
+) -> Result<(), AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.checkout_commit(&PathBuf::from(path), &commit)?)).await
+}
+
+/// Tags `target`; annotated when `message` is given.
+#[tauri::command]
+#[specta::specta]
+pub async fn create_tag(
+    services: State<'_, AppServices>,
+    path: String,
+    name: String,
+    target: String,
+    message: Option<String>,
+) -> Result<(), AppError> {
+    let history = services.history.clone();
+    run_blocking(move || {
+        Ok(history.create_tag(&PathBuf::from(path), &name, &target, message.as_deref())?)
+    })
+    .await
+}
+
+/// Deletes a local tag.
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_tag(
+    services: State<'_, AppServices>,
+    path: String,
+    name: String,
+) -> Result<(), AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.delete_tag(&PathBuf::from(path), &name)?)).await
+}
+
+/// Pushes a tag to the default remote.
+#[tauri::command]
+#[specta::specta]
+pub async fn push_tag(
+    services: State<'_, AppServices>,
+    path: String,
+    name: String,
+) -> Result<(), AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.push_tag(&PathBuf::from(path), &name)?)).await
+}
+
+/// What Undo would revert, e.g. "Merge topic".
+#[tauri::command]
+#[specta::specta]
+pub async fn pending_undo(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Option<String>, AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.pending_undo(&PathBuf::from(path)))).await
+}
+
+/// Reverts the last undoable action and returns what it was.
+#[tauri::command]
+#[specta::specta]
+pub async fn undo(services: State<'_, AppServices>, path: String) -> Result<String, AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.undo(&PathBuf::from(path))?)).await
 }
 
 fn widen(value: u32) -> usize {
