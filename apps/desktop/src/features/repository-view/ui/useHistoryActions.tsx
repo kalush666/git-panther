@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 
-import type { ResetMode } from '../../../shared/ipc';
+import { isIpcError, type ResetMode } from '../../../shared/ipc';
 import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog/ConfirmDialog';
 import { useBranches } from '../api/useBranches';
 import {
@@ -11,12 +11,14 @@ import {
   type HistoryRequest,
 } from '../api/useHistory';
 import { CombineBranchesDialog } from './CombineBranchesDialog';
+import { InteractiveRebaseDialog } from './InteractiveRebaseDialog';
 import { TagDialog } from './TagDialog';
 
 type Dialog =
   | { kind: 'hardReset'; commit: string; label: string }
   | { kind: 'tag'; target: string; label: string }
-  | { kind: 'combine'; source: string };
+  | { kind: 'combine'; source: string }
+  | { kind: 'rebase'; base: string; label: string };
 
 export interface HistoryActions {
   /** The checked-out branch, or `null` when HEAD is detached. */
@@ -27,6 +29,8 @@ export interface HistoryActions {
   openCreateTag: (target: string, label: string) => void;
   /** Asks whether to merge `source` into the current branch or rebase onto it. */
   openCombine: (source: string) => void;
+  /** Plans an interactive rebase of the commits after `base`. */
+  openInteractiveRebase: (base: string, label: string) => void;
   /** What Undo would revert, e.g. "Merge topic". */
   undoLabel: string | null;
   undo: () => void;
@@ -114,6 +118,45 @@ export function useHistoryActions(path: string): HistoryActions {
             }}
           />
         );
+      case 'rebase':
+        return (
+          <InteractiveRebaseDialog
+            path={path}
+            base={dialog.base}
+            baseLabel={dialog.label}
+            error={
+              action.isError && action.variables.action === 'rebaseInteractive'
+                ? action.error.message
+                : null
+            }
+            isPending={action.isPending}
+            onCancel={() => {
+              action.reset();
+              close();
+            }}
+            onStart={(steps) => {
+              const request: HistoryRequest = {
+                action: 'rebaseInteractive',
+                base: dialog.base,
+                label: dialog.label,
+                steps,
+              };
+              action.mutate(request, {
+                onSuccess: () => {
+                  setOutcome({ tone: 'done', message: describeDone(request) });
+                  close();
+                },
+                onError: (error) => {
+                  // A conflict leaves the rebase open; the conflict view takes over.
+                  if (isIpcError(error, 'operationConflict')) {
+                    setOutcome({ tone: 'error', message: error.message });
+                    close();
+                  }
+                },
+              });
+            }}
+          />
+        );
       case 'combine':
         return (
           <CombineBranchesDialog
@@ -142,6 +185,10 @@ export function useHistoryActions(path: string): HistoryActions {
     },
     openCombine: (source) => {
       setDialog({ kind: 'combine', source });
+    },
+    openInteractiveRebase: (base, label) => {
+      action.reset();
+      setDialog({ kind: 'rebase', base, label });
     },
     undoLabel: pendingUndo.data ?? null,
     undo: () => {

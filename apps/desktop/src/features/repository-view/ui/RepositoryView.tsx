@@ -10,6 +10,7 @@ import { describeHead } from '../model/describeHead';
 import { BranchSidebar } from './BranchSidebar';
 import { CommitDetailsPanel } from './CommitDetailsPanel';
 import { CommitGraph } from './CommitGraph';
+import { ConflictEditor } from './ConflictEditor';
 import { DiffViewer } from './DiffViewer';
 import { FileHistoryView, type FileView } from './FileHistoryView';
 import { StagingPanel } from './StagingPanel';
@@ -36,6 +37,7 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
   const [selectedCommitId, setSelectedCommitId] = useState<string | null>(null);
   const [diff, setDiff] = useState<DiffSource | null>(null);
   const [fileView, setFileView] = useState<FileView | null>(null);
+  const [conflictFile, setConflictFile] = useState<string | null>(null);
   const branchActions = useBranchActions(path);
   const history = useHistoryActions(path);
   useUndoShortcut(history);
@@ -127,7 +129,16 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
       <div className={styles.body}>
         <BranchSidebar path={path} actions={branchActions} history={history} />
         <div className={styles.graph}>
-          {fileView ? (
+          {conflictFile ? (
+            <ConflictEditor
+              key={conflictFile}
+              path={path}
+              file={conflictFile}
+              onClose={() => {
+                setConflictFile(null);
+              }}
+            />
+          ) : fileView ? (
             <FileHistoryView
               path={path}
               view={fileView}
@@ -184,8 +195,10 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
             path={path}
             openFile={diff?.kind === 'workingTree' ? { file: diff.file, side: diff.side } : null}
             onOpenFile={(file, side) => {
+              setConflictFile(null);
               setDiff({ kind: 'workingTree', file, side });
             }}
+            onResolveFile={setConflictFile}
           />
         ) : (
           <CommitDetailsPanel
@@ -302,6 +315,14 @@ function CommitMenu({
         }}
       >
         Cherry-pick commit
+      </ContextMenu.Item>
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          history.openInteractiveRebase(entry.id, `commit ${entry.shortId}`);
+        }}
+      >
+        Interactive rebase of later commits…
       </ContextMenu.Item>
       <ContextMenu.Item
         className={menu.item}

@@ -62,6 +62,10 @@ export function createMockHistory(
       return remember(`Merge ${branch}`);
     },
     rebase: (onto: string) => remember(`Rebase onto ${onto}`),
+    rebaseInteractive: (base: string, steps: number): Result<null> =>
+      steps === 0
+        ? failure('invalidRebasePlan', 'There are no commits to rebase.')
+        : remember(`Interactive rebase onto ${short(base)}`),
     cherryPick: (commit: string) => remember(`Cherry-pick ${short(commit)}`),
     revert: (commit: string) => remember(`Revert ${short(commit)}`),
     reset: (commit: string) => remember(`Reset to ${short(commit)}`),

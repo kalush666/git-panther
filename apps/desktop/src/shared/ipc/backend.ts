@@ -7,6 +7,7 @@ import type {
   ChangedFileDto_Serialize,
   CommitDetailsDto,
   CommitSummaryDto,
+  ConflictChunkDto_Serialize,
   ConflictSideDto,
   DiffLineDto_Serialize,
   DiffSideDto,
@@ -17,6 +18,7 @@ import type {
   HunkDto_Serialize,
   OperationDto,
   PullStrategyDto,
+  RebaseStepDto,
   RecentRepositoryDto,
   RemoteDto,
   RepositorySummaryDto,
@@ -48,6 +50,8 @@ export type Account = AccountDto;
 export type ResetMode = ResetModeDto;
 export type CommitSummary = CommitSummaryDto;
 export type BlameLine = BlameLineDto;
+export type RebaseStep = RebaseStepDto;
+export type ConflictChunk = ConflictChunkDto_Serialize;
 
 /** Receives progress of a long-running network job. */
 export type OnProgress = (progress: CloneProgress) => void;
@@ -185,6 +189,14 @@ export interface Backend {
   ): Promise<Result<null>>;
   deleteTag(path: string, name: string): Promise<Result<null>>;
   pushTag(path: string, name: string): Promise<Result<null>>;
+  /** The commits an interactive rebase onto `base` would rewrite, oldest first. */
+  rebasePlan(path: string, base: string): Promise<Result<CommitSummary[]>>;
+  /** Rewrites the commits after `base` as `steps` says, oldest first. */
+  rebaseInteractive(path: string, base: string, steps: RebaseStep[]): Promise<Result<null>>;
+  /** A conflicted file split into agreed text and conflicts. */
+  conflictChunks(path: string, file: string): Promise<Result<ConflictChunk[]>>;
+  /** Writes the user's resolution of a conflicted file and stages it. */
+  resolveConflictWith(path: string, file: string, content: string): Promise<Result<null>>;
   /** What Undo would revert, e.g. "Merge topic". */
   pendingUndo(path: string): Promise<Result<string | null>>;
   /** Resolves to what was undone. */

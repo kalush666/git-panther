@@ -87,9 +87,11 @@ Search commits (message, author, SHA), hide / solo branches, file history and bl
 
 **Demo:** Ctrl+F searches the graph by message, author or SHA prefix with next / previous; branches can be hidden or shown alone from their menu (remembered per repository). In the diff view, + / − signs pick single lines to stage, unstage or discard; History and Blame open per file, and clicking a commit opens its diff of that file.
 
-### ⏳ M10 — Editing history
+### ✅ M10 — Editing history
 
 Interactive rebase (reorder, squash, reword, drop) and a 3-way conflict editor.
+
+**Demo:** "Interactive rebase of later commits…" on any commit opens a plan of the commits after it, oldest first, to reorder, reword, squash, fix up or drop; it runs through `git rebase -i` without ever opening an editor and can be undone. Clicking a conflicted file opens the conflict editor: each conflict shows mine and incoming side by side with use mine / incoming / both, and an editable result that is saved and staged in one step.
 
 ### ⏳ M11 — Remotes and repository types
 
