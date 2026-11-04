@@ -5,7 +5,7 @@ use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use panther_domain::account::{Password, Server};
+use panther_domain::account::{Account, Password, Server};
 use panther_domain::hosting::{HostedProject, NewPullRequest};
 use panther_domain::ports::HostingProvider;
 use panther_domain::repository::RepositoryError;
@@ -118,7 +118,7 @@ fn gitlab_lists_merge_requests_and_issues_with_the_token() {
         first
             .headers
             .iter()
-            .any(|header| header.to_lowercase() == "private-token: glpat-secret"),
+            .any(|header| header.to_lowercase() == "authorization: bearer glpat-secret"),
         "{first:?}"
     );
 }
@@ -197,4 +197,53 @@ fn unreachable_servers_are_network_failures() {
         GitLabProvider::default().check(&server, &token()),
         Err(RepositoryError::NetworkFailed { .. })
     ));
+}
+
+#[test]
+fn gitlab_trades_the_git_sign_in_for_a_token() {
+    let (server, received) = serve(vec![(
+        "/oauth/token",
+        200,
+        r#"{"access_token":"oauth-abc","token_type":"Bearer","expires_in":7200}"#,
+    )]);
+    let account = Account {
+        server: server.clone(),
+        username: "p9493378".into(),
+    };
+    let password = Password::new("s3cret&more".into()).unwrap();
+
+    let token = GitLabProvider::default()
+        .token_from_login(&account, &password)
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(token.expose(), "oauth-abc");
+    let sent = received.lock().unwrap()[0].clone();
+    assert!(sent.line.starts_with("POST /oauth/token"), "{sent:?}");
+    assert_eq!(
+        sent.body,
+        "grant_type=password&username=p9493378&password=s3cret%26more&scope=api"
+    );
+}
+
+#[test]
+fn gitlab_without_the_password_grant_needs_a_token() {
+    let (server, _) = serve(vec![("/oauth/token", 401, r#"{"error":"invalid_grant"}"#)]);
+    let account = Account {
+        server,
+        username: "p9493378".into(),
+    };
+    let password = Password::new("right".into()).unwrap();
+    assert!(
+        GitLabProvider::default()
+            .token_from_login(&account, &password)
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        GitHubProvider::default()
+            .token_from_login(&account, &password)
+            .unwrap()
+            .is_none()
+    );
 }

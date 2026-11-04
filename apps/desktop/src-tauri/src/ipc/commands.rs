@@ -850,6 +850,17 @@ pub async fn connect_hosting(
     run_blocking(move || Ok(hosting.connect(&server, kind.into(), token)?.into())).await
 }
 
+/// Connects a GitLab server with the user's git sign-in instead of a token.
+#[tauri::command]
+#[specta::specta]
+pub async fn connect_hosting_with_login(
+    services: State<'_, AppServices>,
+    server: String,
+) -> Result<HostingAccessDto, AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || Ok(hosting.connect_with_login(&server)?.into())).await
+}
+
 /// Forgets a code review server and its token.
 #[tauri::command]
 #[specta::specta]

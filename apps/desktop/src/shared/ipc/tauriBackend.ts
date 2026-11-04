@@ -112,6 +112,7 @@ export const tauriBackend: Backend = {
   lfsStatus: commands.lfsStatus,
   listHosting: commands.listHosting,
   connectHosting: commands.connectHosting,
+  connectHostingWithLogin: commands.connectHostingWithLogin,
   disconnectHosting: commands.disconnectHosting,
   hostingStatus: commands.hostingStatus,
   listPullRequests: commands.listPullRequests,

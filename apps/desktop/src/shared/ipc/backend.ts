@@ -180,10 +180,12 @@ export interface Backend {
   addWorktree(path: string, branch: string): Promise<Result<string>>;
   removeWorktree(path: string, worktree: string): Promise<Result<null>>;
   lfsStatus(path: string): Promise<Result<LfsStatus>>;
-  /** Code review servers connected with an access token. */
+  /** Connected code review servers. */
   listHosting(): Promise<Result<HostingAccess[]>>;
   /** Checks the token against the server, then keeps it in the credential helper. */
   connectHosting(server: string, kind: HostingKind, token: string): Promise<Result<HostingAccess>>;
+  /** Connects a GitLab server with the git sign-in (personal number and password), no token. */
+  connectHostingWithLogin(server: string): Promise<Result<HostingAccess>>;
   disconnectHosting(server: string): Promise<Result<null>>;
   /** The repository's project on a code review server, if a remote points to one. */
   hostingStatus(path: string): Promise<Result<HostingStatus | null>>;

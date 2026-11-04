@@ -160,6 +160,10 @@ mod tests {
             unreachable!("signing in erases no API token")
         }
 
+        fn password(&self, _: &Account) -> Result<Option<Password>, RepositoryError> {
+            unreachable!("signing in reads no password back")
+        }
+
         fn verify(&self, _url: &str) -> Result<(), RepositoryError> {
             let stored = self.stored.lock().unwrap();
             if stored.iter().any(|(_, password)| password == GOOD_PASSWORD) {

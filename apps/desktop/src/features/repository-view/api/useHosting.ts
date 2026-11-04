@@ -47,6 +47,15 @@ export function useConnectHosting() {
   });
 }
 
+/** Connects a GitLab server with the git sign-in, so no access token is needed. */
+export function useConnectHostingWithLogin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (server: string) => unwrap(await ipc.connectHostingWithLogin(server)),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['hosting'] }),
+  });
+}
+
 export function useDisconnectHosting() {
   const queryClient = useQueryClient();
   return useMutation({

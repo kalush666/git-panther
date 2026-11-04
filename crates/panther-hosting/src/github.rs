@@ -1,6 +1,6 @@
 //! GitHub Enterprise Server: pull requests and issues through REST API v3.
 
-use panther_domain::account::{Password, Server};
+use panther_domain::account::{Account, Password, Server};
 use panther_domain::hosting::{HostedProject, Issue, NewPullRequest, PullRequest};
 use panther_domain::ports::HostingProvider;
 use panther_domain::repository::RepositoryError;
@@ -88,6 +88,15 @@ fn authorized(request: RequestBuilder, token: &Password) -> RequestBuilder {
 }
 
 impl HostingProvider for GitHubProvider {
+    fn token_from_login(
+        &self,
+        _account: &Account,
+        _password: &Password,
+    ) -> Result<Option<Password>, RepositoryError> {
+        // GitHub's API takes no passwords; it always needs an access token.
+        Ok(None)
+    }
+
     fn check(&self, server: &Server, token: &Password) -> Result<(), RepositoryError> {
         json::<serde_json::Value>(self.get(server, "/user", token), &server.to_string()).map(drop)
     }

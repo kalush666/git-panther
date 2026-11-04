@@ -68,7 +68,7 @@ function HostingConnections() {
         <li key={access.server} className={styles.account}>
           <span className={styles.accountName}>
             <strong>{access.kind === 'gitLab' ? 'GitLab' : 'GitHub Enterprise'}</strong>
-            <span className={styles.hint}>{access.server} · access token</span>
+            <span className={styles.hint}>{access.server} · merge requests and issues</span>
           </span>
           <Button
             size="sm"

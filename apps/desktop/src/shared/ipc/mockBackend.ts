@@ -151,10 +151,7 @@ function createMockBackend(): Backend {
   const mockServer = `https://${MOCK_GIT_HOST}`;
   const connected = () => hosting.some((access) => access.server === mockServer);
   const notConnected = () =>
-    failure(
-      'hostingNotConnected',
-      `Connect ${mockServer} with an access token to see its merge requests and issues.`,
-    );
+    failure('hostingNotConnected', `Connect ${mockServer} to see its merge requests and issues.`);
   let identity: Identity | null = {
     name: 'Git Panther Demo',
     email: 'demo@example.internal',
@@ -380,6 +377,23 @@ function createMockBackend(): Backend {
       }
       const access = { server: server.replace(/\/+$/, ''), kind };
       hosting = [...hosting.filter((existing) => existing.server !== access.server), access];
+      return Promise.resolve(ok(access));
+    },
+    connectHostingWithLogin: (server) => {
+      // `?mockHosting=token`: a server that only takes access tokens.
+      if (new URLSearchParams(window.location.search).get('mockHosting') === 'token') {
+        return Promise.resolve(
+          failure(
+            'hostingLoginUnsupported',
+            `${server} does not let Git Panther use your sign-in for merge requests. Connect it with an access token instead.`,
+          ),
+        );
+      }
+      if (!accounts.some((account) => account.server === server)) {
+        return Promise.resolve(failure('authenticationFailed', `Sign in to ${server} first.`));
+      }
+      const access = { server, kind: 'gitLab' as const };
+      hosting = [...hosting.filter((existing) => existing.server !== server), access];
       return Promise.resolve(ok(access));
     },
     disconnectHosting: (server) => {

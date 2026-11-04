@@ -1,7 +1,8 @@
 import * as ContextMenu from '@radix-ui/react-context-menu';
 import { ChevronDown, ChevronRight, CircleDot, GitPullRequest, Plug, Plus } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
+import { useAccounts } from '../../../shared/accounts';
 import type { HostingKind, Issue, PullRequest } from '../../../shared/ipc';
 import { useHostingStatus, useIssues, usePullRequests } from '../api/useHosting';
 import styles from './BranchSidebar.module.css';
@@ -100,6 +101,16 @@ function ReviewRow({
 export function ReviewLists({ path, actions }: { path: string; actions: HostingActions }) {
   const status = useHostingStatus(path);
   const kind = status.data?.kind ?? null;
+  const accounts = useAccounts();
+  const server = status.data?.server;
+  const signedIn = accounts.data?.some((account) => account.server === server) ?? false;
+  const { connectQuietly } = actions;
+  // Signed in to the server already: connect without a click.
+  useEffect(() => {
+    if (status.data && kind === null && server && signedIn) {
+      connectQuietly(server);
+    }
+  }, [status.data, kind, server, signedIn, connectQuietly]);
   const requests = usePullRequests(path, kind !== null);
   const issues = useIssues(path, kind !== null);
   if (!status.data) return null;

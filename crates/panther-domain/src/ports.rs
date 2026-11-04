@@ -663,6 +663,13 @@ pub trait CredentialStore: Send + Sync {
     /// [`RepositoryError`] when the helper cannot be reached.
     fn erase_token(&self, server: &Server) -> Result<(), RepositoryError>;
 
+    /// The password the helper keeps for `account`, read without asking the
+    /// user; `None` when it has none.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the helper cannot be reached.
+    fn password(&self, account: &Account) -> Result<Option<Password>, RepositoryError>;
+
     /// Reads the remote at `url` with the stored credentials.
     ///
     /// # Errors
@@ -708,6 +715,17 @@ pub trait HostingProvider: Send + Sync {
         project: &HostedProject,
         token: &Password,
     ) -> Result<Vec<Issue>, RepositoryError>;
+
+    /// Trades the user's git sign-in for an API token, where the server
+    /// allows it (GitLab's password grant). `None` when the server refuses.
+    ///
+    /// # Errors
+    /// A network error.
+    fn token_from_login(
+        &self,
+        account: &Account,
+        password: &Password,
+    ) -> Result<Option<Password>, RepositoryError>;
 }
 
 /// Persists [`Settings`] between runs.
