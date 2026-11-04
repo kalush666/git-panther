@@ -1,15 +1,18 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowDownToLine, ArrowUpFromLine, Check, ChevronDown, RefreshCw, X } from 'lucide-react';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { serverOf, SignInDialog } from '../../../shared/accounts';
 import { useCommands } from '../../../shared/commands';
-import { isIpcError } from '../../../shared/ipc';
+import { ipc, isIpcError } from '../../../shared/ipc';
+import { useAutoFetchStore } from '../../../shared/preferences/autoFetch';
 import { PULL_STRATEGIES, usePullStrategyStore } from '../../../shared/preferences/pullStrategy';
 import { Button } from '../../../shared/ui/Button/Button';
 import { useBranches } from '../api/useBranches';
 import { useRemotes } from '../api/useRemotes';
+import { repositoryQueryKey } from '../api/useRepository';
 import { useSync, type SyncAction } from '../api/useSync';
 import menu from './menu.module.css';
 import styles from './SyncToolbar.module.css';
@@ -31,6 +34,7 @@ const ICON_SIZE = 14;
 /** Fetch, Pull and Push for the open repository, with progress and errors. */
 export function SyncToolbar({ path }: { path: string }) {
   const sync = useSync(path);
+  useAutoFetch(path, sync.running === null);
   const branches = useBranches(path);
   const strategy = usePullStrategyStore((state) => state.strategy);
   const setStrategy = usePullStrategyStore((state) => state.setStrategy);
@@ -263,11 +267,49 @@ function SyncStatus({ path, sync }: { path: string; sync: ReturnType<typeof useS
     );
   }
   if (sync.succeeded) {
-    return (
-      <p className={styles.done} role="status">
-        {DONE_LABEL[sync.succeeded]}
-      </p>
-    );
+    return <SyncDone label={DONE_LABEL[sync.succeeded]} onDone={sync.dismiss} />;
   }
   return null;
+}
+
+/** How long "Fetched" / "Pushed" stays before it clears itself. */
+const DONE_MS = 4_000;
+
+function SyncDone({ label, onDone }: { label: string; onDone: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onDone, DONE_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [onDone]);
+  return (
+    <p className={styles.done} role="status">
+      {label}
+    </p>
+  );
+}
+
+/**
+ * Fetches quietly every few minutes (as set in Settings) while the window is
+ * visible, so to-pull counts stay current without a click.
+ */
+function useAutoFetch(path: string, idle: boolean) {
+  const minutes = useAutoFetchStore((state) => state.minutes);
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (minutes === 0 || !idle) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      void ipc
+        .fetchRemotes(path, crypto.randomUUID(), () => undefined)
+        .then((result) => {
+          if (result.status === 'ok') {
+            void queryClient.invalidateQueries({ queryKey: repositoryQueryKey(path) });
+          }
+        });
+    }, minutes * 60_000);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [path, minutes, idle, queryClient]);
 }

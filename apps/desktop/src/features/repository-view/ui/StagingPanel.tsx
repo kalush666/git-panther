@@ -130,7 +130,7 @@ export function StagingPanel({ path, openFile, onOpenFile, onResolveFile }: Stag
       <div className={styles.identity}>
         <IdentityControl path={path} />
       </div>
-      <CommitBox path={path} stagedCount={staged.length} />
+      <CommitBox path={path} stagedCount={staged.length} unstaged={paths(unstaged)} />
     </aside>
   );
 }
@@ -217,12 +217,23 @@ function RowButton({
   );
 }
 
-function CommitBox({ path, stagedCount }: { path: string; stagedCount: number }) {
+interface CommitBoxProps {
+  path: string;
+  stagedCount: number;
+  /** Committed all at once when nothing is staged. */
+  unstaged: string[];
+}
+
+function CommitBox({ path, stagedCount, unstaged }: CommitBoxProps) {
   const commit = useCommitChanges(path);
+  const stageAll = useStageFiles(path);
   const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
   const [amend, setAmend] = useState(false);
-  const canCommit = summary.trim() !== '' && (stagedCount > 0 || amend) && !commit.isPending;
+  // With nothing staged, one click stages everything and commits it.
+  const commitsAll = stagedCount === 0 && !amend && unstaged.length > 0;
+  const busy = commit.isPending || stageAll.isPending;
+  const canCommit = summary.trim() !== '' && (stagedCount > 0 || amend || commitsAll) && !busy;
 
   const toggleAmend = async (next: boolean) => {
     setAmend(next);
@@ -233,8 +244,9 @@ function CommitBox({ path, stagedCount }: { path: string; stagedCount: number })
     }
   };
 
-  const submit = () => {
+  const submit = async () => {
     const message = description.trim() ? `${summary.trim()}\n\n${description.trim()}` : summary;
+    if (commitsAll) await stageAll.mutateAsync(unstaged);
     commit.mutate(
       { message, amend },
       {
@@ -254,7 +266,15 @@ function CommitBox({ path, stagedCount }: { path: string; stagedCount: number })
       onSubmit={(event) => {
         event.preventDefault();
         if (canCommit) {
-          submit();
+          void submit();
+        }
+      }}
+      onKeyDown={(event) => {
+        // Ctrl+Enter commits from the summary or the description.
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+          event.preventDefault();
+          event.stopPropagation();
+          if (canCommit) void submit();
         }
       }}
     >
@@ -307,7 +327,9 @@ function CommitBox({ path, stagedCount }: { path: string; stagedCount: number })
           ? 'Amend commit'
           : stagedCount > 0
             ? `Commit ${stagedCount} ${stagedCount === 1 ? 'file' : 'files'}`
-            : 'Stage changes to commit'}
+            : commitsAll
+              ? `Stage all and commit ${unstaged.length} ${unstaged.length === 1 ? 'file' : 'files'}`
+              : 'Nothing to commit'}
       </Button>
     </form>
   );

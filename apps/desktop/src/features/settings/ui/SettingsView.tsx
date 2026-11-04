@@ -6,6 +6,7 @@ import {
   INTERFACE_SIZES,
   useAppearanceStore,
 } from '../../../shared/preferences/appearance';
+import { AUTO_FETCH_CHOICES, useAutoFetchStore } from '../../../shared/preferences/autoFetch';
 import { PULL_STRATEGIES, usePullStrategyStore } from '../../../shared/preferences/pullStrategy';
 import { THEME_PREFERENCES, useThemeStore } from '../../../shared/preferences/theme';
 import { Button } from '../../../shared/ui/Button/Button';
@@ -29,6 +30,8 @@ export function SettingsView({ onClose }: SettingsViewProps) {
   const setCodeFont = useAppearanceStore((state) => state.setCodeFont);
   const pullStrategy = usePullStrategyStore((state) => state.strategy);
   const setPullStrategy = usePullStrategyStore((state) => state.setStrategy);
+  const autoFetch = useAutoFetchStore((state) => state.minutes);
+  const setAutoFetch = useAutoFetchStore((state) => state.setMinutes);
 
   return (
     <section className={styles.view} aria-labelledby="settings-title">
@@ -90,6 +93,17 @@ export function SettingsView({ onClose }: SettingsViewProps) {
             hint="Git Panther runs your installed git, with your credentials and config."
           >
             <GitExecutableSetting />
+          </Row>
+          <Row
+            label="Fetch automatically"
+            hint="Keeps to-pull counts current while Git Panther is in front."
+          >
+            <SegmentedControl
+              label="Fetch automatically"
+              options={AUTO_FETCH_CHOICES}
+              value={autoFetch}
+              onChange={setAutoFetch}
+            />
           </Row>
           <Row
             label="Pull"
