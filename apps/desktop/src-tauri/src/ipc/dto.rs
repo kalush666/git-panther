@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use panther_application::commit_graph::{GraphEntry, GraphPage};
+use panther_domain::account::Account;
 use panther_domain::branch::{Branch, BranchKind};
 use panther_domain::commit::{ChangeKind, CommitDetails, FileChange, Person, RefKind, RefLabel};
 use panther_domain::git_installation::{GitInstallation, GitVersion};
@@ -649,6 +650,24 @@ impl SettingsDto {
                 .as_ref()
                 .map(|path| path.display().to_string()),
             active_git_executable: active.display().to_string(),
+        }
+    }
+}
+
+/// An HTTPS git server the user signed in to. Never carries the password.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountDto {
+    /// e.g. `https://gitlab.example.internal`
+    pub server: String,
+    pub username: String,
+}
+
+impl From<Account> for AccountDto {
+    fn from(account: Account) -> Self {
+        Self {
+            server: account.server.to_string(),
+            username: account.username,
         }
     }
 }

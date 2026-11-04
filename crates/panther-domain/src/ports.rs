@@ -5,6 +5,7 @@
 
 use std::path::Path;
 
+use crate::account::{Account, Password};
 use crate::branch::{Branch, BranchName};
 use crate::commit::{CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
 use crate::git_installation::{GitVersion, GitVersionParseError};
@@ -367,6 +368,32 @@ pub trait GitBinaryProbe: Send + Sync {
     /// # Errors
     /// Returns [`GitProbeError`] when it exists but cannot be queried.
     fn version_of(&self, executable: &Path) -> Result<Option<GitVersion>, GitProbeError>;
+}
+
+/// Hands credentials for HTTPS git servers to the user's credential helper.
+pub trait CredentialStore: Send + Sync {
+    /// Whether git is configured to remember credentials at all.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when git cannot be run.
+    fn has_helper(&self) -> Result<bool, RepositoryError>;
+
+    /// # Errors
+    /// [`RepositoryError`] when the helper refuses the credentials.
+    fn store(&self, account: &Account, password: &Password) -> Result<(), RepositoryError>;
+
+    /// Forgets the stored password of `account`.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the helper cannot be reached.
+    fn erase(&self, account: &Account) -> Result<(), RepositoryError>;
+
+    /// Reads the remote at `url` with the stored credentials.
+    ///
+    /// # Errors
+    /// [`RepositoryError::AuthenticationFailed`] for wrong credentials, or a
+    /// network error.
+    fn verify(&self, url: &str) -> Result<(), RepositoryError>;
 }
 
 /// Persists [`Settings`] between runs.

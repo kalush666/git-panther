@@ -103,6 +103,15 @@ export const commands = {
 	restartApp: () => __TAURI_INVOKE<void>("restart_app"),
 	/**  Scales the whole interface, like a browser zoom. */
 	setZoom: (scale: number | null) => typedError<null, AppError>(__TAURI_INVOKE("set_zoom", { scale })),
+	/**  HTTPS git servers the user signed in to. */
+	listAccounts: () => typedError<AccountDto[], AppError>(__TAURI_INVOKE("list_accounts")),
+	/**
+	 *  Hands the credentials to git's credential helper. With `repository`, they
+	 *  are first tried against its remote on that server.
+	 */
+	signIn: (server: string, username: string, password: string, repository: string | null) => typedError<AccountDto, AppError>(__TAURI_INVOKE("sign_in", { server, username, password, repository })),
+	/**  Forgets an account and its stored password. */
+	signOut: (server: string, username: string) => typedError<null, AppError>(__TAURI_INVOKE("sign_out", { server, username })),
 };
 
 /** Events */
@@ -111,6 +120,13 @@ export const events = {
 };
 
 /* Types */
+/**  An HTTPS git server the user signed in to. Never carries the password. */
+export type AccountDto = {
+	/**  e.g. `https://gitlab.example.internal` */
+	server: string,
+	username: string,
+};
+
 /**  An error returned by any IPC command. */
 export type AppError = {
 	kind: AppErrorKind,
@@ -119,7 +135,7 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "watchFailed" | "internal";
 
 /**  A branch shown in the sidebar. */
 export type BranchDto = BranchDto_Serialize | BranchDto_Deserialize;

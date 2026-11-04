@@ -3,6 +3,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use panther_application::accounts::Accounts;
 use panther_application::branches::Branches;
 use panther_application::check_git_installation::CheckGitInstallation;
 use panther_application::clone_repository::CloneRepository;
@@ -16,7 +17,8 @@ use panther_application::sync::Sync;
 use panther_application::working_copy::WorkingCopy;
 use panther_git::{
     Git2RepositoryOpener, GitBranchStore, GitCliCloner, GitCommitLog, GitCommitWriter,
-    GitConflictResolver, GitRemoteSync, GitStashStore, GitWorkingTree, SystemGitProbe,
+    GitConflictResolver, GitCredentialStore, GitRemoteSync, GitStashStore, GitWorkingTree,
+    SystemGitProbe,
 };
 
 use crate::infra::recent_store::JsonRecentRepositoryStore;
@@ -38,6 +40,7 @@ pub struct AppServices {
     pub stashes: Arc<Stashes>,
     pub conflicts: Arc<Conflicts>,
     pub settings: Arc<AppSettings>,
+    pub accounts: Arc<Accounts>,
 }
 
 impl AppServices {
@@ -52,8 +55,9 @@ impl AppServices {
             Arc::new(Git2RepositoryOpener),
             Arc::clone(&recent_repositories),
         ));
+        let settings_store = Arc::new(JsonSettingsStore::new(config_dir.join(SETTINGS_FILE)));
         let settings = Arc::new(AppSettings::new(
-            Arc::new(JsonSettingsStore::new(config_dir.join(SETTINGS_FILE))),
+            settings_store.clone(),
             Arc::new(SystemGitProbe),
         ));
         // Unreadable settings must not keep the app from starting: fall back
@@ -74,6 +78,11 @@ impl AppServices {
             )),
             commit_graph: Arc::new(CommitGraph::new(Arc::new(GitCommitLog::new(git.clone())))),
             branches: Arc::new(Branches::new(Arc::new(GitBranchStore::new(git.clone())))),
+            accounts: Arc::new(Accounts::new(
+                Arc::new(GitCredentialStore::new(git.clone())),
+                settings_store,
+                Arc::new(GitRemoteSync::new(git.clone())),
+            )),
             sync: Arc::new(Sync::new(Arc::new(GitRemoteSync::new(git.clone())))),
             stashes: Arc::new(Stashes::new(Arc::new(GitStashStore::new(git.clone())))),
             conflicts: Arc::new(Conflicts::new(Arc::new(GitConflictResolver::new(

@@ -2,6 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::account::Account;
+
 /// Run when no git executable is configured, resolved through `PATH`.
 pub const DEFAULT_GIT_EXECUTABLE: &str = "git";
 
@@ -9,6 +11,8 @@ pub const DEFAULT_GIT_EXECUTABLE: &str = "git";
 pub struct Settings {
     /// A specific git to use instead of the one on `PATH`.
     pub git_executable: Option<PathBuf>,
+    /// Servers the user signed in to; their passwords live in the credential helper.
+    pub accounts: Vec<Account>,
 }
 
 impl Settings {
@@ -29,6 +33,7 @@ mod tests {
         assert_eq!(Settings::default().git_executable(), Path::new("git"));
         let custom = Settings {
             git_executable: Some(PathBuf::from(r"D:\tools\git\cmd\git.exe")),
+            ..Settings::default()
         };
         assert_eq!(
             custom.git_executable(),

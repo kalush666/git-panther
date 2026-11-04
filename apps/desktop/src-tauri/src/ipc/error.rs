@@ -43,6 +43,9 @@ pub enum AppErrorKind {
     NoOperationInProgress,
     UnresolvedConflicts,
     InvalidGitExecutable,
+    InvalidServer,
+    InvalidCredentials,
+    CredentialHelperMissing,
     WatchFailed,
     Internal,
 }
@@ -119,6 +122,9 @@ impl From<RepositoryError> for AppError {
             RepositoryError::NoOperationInProgress => AppErrorKind::NoOperationInProgress,
             RepositoryError::UnresolvedConflicts => AppErrorKind::UnresolvedConflicts,
             RepositoryError::InvalidGitExecutable { .. } => AppErrorKind::InvalidGitExecutable,
+            RepositoryError::InvalidServer(_) => AppErrorKind::InvalidServer,
+            RepositoryError::InvalidCredentials(_) => AppErrorKind::InvalidCredentials,
+            RepositoryError::CredentialHelperMissing => AppErrorKind::CredentialHelperMissing,
         };
         Self::new(kind, error.to_string())
     }

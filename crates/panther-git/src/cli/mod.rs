@@ -21,11 +21,11 @@ pub use commit::commit;
 pub use history::read_history;
 pub use probe::SystemGitProbe;
 pub use run::run_git;
-pub use sync::{pull_args, run_sync};
+pub use sync::{classify as classify_sync_failure, pull_args, run_sync};
 
 /// Builds a git command that never flashes a console window on Windows and
 /// never blocks waiting for terminal input.
-fn background_command(executable: &Path) -> Command {
+pub fn background_command(executable: &Path) -> Command {
     let mut command = Command::new(executable);
     command.env("GIT_TERMINAL_PROMPT", "0");
     #[cfg(windows)]
