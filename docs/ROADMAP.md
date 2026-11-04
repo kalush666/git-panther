@@ -71,6 +71,36 @@ Settings screen (theme, git path, pull mode, fonts), E2E flows, self-contained W
 
 **Demo:** Settings (title bar gear, or "Choose git…" when git is missing) sets theme, interface size, code font, pull strategy and the git executable; a git path is checked before saving and offers a restart. The Release workflow builds NSIS and MSI installers (~210 MB each, WebView2 offline installer embedded) and fails if one is too small to be self-contained. Manual closed-network checks are in [Offline verification](OFFLINE-VERIFICATION.md); they still need running on an offline machine.
 
+### ✅ Sign-in to HTTPS git servers
+
+Sign in to self-hosted servers (e.g. GitLab) with a personal number and password from Settings, a refused sync or a refused clone. Passwords go to Git Credential Manager; Git Panther stores only server and user name, and verifies against the repository's remote before keeping them.
+
+### ✅ M8 — Graph actions
+
+Merge, rebase, cherry-pick, revert, reset (soft / mixed / hard), check out a commit, create / delete / push tags, drag a branch onto the checked-out one, and undo.
+
+**Demo:** right-click a commit or branch for every action; a hard reset asks first. Dropping a branch on the checked-out one offers merge or rebase. Undo (button or Ctrl+Z) reverts the last commit, amend, checkout, pull, merge, rebase, cherry-pick, revert, reset or branch deletion, keeps uncommitted work, and refuses if HEAD moved since.
+
+### ⏳ M9 — Finding things
+
+Search commits (message, author, SHA), hide / solo branches, file history and blame, line-level staging.
+
+### ⏳ M10 — Editing history
+
+Interactive rebase (reorder, squash, reword, drop) and a 3-way conflict editor.
+
+### ⏳ M11 — Remotes and repository types
+
+Add / edit / remove remotes, force push with lease, delete remote branches, push to another remote; submodules, Git LFS, worktrees.
+
+### ⏳ M12 — Workflow
+
+Command palette, configurable keyboard shortcuts, git identity profiles, commit signing settings.
+
+### ⏳ M13 — Hosting
+
+Pull requests and issues for self-hosted GitHub Enterprise Server, GitLab self-managed, Bitbucket Data Center and Azure DevOps Server.
+
 ## Later (to be prioritised together)
 
 - Interactive rebase (drag-and-drop)

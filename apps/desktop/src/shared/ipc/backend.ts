@@ -18,6 +18,7 @@ import type {
   RecentRepositoryDto,
   RemoteDto,
   RepositorySummaryDto,
+  ResetModeDto,
   SettingsDto_Serialize,
   StashDto,
   WorkingTreeStatusDto_Serialize,
@@ -42,6 +43,7 @@ export type Operation = OperationDto;
 export type ConflictSide = ConflictSideDto;
 export type Settings = SettingsDto_Serialize;
 export type Account = AccountDto;
+export type ResetMode = ResetModeDto;
 
 /** Receives progress of a long-running network job. */
 export type OnProgress = (progress: CloneProgress) => void;
@@ -147,6 +149,28 @@ export interface Backend {
     repository: string | null,
   ): Promise<Result<Account>>;
   signOut(server: string, username: string): Promise<Result<null>>;
+  /** Merges `branch` into the current branch. */
+  mergeBranch(path: string, branch: string): Promise<Result<null>>;
+  /** Replays the current branch's own commits on top of `onto`. */
+  rebaseOnto(path: string, onto: string): Promise<Result<null>>;
+  cherryPick(path: string, commit: string): Promise<Result<null>>;
+  revertCommit(path: string, commit: string): Promise<Result<null>>;
+  resetToCommit(path: string, commit: string, mode: ResetMode): Promise<Result<null>>;
+  /** Checks out a commit without a branch (detached HEAD). */
+  checkoutCommit(path: string, commit: string): Promise<Result<null>>;
+  /** Annotated when `message` is given. */
+  createTag(
+    path: string,
+    name: string,
+    target: string,
+    message: string | null,
+  ): Promise<Result<null>>;
+  deleteTag(path: string, name: string): Promise<Result<null>>;
+  pushTag(path: string, name: string): Promise<Result<null>>;
+  /** What Undo would revert, e.g. "Merge topic". */
+  pendingUndo(path: string): Promise<Result<string | null>>;
+  /** Resolves to what was undone. */
+  undo(path: string): Promise<Result<string>>;
   /** Shows the native folder picker; resolves to `null` if the user cancels. */
   pickFolder(title: string): Promise<string | null>;
 }

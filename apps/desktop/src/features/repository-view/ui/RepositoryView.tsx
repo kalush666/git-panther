@@ -1,6 +1,6 @@
 import * as ContextMenu from '@radix-ui/react-context-menu';
-import { ChevronRight, GitBranch, TriangleAlert } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { ChevronRight, GitBranch, TriangleAlert, Undo2, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { GraphEntryDto } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
@@ -18,6 +18,7 @@ import { WorkingCopyRow } from './WorkingCopyRow';
 import menu from './menu.module.css';
 import styles from './RepositoryView.module.css';
 import { useBranchActions, type BranchActions } from './useBranchActions';
+import { useHistoryActions, type HistoryActions } from './useHistoryActions';
 
 interface RepositoryViewProps {
   path: string;
@@ -34,6 +35,8 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
   const [selectedCommitId, setSelectedCommitId] = useState<string | null>(null);
   const [diff, setDiff] = useState<DiffSource | null>(null);
   const branchActions = useBranchActions(path);
+  const history = useHistoryActions(path);
+  useUndoShortcut(history);
   const keepSelectedCommit = useCallback((commitId: string | null) => {
     setSelectedCommitId(commitId);
   }, []);
@@ -88,11 +91,39 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
             {describeHead(head)}
           </p>
         </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          className={styles.undo}
+          disabled={!history.undoLabel}
+          title={history.undoLabel ? `Undo: ${history.undoLabel} (Ctrl+Z)` : 'Nothing to undo'}
+          onClick={history.undo}
+        >
+          <Undo2 size={14} aria-hidden />
+          Undo
+        </Button>
         <StashActions path={path} />
         <SyncToolbar path={path} />
       </header>
+      {history.outcome && (
+        <div
+          className={styles.outcome}
+          data-tone={history.outcome.tone}
+          role={history.outcome.tone === 'error' ? 'alert' : 'status'}
+        >
+          <span className={styles.outcomeText}>{history.outcome.message}</span>
+          <button
+            type="button"
+            className={styles.dismiss}
+            aria-label="Dismiss"
+            onClick={history.dismiss}
+          >
+            <X size={14} aria-hidden />
+          </button>
+        </div>
+      )}
       <div className={styles.body}>
-        <BranchSidebar path={path} actions={branchActions} />
+        <BranchSidebar path={path} actions={branchActions} history={history} />
         <div className={styles.graph}>
           {diff ? (
             <DiffViewer
@@ -110,7 +141,9 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
                 setSelection({ kind: 'commit', index });
               }}
               onSelectedCommitChange={keepSelectedCommit}
-              rowMenu={(entry) => <CommitMenu entry={entry} actions={branchActions} />}
+              rowMenu={(entry) => (
+                <CommitMenu entry={entry} actions={branchActions} history={history} />
+              )}
               leadingRow={
                 changeCount > 0 ? (
                   <WorkingCopyRow
@@ -146,13 +179,52 @@ export function RepositoryView({ path, onClose }: RepositoryViewProps) {
         )}
       </div>
       {branchActions.dialogs}
+      {history.dialogs}
     </section>
   );
 }
 
+/** Ctrl+Z (Cmd+Z on macOS) undoes the last action, except while typing. */
+function useUndoShortcut({ undo, undoLabel }: HistoryActions) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      const typing =
+        target !== null &&
+        (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+      if (typing || !undoLabel) return;
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        undo();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [undo, undoLabel]);
+}
+
+const RESET_MODES = [
+  { mode: 'soft', label: 'Soft: keep changes staged' },
+  { mode: 'mixed', label: 'Mixed: keep changes unstaged' },
+  { mode: 'hard', label: 'Hard: discard all changes…' },
+] as const;
+
 /** Right-click actions for a commit in the graph. */
-function CommitMenu({ entry, actions }: { entry: GraphEntryDto; actions: BranchActions }) {
+function CommitMenu({
+  entry,
+  actions,
+  history,
+}: {
+  entry: GraphEntryDto;
+  actions: BranchActions;
+  history: HistoryActions;
+}) {
   const switchable = entry.refs.filter((ref) => ref.kind !== 'tag' && !ref.isHead);
+  const tags = entry.refs.filter((ref) => ref.kind === 'tag');
+  const current = history.currentBranch ?? 'HEAD';
+  const commit = { commit: entry.id, label: entry.shortId };
   return (
     <>
       <ContextMenu.Item
@@ -162,6 +234,14 @@ function CommitMenu({ entry, actions }: { entry: GraphEntryDto; actions: BranchA
         }}
       >
         Create branch here…
+      </ContextMenu.Item>
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          history.openCreateTag(entry.id, `commit ${entry.shortId}`);
+        }}
+      >
+        Create tag here…
       </ContextMenu.Item>
       {switchable.map((ref) => (
         <ContextMenu.Item
@@ -173,6 +253,84 @@ function CommitMenu({ entry, actions }: { entry: GraphEntryDto; actions: BranchA
         >
           Check out {ref.name}
         </ContextMenu.Item>
+      ))}
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          history.run({ action: 'checkoutCommit', ...commit });
+        }}
+      >
+        Check out this commit (detached)
+      </ContextMenu.Item>
+      <ContextMenu.Separator className={menu.separator} />
+      {switchable.map((ref) => (
+        <ContextMenu.Item
+          key={`merge-${ref.name}`}
+          className={menu.item}
+          onSelect={() => {
+            history.run({ action: 'merge', branch: ref.name });
+          }}
+        >
+          Merge {ref.name} into {current}
+        </ContextMenu.Item>
+      ))}
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          history.run({ action: 'cherryPick', ...commit });
+        }}
+      >
+        Cherry-pick commit
+      </ContextMenu.Item>
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          history.run({ action: 'revert', ...commit });
+        }}
+      >
+        Revert commit
+      </ContextMenu.Item>
+      <ContextMenu.Sub>
+        <ContextMenu.SubTrigger className={menu.item}>
+          Reset {current} to this commit
+          <ChevronRight size={14} className={menu.subIcon} aria-hidden />
+        </ContextMenu.SubTrigger>
+        <ContextMenu.Portal>
+          <ContextMenu.SubContent className={menu.content}>
+            {RESET_MODES.map(({ mode, label }) => (
+              <ContextMenu.Item
+                key={mode}
+                className={mode === 'hard' ? `${menu.item} ${menu.danger}` : menu.item}
+                onSelect={() => {
+                  history.reset(entry.id, entry.shortId, mode);
+                }}
+              >
+                {label}
+              </ContextMenu.Item>
+            ))}
+          </ContextMenu.SubContent>
+        </ContextMenu.Portal>
+      </ContextMenu.Sub>
+      {tags.length > 0 && <ContextMenu.Separator className={menu.separator} />}
+      {tags.map((tag) => (
+        <ContextMenu.Group key={tag.name}>
+          <ContextMenu.Item
+            className={menu.item}
+            onSelect={() => {
+              history.run({ action: 'pushTag', name: tag.name });
+            }}
+          >
+            Push tag {tag.name}
+          </ContextMenu.Item>
+          <ContextMenu.Item
+            className={`${menu.item} ${menu.danger}`}
+            onSelect={() => {
+              history.run({ action: 'deleteTag', name: tag.name });
+            }}
+          >
+            Delete tag {tag.name}
+          </ContextMenu.Item>
+        </ContextMenu.Group>
       ))}
       <ContextMenu.Separator className={menu.separator} />
       <ContextMenu.Item

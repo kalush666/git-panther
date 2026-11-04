@@ -1,6 +1,6 @@
 import * as ContextMenu from '@radix-ui/react-context-menu';
 import { Check, ChevronDown, ChevronRight, Cloud, Folder, GitBranch, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type DragEvent } from 'react';
 
 import type { Branch } from '../../../shared/ipc';
 import { useBranches } from '../api/useBranches';
@@ -9,13 +9,24 @@ import menu from './menu.module.css';
 import styles from './BranchSidebar.module.css';
 import { StashList } from './StashList';
 import type { BranchActions } from './useBranchActions';
+import type { HistoryActions } from './useHistoryActions';
+
+/** Drag-and-drop payload: the dragged branch's name. */
+const BRANCH_DRAG_TYPE = 'application/x-git-panther-branch';
 
 interface BranchSidebarProps {
   path: string;
   actions: BranchActions;
+  history: HistoryActions;
 }
 
-export function BranchSidebar({ path, actions }: BranchSidebarProps) {
+/** What every branch row can do. */
+interface RowActions {
+  actions: BranchActions;
+  history: HistoryActions;
+}
+
+export function BranchSidebar({ path, actions, history }: BranchSidebarProps) {
   const branches = useBranches(path);
   const [filter, setFilter] = useState('');
   const all = filterBranches(branches.data ?? [], filter);
@@ -42,12 +53,14 @@ export function BranchSidebar({ path, actions }: BranchSidebarProps) {
           icon={<GitBranch size={13} aria-hidden />}
           branches={local}
           actions={actions}
+          history={history}
         />
         <Section
           title="Remote"
           icon={<Cloud size={13} aria-hidden />}
           branches={remote}
           actions={actions}
+          history={history}
         />
         <StashList path={path} />
       </div>
@@ -65,12 +78,12 @@ function Section({
   icon,
   branches,
   actions,
+  history,
 }: {
   title: string;
   icon: React.ReactNode;
   branches: Branch[];
-  actions: BranchActions;
-}) {
+} & RowActions) {
   const [open, setOpen] = useState(true);
   return (
     <section className={styles.section}>
@@ -90,7 +103,13 @@ function Section({
       {open && (
         <ul className={styles.tree} role="tree" aria-label={`${title} branches`}>
           {buildBranchTree(branches).map((node) => (
-            <TreeNode key={nodeKey(node)} node={node} depth={0} actions={actions} />
+            <TreeNode
+              key={nodeKey(node)}
+              node={node}
+              depth={0}
+              actions={actions}
+              history={history}
+            />
           ))}
         </ul>
       )}
@@ -105,11 +124,11 @@ function TreeNode({
   node,
   depth,
   actions,
+  history,
 }: {
   node: BranchNode;
   depth: number;
-  actions: BranchActions;
-}) {
+} & RowActions) {
   const [open, setOpen] = useState(true);
   const indent = { paddingLeft: `calc(var(--gp-space-3) + ${depth} * var(--gp-space-4))` };
   if (node.kind === 'folder') {
@@ -130,14 +149,28 @@ function TreeNode({
         {open && (
           <ul role="group" className={styles.tree}>
             {node.children.map((child) => (
-              <TreeNode key={nodeKey(child)} node={child} depth={depth + 1} actions={actions} />
+              <TreeNode
+                key={nodeKey(child)}
+                node={child}
+                depth={depth + 1}
+                actions={actions}
+                history={history}
+              />
             ))}
           </ul>
         )}
       </li>
     );
   }
-  return <BranchRow branch={node.branch} label={node.label} indent={indent} actions={actions} />;
+  return (
+    <BranchRow
+      branch={node.branch}
+      label={node.label}
+      indent={indent}
+      actions={actions}
+      history={history}
+    />
+  );
 }
 
 function BranchRow({
@@ -145,13 +178,18 @@ function BranchRow({
   label,
   indent,
   actions,
+  history,
 }: {
   branch: Branch;
   label: string;
   indent: React.CSSProperties;
-  actions: BranchActions;
-}) {
+} & RowActions) {
   const isLocal = branch.kind === 'local';
+  const [dropTarget, setDropTarget] = useState(false);
+  const current = history.currentBranch;
+  // Only the checked-out branch accepts drops: merge and rebase act on it.
+  const acceptsDrop = (event: DragEvent) =>
+    branch.isHead && event.dataTransfer.types.includes(BRANCH_DRAG_TYPE);
   return (
     <li role="treeitem" aria-selected={branch.isHead}>
       <ContextMenu.Root>
@@ -160,7 +198,30 @@ function BranchRow({
             type="button"
             className={styles.row}
             data-head={branch.isHead}
+            data-drop-target={dropTarget}
             style={indent}
+            draggable={!branch.isHead}
+            onDragStart={(event) => {
+              event.dataTransfer.setData(BRANCH_DRAG_TYPE, branch.name);
+              event.dataTransfer.effectAllowed = 'link';
+            }}
+            onDragOver={(event) => {
+              if (!acceptsDrop(event)) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'link';
+              setDropTarget(true);
+            }}
+            onDragLeave={() => {
+              setDropTarget(false);
+            }}
+            onDrop={(event) => {
+              setDropTarget(false);
+              const source = event.dataTransfer.getData(BRANCH_DRAG_TYPE);
+              if (source && source !== branch.name) {
+                event.preventDefault();
+                history.openCombine(source);
+              }
+            }}
             title={`${branch.name}${branch.upstream ? ` → ${branch.upstream}` : ''} (double-click to check out)`}
             onDoubleClick={() => {
               actions.checkout(branch.name);
@@ -201,6 +262,27 @@ function BranchRow({
             >
               Create branch from here…
             </ContextMenu.Item>
+            {!branch.isHead && current && (
+              <>
+                <ContextMenu.Separator className={menu.separator} />
+                <ContextMenu.Item
+                  className={menu.item}
+                  onSelect={() => {
+                    history.run({ action: 'merge', branch: branch.name });
+                  }}
+                >
+                  Merge {branch.name} into {current}
+                </ContextMenu.Item>
+                <ContextMenu.Item
+                  className={menu.item}
+                  onSelect={() => {
+                    history.run({ action: 'rebase', onto: branch.name });
+                  }}
+                >
+                  Rebase {current} onto {branch.name}
+                </ContextMenu.Item>
+              </>
+            )}
             {isLocal && (
               <>
                 <ContextMenu.Separator className={menu.separator} />

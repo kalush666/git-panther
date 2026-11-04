@@ -27,6 +27,7 @@ export type {
   HunkAction,
   HunkTarget,
   OnProgress,
+  ResetMode,
   Operation,
   PullStrategy,
   Remote,

@@ -64,6 +64,8 @@ export function createMockBranches() {
 
     headName: (): string => branches.find((branch) => branch.isHead)?.name ?? 'main',
 
+    targetOf: (name: string): string | null => local(name)?.target ?? null,
+
     create: (name: string, start: string, checkout: boolean): Result<null> => {
       if (/\s|\.\./.test(name) || name.trim() === '') {
         return failure('invalidBranchName', `"${name}" is not a valid branch name.`);

@@ -38,3 +38,8 @@
   margin: var(--gp-space-1) 0;
   background: var(--gp-border-subtle);
 }
+
+.subIcon {
+  margin-left: auto;
+  color: var(--gp-text-muted);
+}
