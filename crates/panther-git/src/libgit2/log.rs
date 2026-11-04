@@ -7,6 +7,7 @@ use std::path::Path;
 use git2::{
     Commit, Delta, DiffFindOptions, DiffOptions, ErrorCode, Oid, Reference, Repository, Sort,
 };
+use panther_domain::commit::CommitFilter;
 use panther_domain::commit::{
     BlameLine, ChangeKind, CommitDetails, CommitId, CommitNode, CommitSummary, Comparison,
     FileChange, Person, RefKind, RefLabel, ReflogEntry, body_preview,
@@ -202,6 +203,24 @@ impl CommitLog for Git2CommitLog {
             commits: self.summaries(repository_path, &ids)?,
             changes,
         })
+    }
+
+    fn filter(
+        &self,
+        repository: &Path,
+        filter: &CommitFilter,
+    ) -> Result<Vec<CommitId>, RepositoryError> {
+        let repository = open(repository)?;
+        let mut matches = Vec::new();
+        for oid in walk_all(&repository)? {
+            let commit = repository
+                .find_commit(oid)
+                .map_err(|error| git_error(&error))?;
+            if filter.accepts(&person(&commit.author())) {
+                matches.push(commit_id(oid));
+            }
+        }
+        Ok(matches)
     }
 
     fn reflog(&self, repository: &Path) -> Result<Vec<ReflogEntry>, RepositoryError> {

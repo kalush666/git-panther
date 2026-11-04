@@ -8,8 +8,8 @@ use std::path::Path;
 use crate::account::{Account, Password, Server};
 use crate::branch::{Branch, BranchName};
 use crate::commit::{
-    BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, Comparison, RefLabel,
-    ReflogEntry,
+    BlameLine, CommitDetails, CommitFilter, CommitId, CommitNode, CommitSummary, Comparison,
+    RefLabel, ReflogEntry,
 };
 use crate::conflict::ConflictChunk;
 use crate::git_installation::{GitVersion, GitVersionParseError};
@@ -489,6 +489,16 @@ pub trait CommitLog: Send + Sync {
         base: &str,
         head: &str,
     ) -> Result<Comparison, RepositoryError>;
+
+    /// Commits on any ref that pass `filter`, in no particular order.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn filter(
+        &self,
+        repository: &Path,
+        filter: &CommitFilter,
+    ) -> Result<Vec<CommitId>, RepositoryError>;
 
     /// Where HEAD pointed recently, newest first, at most
     /// [`ReflogEntry::LIMIT`], each marked when no ref contains it any more.

@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
+use panther_domain::commit::CommitFilter;
 use panther_domain::commit::ReflogEntry;
 use panther_domain::commit::{
     BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, Comparison, RefLabel,
@@ -223,6 +224,36 @@ impl CommitGraph {
         Ok(rows)
     }
 
+    /// Rows of the graph whose commit passes `filter`, top to bottom; every
+    /// row when the filter is empty.
+    ///
+    /// # Errors
+    /// Propagates [`CommitLog`] errors.
+    pub fn filter_rows(
+        &self,
+        repository: &Path,
+        filter: &CommitFilter,
+        hidden: &[String],
+    ) -> Result<Vec<usize>, RepositoryError> {
+        let matched = if filter.is_empty() {
+            None
+        } else {
+            Some(self.log.filter(repository, filter)?)
+        };
+        let fingerprint = self.log.refs_fingerprint(repository)?;
+        let mut cache = self.lock();
+        let history = self.fresh_history(&mut cache, repository, fingerprint, hidden)?;
+        let Some(matched) = matched else {
+            return Ok((0..history.nodes.len()).collect());
+        };
+        let mut rows: Vec<usize> = matched
+            .iter()
+            .filter_map(|id| history.positions.get(id).copied())
+            .collect();
+        rows.sort_unstable();
+        Ok(rows)
+    }
+
     /// Commits that changed `path`, newest first.
     ///
     /// # Errors
@@ -424,6 +455,10 @@ mod tests {
         }
 
         fn reflog(&self, _: &Path) -> Result<Vec<ReflogEntry>, RepositoryError> {
+            Ok(Vec::new())
+        }
+
+        fn filter(&self, _: &Path, _: &CommitFilter) -> Result<Vec<CommitId>, RepositoryError> {
             Ok(Vec::new())
         }
 

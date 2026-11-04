@@ -153,6 +153,39 @@ impl Comparison {
     pub const MAX_COMMITS: usize = 500;
 }
 
+/// Narrows the graph to commits by an author and/or since a time.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CommitFilter {
+    /// Part of the author's name or email, any case.
+    pub author: Option<String>,
+    /// Unix seconds; older commits are left out.
+    pub since: Option<i64>,
+}
+
+impl CommitFilter {
+    /// The author text to match, if any is set.
+    pub fn author_needle(&self) -> Option<String> {
+        self.author
+            .as_deref()
+            .map(str::trim)
+            .filter(|author| !author.is_empty())
+            .map(str::to_lowercase)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.author_needle().is_none() && self.since.is_none()
+    }
+
+    /// Whether a commit by `author` at `time` passes.
+    pub fn accepts(&self, author: &Person) -> bool {
+        let by_author = self.author_needle().is_none_or(|needle| {
+            author.name.to_lowercase().contains(&needle)
+                || author.email.to_lowercase().contains(&needle)
+        });
+        by_author && self.since.is_none_or(|since| author.time >= since)
+    }
+}
+
 /// One place HEAD pointed at, from git's reflog, newest first.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReflogEntry {

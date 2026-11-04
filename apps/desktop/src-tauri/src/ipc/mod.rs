@@ -97,6 +97,7 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::compare_refs,
             commands::compare_file_diff,
             commands::reflog,
+            commands::filter_commits,
             commands::disconnect_hosting,
             commands::hosting_status,
             commands::list_pull_requests,

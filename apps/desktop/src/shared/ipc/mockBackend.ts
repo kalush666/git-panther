@@ -27,6 +27,7 @@ import {
   mockCommitDetails,
   mockFileHistory,
   mockGraphPage,
+  mockFilter,
   mockSearch,
 } from './mockGraph';
 import { createMockWorkingTree } from './mockWorkingTree';
@@ -267,6 +268,7 @@ function createMockBackend(): Backend {
     },
     loadGraphPage: (_path, offset, limit) => Promise.resolve(ok(mockGraphPage(offset, limit))),
     searchCommits: (_path, query) => Promise.resolve(ok(mockSearch(query))),
+    filterCommits: (_path, author, since) => Promise.resolve(ok(mockFilter(author, since))),
     fileHistory: () => Promise.resolve(ok(mockFileHistory())),
     blameFile: (_path, file) => Promise.resolve(ok(mockBlame(file))),
     commitDetails: (_path, id) => {

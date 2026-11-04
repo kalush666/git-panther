@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use panther_domain::commit::CommitId;
+use panther_domain::commit::{CommitFilter, CommitId};
 use panther_domain::repository::{
     CancellationToken, CloneProgress, CloneRequest, RemoteUrl, RepositoryError,
 };
@@ -305,6 +305,32 @@ pub async fn search_commits(
     run_blocking(move || {
         Ok(graph
             .search(&PathBuf::from(path), &query, &hidden)?
+            .into_iter()
+            .map(|row| u32::try_from(row).unwrap_or(u32::MAX))
+            .collect())
+    })
+    .await
+}
+
+/// Rows of the graph by `author` (name or email, any case) and/or `since`
+/// (Unix seconds), top to bottom.
+#[tauri::command]
+#[specta::specta]
+pub async fn filter_commits(
+    services: State<'_, AppServices>,
+    path: String,
+    author: Option<String>,
+    since: Option<u32>,
+    hidden: Vec<String>,
+) -> Result<Vec<u32>, AppError> {
+    let graph = services.commit_graph.clone();
+    run_blocking(move || {
+        let filter = CommitFilter {
+            author,
+            since: since.map(i64::from),
+        };
+        Ok(graph
+            .filter_rows(&PathBuf::from(path), &filter, &hidden)?
             .into_iter()
             .map(|row| u32::try_from(row).unwrap_or(u32::MAX))
             .collect())

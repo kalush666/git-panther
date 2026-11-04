@@ -141,6 +141,13 @@ export interface Backend {
   ): Promise<Result<GraphPageDto>>;
   /** Graph rows matching `query` (message, author or SHA prefix), top to bottom. */
   searchCommits(path: string, query: string, hidden: string[]): Promise<Result<number[]>>;
+  /** Rows by `author` (name or email) and/or `since` (Unix seconds), top to bottom. */
+  filterCommits(
+    path: string,
+    author: string | null,
+    since: number | null,
+    hidden: string[],
+  ): Promise<Result<number[]>>;
   /** Commits that changed `file`, newest first. */
   fileHistory(path: string, file: string): Promise<Result<CommitSummary[]>>;
   /** Who last changed each line of `file`. */
