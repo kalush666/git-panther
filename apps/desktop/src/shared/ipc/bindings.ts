@@ -71,7 +71,7 @@ export const commands = {
 	/**  Pulls the current branch's upstream with `strategy`. */
 	pullBranch: (path: string, strategy: PullStrategyDto, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<null, AppError>(__TAURI_INVOKE("pull_branch", { path, strategy, jobId, onProgress })),
 	/**  Pushes the current branch, setting its upstream on the first push. */
-	pushBranch: (path: string, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<null, AppError>(__TAURI_INVOKE("push_branch", { path, jobId, onProgress })),
+	pushBranch: (path: string, remote: string | null, forceWithLease: boolean, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<null, AppError>(__TAURI_INVOKE("push_branch", { path, remote, forceWithLease, jobId, onProgress })),
 	/**  Stash entries, newest first. */
 	listStashes: (path: string) => typedError<StashDto[], AppError>(__TAURI_INVOKE("list_stashes", { path })),
 	/**  Stashes uncommitted changes, and untracked files if asked. */
@@ -148,6 +148,26 @@ export const commands = {
 	conflictChunks: (path: string, file: string) => typedError<ConflictChunkDto_Serialize[], AppError>(__TAURI_INVOKE("conflict_chunks", { path, file })),
 	/**  Writes the user's resolution of a conflicted file and stages it. */
 	resolveConflictWith: (path: string, file: string, content: string) => typedError<null, AppError>(__TAURI_INVOKE("resolve_conflict_with", { path, file, content })),
+	/**  Adds a remote. */
+	addRemote: (path: string, name: string, url: string) => typedError<null, AppError>(__TAURI_INVOKE("add_remote", { path, name, url })),
+	/**  Changes where a remote points. */
+	setRemoteUrl: (path: string, name: string, url: string) => typedError<null, AppError>(__TAURI_INVOKE("set_remote_url", { path, name, url })),
+	/**  Removes a remote and its remote-tracking branches. */
+	removeRemote: (path: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("remove_remote", { path, name })),
+	/**  Deletes a branch on its remote, given as `remote/branch`. */
+	deleteRemoteBranch: (path: string, branch: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_remote_branch", { path, branch })),
+	/**  Registered submodules and their state. */
+	listSubmodules: (path: string) => typedError<SubmoduleDto[], AppError>(__TAURI_INVOKE("list_submodules", { path })),
+	/**  Clones missing submodules and checks all out at their recorded commits. */
+	updateSubmodules: (path: string, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<null, AppError>(__TAURI_INVOKE("update_submodules", { path, jobId, onProgress })),
+	/**  Working trees of the repository, the main one first. */
+	listWorktrees: (path: string) => typedError<WorktreeDto_Serialize[], AppError>(__TAURI_INVOKE("list_worktrees", { path })),
+	/**  Checks `branch` out in a new worktree next to the repository; returns its path. */
+	addWorktree: (path: string, branch: string) => typedError<string, AppError>(__TAURI_INVOKE("add_worktree", { path, branch })),
+	/**  Removes a linked worktree that has no uncommitted changes. */
+	removeWorktree: (path: string, worktree: string) => typedError<null, AppError>(__TAURI_INVOKE("remove_worktree", { path, worktree })),
+	/**  Whether the repository uses Git LFS and whether `git lfs` is installed. */
+	lfsStatus: (path: string) => typedError<LfsStatusDto, AppError>(__TAURI_INVOKE("lfs_status", { path })),
 };
 
 /** Events */
@@ -171,7 +191,7 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "undoOutdated" | "invalidRebasePlan" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "undoOutdated" | "invalidRebasePlan" | "invalidRemoteName" | "remoteExists" | "remoteNotFound" | "worktreeFailed" | "watchFailed" | "internal";
 
 /**  Who last changed one line. */
 export type BlameLineDto = {
@@ -377,6 +397,11 @@ export type HunkDto_Serialize = {
 	lines: DiffLineDto_Serialize[],
 };
 
+export type LfsStatusDto = {
+	used: boolean,
+	installed: boolean,
+};
+
 export type LineKindDto = "context" | "added" | "removed";
 
 /**  An operation waiting for conflicts to be resolved. */
@@ -473,6 +498,14 @@ export type StashDto = {
 	id: string,
 };
 
+export type SubmoduleDto = {
+	path: string,
+	commit: string,
+	state: SubmoduleStateDto,
+};
+
+export type SubmoduleStateDto = "current" | "notInitialized" | "outOfDate" | "conflicted";
+
 /**  Uncommitted changes of a repository. */
 export type WorkingTreeStatusDto = WorkingTreeStatusDto_Serialize | WorkingTreeStatusDto_Deserialize;
 
@@ -488,6 +521,20 @@ export type WorkingTreeStatusDto_Serialize = {
 	staged: ChangedFileDto_Serialize[],
 	unstaged: ChangedFileDto_Serialize[],
 	conflicted: string[],
+};
+
+export type WorktreeDto = WorktreeDto_Serialize | WorktreeDto_Deserialize;
+
+export type WorktreeDto_Deserialize = {
+	path: string,
+	branch?: string | null,
+	isMain: boolean,
+};
+
+export type WorktreeDto_Serialize = {
+	path: string,
+	branch: string | null,
+	isMain: boolean,
 };
 
 /* Tauri Specta runtime */

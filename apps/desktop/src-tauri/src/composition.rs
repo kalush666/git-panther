@@ -10,8 +10,10 @@ use panther_application::clone_repository::CloneRepository;
 use panther_application::commit_graph::CommitGraph;
 use panther_application::conflicts::Conflicts;
 use panther_application::history::History;
+use panther_application::layout::Layout;
 use panther_application::open_repository::OpenRepository;
 use panther_application::recent_repositories::RecentRepositoryList;
+use panther_application::remotes::Remotes;
 use panther_application::settings::AppSettings;
 use panther_application::stashes::Stashes;
 use panther_application::sync::Sync;
@@ -19,8 +21,8 @@ use panther_application::undo::UndoLog;
 use panther_application::working_copy::WorkingCopy;
 use panther_git::{
     Git2RepositoryOpener, GitBranchStore, GitCliCloner, GitCommitLog, GitCommitWriter,
-    GitConflictResolver, GitCredentialStore, GitHistoryEditor, GitRemoteSync, GitStashStore,
-    GitTagStore, GitWorkingTree, SystemGitProbe,
+    GitConflictResolver, GitCredentialStore, GitHistoryEditor, GitRemoteConfig, GitRemoteSync,
+    GitRepositoryLayout, GitStashStore, GitTagStore, GitWorkingTree, SystemGitProbe,
 };
 
 use crate::infra::recent_store::JsonRecentRepositoryStore;
@@ -44,6 +46,8 @@ pub struct AppServices {
     pub settings: Arc<AppSettings>,
     pub accounts: Arc<Accounts>,
     pub history: Arc<History>,
+    pub remotes: Arc<Remotes>,
+    pub layout: Arc<Layout>,
 }
 
 impl AppServices {
@@ -89,6 +93,8 @@ impl AppServices {
             branches: Arc::new(
                 Branches::new(Arc::new(GitBranchStore::new(git.clone()))).with_undo(undo.clone()),
             ),
+            remotes: Arc::new(Remotes::new(Arc::new(GitRemoteConfig::new(git.clone())))),
+            layout: Arc::new(Layout::new(Arc::new(GitRepositoryLayout::new(git.clone())))),
             history: Arc::new(History::new(
                 history_editor,
                 Arc::new(GitTagStore::new(git.clone())),

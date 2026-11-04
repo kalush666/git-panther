@@ -206,6 +206,14 @@ pub enum RepositoryError {
     UndoOutdated,
     #[error(transparent)]
     InvalidRebasePlan(#[from] crate::history::InvalidRebasePlan),
+    #[error(transparent)]
+    InvalidRemoteName(#[from] crate::remote::InvalidRemoteName),
+    #[error("A remote named \"{name}\" already exists.")]
+    RemoteExists { name: String },
+    #[error("There is no remote named \"{name}\".")]
+    RemoteNotFound { name: String },
+    #[error("{path} cannot be used for a new worktree: {details}")]
+    WorktreeFailed { path: PathBuf, details: String },
 }
 
 #[cfg(test)]

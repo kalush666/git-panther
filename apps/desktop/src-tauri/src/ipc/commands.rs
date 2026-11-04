@@ -15,15 +15,16 @@ use tauri_specta::Event;
 use super::dto::{
     AccountDto, BlameLineDto, BranchDto, CloneProgressDto, CommitDetailsDto, CommitSummaryDto,
     ConflictChunkDto, ConflictSideDto, DiffSideDto, FileDiffDto, GitInstallationDto, GraphPageDto,
-    HunkActionDto, OperationDto, PullStrategyDto, RebaseStepDto, RecentRepositoryDto, RemoteDto,
-    RepositoryChanged, RepositorySummaryDto, ResetModeDto, SettingsDto, StashDto,
-    WorkingTreeStatusDto,
+    HunkActionDto, LfsStatusDto, OperationDto, PullStrategyDto, RebaseStepDto, RecentRepositoryDto,
+    RemoteDto, RepositoryChanged, RepositorySummaryDto, ResetModeDto, SettingsDto, StashDto,
+    SubmoduleDto, WorkingTreeStatusDto, WorktreeDto,
 };
 use super::error::{AppError, AppErrorKind};
 use crate::composition::AppServices;
 use crate::infra::jobs::JobRegistry;
 use crate::infra::watcher::RepositoryWatcher;
 use panther_application::accounts::SignIn;
+use panther_domain::remote::{PushOptions, RemoteName};
 
 /// Runs blocking work (git, disk) off the async runtime's worker threads.
 async fn run_blocking<T: Send + 'static>(
@@ -623,18 +624,179 @@ pub async fn pull_branch(
 /// Pushes the current branch, setting its upstream on the first push.
 #[tauri::command]
 #[specta::specta]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Tauri passes every command argument separately"
+)]
 pub async fn push_branch(
+    services: State<'_, AppServices>,
+    jobs: State<'_, JobRegistry>,
+    path: String,
+    remote: Option<String>,
+    force_with_lease: bool,
+    job_id: String,
+    on_progress: Channel<CloneProgressDto>,
+) -> Result<(), AppError> {
+    let sync = services.sync.clone();
+    let options = PushOptions {
+        remote: remote
+            .as_deref()
+            .map(RemoteName::parse)
+            .transpose()
+            .map_err(RepositoryError::from)?,
+        force_with_lease,
+    };
+    run_job(&jobs, &job_id, on_progress, move |report, cancel| {
+        Ok(sync.push(&PathBuf::from(path), &options, report, cancel)?)
+    })
+    .await
+}
+
+/// Adds a remote.
+#[tauri::command]
+#[specta::specta]
+pub async fn add_remote(
+    services: State<'_, AppServices>,
+    path: String,
+    name: String,
+    url: String,
+) -> Result<(), AppError> {
+    let remotes = services.remotes.clone();
+    run_blocking(move || Ok(remotes.add(&PathBuf::from(path), &name, &url)?)).await
+}
+
+/// Changes where a remote points.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_remote_url(
+    services: State<'_, AppServices>,
+    path: String,
+    name: String,
+    url: String,
+) -> Result<(), AppError> {
+    let remotes = services.remotes.clone();
+    run_blocking(move || Ok(remotes.set_url(&PathBuf::from(path), &name, &url)?)).await
+}
+
+/// Removes a remote and its remote-tracking branches.
+#[tauri::command]
+#[specta::specta]
+pub async fn remove_remote(
+    services: State<'_, AppServices>,
+    path: String,
+    name: String,
+) -> Result<(), AppError> {
+    let remotes = services.remotes.clone();
+    run_blocking(move || Ok(remotes.remove(&PathBuf::from(path), &name)?)).await
+}
+
+/// Deletes a branch on its remote, given as `remote/branch`.
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_remote_branch(
+    services: State<'_, AppServices>,
+    path: String,
+    branch: String,
+) -> Result<(), AppError> {
+    let remotes = services.remotes.clone();
+    run_blocking(move || Ok(remotes.delete_branch(&PathBuf::from(path), &branch)?)).await
+}
+
+/// Registered submodules and their state.
+#[tauri::command]
+#[specta::specta]
+pub async fn list_submodules(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Vec<SubmoduleDto>, AppError> {
+    let layout = services.layout.clone();
+    run_blocking(move || {
+        Ok(layout
+            .submodules(&PathBuf::from(path))?
+            .into_iter()
+            .map(SubmoduleDto::from)
+            .collect())
+    })
+    .await
+}
+
+/// Clones missing submodules and checks all out at their recorded commits.
+#[tauri::command]
+#[specta::specta]
+pub async fn update_submodules(
     services: State<'_, AppServices>,
     jobs: State<'_, JobRegistry>,
     path: String,
     job_id: String,
     on_progress: Channel<CloneProgressDto>,
 ) -> Result<(), AppError> {
-    let sync = services.sync.clone();
+    let layout = services.layout.clone();
     run_job(&jobs, &job_id, on_progress, move |report, cancel| {
-        Ok(sync.push(&PathBuf::from(path), report, cancel)?)
+        Ok(layout.update_submodules(&PathBuf::from(path), report, cancel)?)
     })
     .await
+}
+
+/// Working trees of the repository, the main one first.
+#[tauri::command]
+#[specta::specta]
+pub async fn list_worktrees(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Vec<WorktreeDto>, AppError> {
+    let layout = services.layout.clone();
+    run_blocking(move || {
+        Ok(layout
+            .worktrees(&PathBuf::from(path))?
+            .into_iter()
+            .map(WorktreeDto::from)
+            .collect())
+    })
+    .await
+}
+
+/// Checks `branch` out in a new worktree next to the repository; returns its path.
+#[tauri::command]
+#[specta::specta]
+pub async fn add_worktree(
+    services: State<'_, AppServices>,
+    path: String,
+    branch: String,
+) -> Result<String, AppError> {
+    let layout = services.layout.clone();
+    run_blocking(move || {
+        Ok(layout
+            .add_worktree(&PathBuf::from(path), &branch)?
+            .display()
+            .to_string())
+    })
+    .await
+}
+
+/// Removes a linked worktree that has no uncommitted changes.
+#[tauri::command]
+#[specta::specta]
+pub async fn remove_worktree(
+    services: State<'_, AppServices>,
+    path: String,
+    worktree: String,
+) -> Result<(), AppError> {
+    let layout = services.layout.clone();
+    run_blocking(
+        move || Ok(layout.remove_worktree(&PathBuf::from(path), &PathBuf::from(worktree))?),
+    )
+    .await
+}
+
+/// Whether the repository uses Git LFS and whether `git lfs` is installed.
+#[tauri::command]
+#[specta::specta]
+pub async fn lfs_status(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<LfsStatusDto, AppError> {
+    let layout = services.layout.clone();
+    run_blocking(move || Ok(layout.lfs(&PathBuf::from(path))?.into())).await
 }
 
 /// Stash entries, newest first.

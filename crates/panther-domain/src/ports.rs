@@ -11,8 +11,9 @@ use crate::commit::{BlameLine, CommitDetails, CommitId, CommitNode, CommitSummar
 use crate::conflict::ConflictChunk;
 use crate::git_installation::{GitVersion, GitVersionParseError};
 use crate::history::{HeadSnapshot, RebaseStep, ResetMode, TagName};
+use crate::layout::{LfsStatus, Submodule, Worktree};
 use crate::recent::RecentRepositories;
-use crate::remote::{PullStrategy, Remote};
+use crate::remote::{PullStrategy, PushOptions, Remote, RemoteName};
 use crate::repository::{
     CancellationToken, CloneProgress, CloneRequest, RepositoryError, RepositorySummary,
 };
@@ -125,6 +126,83 @@ pub trait BranchStore: Send + Sync {
         name: &BranchName,
         force: bool,
     ) -> Result<(), RepositoryError>;
+}
+
+/// Adds, edits and removes remotes, and deletes branches on them.
+pub trait RemoteConfig: Send + Sync {
+    /// # Errors
+    /// [`RepositoryError::RemoteExists`] or [`RepositoryError::InvalidRemoteUrl`].
+    fn add(&self, repository: &Path, name: &RemoteName, url: &str) -> Result<(), RepositoryError>;
+
+    /// # Errors
+    /// [`RepositoryError::RemoteNotFound`].
+    fn set_url(
+        &self,
+        repository: &Path,
+        name: &RemoteName,
+        url: &str,
+    ) -> Result<(), RepositoryError>;
+
+    /// Removes the remote and its remote-tracking branches.
+    ///
+    /// # Errors
+    /// [`RepositoryError::RemoteNotFound`].
+    fn remove(&self, repository: &Path, name: &RemoteName) -> Result<(), RepositoryError>;
+
+    /// Deletes `branch` on `remote` (a push of nothing to it).
+    ///
+    /// # Errors
+    /// Authentication, network or rejection errors.
+    fn delete_branch(
+        &self,
+        repository: &Path,
+        remote: &RemoteName,
+        branch: &str,
+    ) -> Result<(), RepositoryError>;
+}
+
+/// Submodules, linked worktrees and Git LFS.
+pub trait RepositoryLayout: Send + Sync {
+    /// # Errors
+    /// [`RepositoryError`] when git cannot list them.
+    fn submodules(&self, repository: &Path) -> Result<Vec<Submodule>, RepositoryError>;
+
+    /// Clones missing submodules and checks every one out at its recorded
+    /// commit, recursively.
+    ///
+    /// # Errors
+    /// Authentication or network errors.
+    fn update_submodules(
+        &self,
+        repository: &Path,
+        on_progress: &mut dyn FnMut(CloneProgress),
+        cancel: &CancellationToken,
+    ) -> Result<(), RepositoryError>;
+
+    /// The main working tree first.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when git cannot list them.
+    fn worktrees(&self, repository: &Path) -> Result<Vec<Worktree>, RepositoryError>;
+
+    /// Checks out `branch` in a new working tree at `path`.
+    ///
+    /// # Errors
+    /// [`RepositoryError::WorktreeFailed`].
+    fn add_worktree(
+        &self,
+        repository: &Path,
+        path: &Path,
+        branch: &str,
+    ) -> Result<(), RepositoryError>;
+
+    /// # Errors
+    /// [`RepositoryError::WorktreeFailed`] when it has uncommitted changes.
+    fn remove_worktree(&self, repository: &Path, path: &Path) -> Result<(), RepositoryError>;
+
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read.
+    fn lfs(&self, repository: &Path) -> Result<LfsStatus, RepositoryError>;
 }
 
 /// Saves uncommitted work aside and brings it back.
@@ -271,6 +349,7 @@ pub trait RemoteSync: Send + Sync {
     fn push(
         &self,
         repository: &Path,
+        options: &PushOptions,
         on_progress: &mut dyn FnMut(CloneProgress),
         cancel: &CancellationToken,
     ) -> Result<(), RepositoryError>;

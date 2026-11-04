@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use panther_domain::ports::RemoteSync;
-use panther_domain::remote::{PullStrategy, Remote};
+use panther_domain::remote::{PullStrategy, PushOptions, Remote};
 use panther_domain::repository::{CancellationToken, CloneProgress, RepositoryError};
 
 use crate::cli::{pull_args, run_sync};
@@ -96,27 +96,30 @@ impl RemoteSync for GitRemoteSync {
     fn push(
         &self,
         repository: &Path,
+        options: &PushOptions,
         on_progress: &mut dyn FnMut(CloneProgress),
         cancel: &CancellationToken,
     ) -> Result<(), RepositoryError> {
         let branch = current_branch(repository)?;
-        if upstream_of(repository, &branch)?.is_some() {
-            return run_sync(
-                &self.executable,
-                repository,
-                &["push", "--progress"],
-                on_progress,
-                cancel,
-            );
+        let has_upstream = upstream_of(repository, &branch)?.is_some();
+        let mut args = vec!["push", "--progress"];
+        if options.force_with_lease {
+            args.push("--force-with-lease");
         }
-        let remote = default_remote(self.remotes(repository)?)?;
-        run_sync(
-            &self.executable,
-            repository,
-            &["push", "--progress", "--set-upstream", &remote, &branch],
-            on_progress,
-            cancel,
-        )
+        // Without a chosen remote, a branch with an upstream pushes there;
+        // otherwise name the remote and branch, and remember it as upstream.
+        let remote = match (&options.remote, has_upstream) {
+            (None, true) => None,
+            (Some(remote), _) => Some(remote.to_string()),
+            (None, false) => Some(default_remote(self.remotes(repository)?)?),
+        };
+        if let Some(remote) = &remote {
+            if !has_upstream {
+                args.push("--set-upstream");
+            }
+            args.extend([remote.as_str(), branch.as_str()]);
+        }
+        run_sync(&self.executable, repository, &args, on_progress, cancel)
     }
 }
 
