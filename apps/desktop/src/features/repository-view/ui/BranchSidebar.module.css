@@ -87,6 +87,8 @@
   gap: var(--gp-space-2);
   width: 100%;
   height: var(--gp-row-height);
+  /* Branch rows set their own indent inline; other lists line up with them. */
+  padding-left: calc(var(--gp-space-3) + var(--gp-space-4));
   padding-right: var(--gp-space-3);
   border: none;
   background: transparent;
