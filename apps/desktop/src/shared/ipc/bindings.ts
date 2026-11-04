@@ -31,7 +31,7 @@ export const commands = {
 	/**  Stops watching `path` and releases its cached history. */
 	unwatchRepository: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("unwatch_repository", { path })),
 	/**  Up to `limit` rows of the commit graph starting at row `offset`. */
-	loadGraphPage: (path: string, offset: number, limit: number) => typedError<GraphPageDto, AppError>(__TAURI_INVOKE("load_graph_page", { path, offset, limit })),
+	loadGraphPage: (path: string, offset: number, limit: number, hidden: string[]) => typedError<GraphPageDto, AppError>(__TAURI_INVOKE("load_graph_page", { path, offset, limit, hidden })),
 	/**  Full message, people and changed files of commit `id`. */
 	commitDetails: (path: string, id: string) => typedError<CommitDetailsDto, AppError>(__TAURI_INVOKE("commit_details", { path, id })),
 	/**  Staged, unstaged and conflicted files. */
@@ -50,7 +50,7 @@ export const commands = {
 	 *  Stages, unstages or discards hunk `index` of `file`, as long as its
 	 *  header still matches what the UI showed.
 	 */
-	applyHunk: (path: string, file: string, index: number, header: string, action: HunkActionDto) => typedError<null, AppError>(__TAURI_INVOKE("apply_hunk", { path, file, index, header, action })),
+	applyHunk: (path: string, file: string, index: number, header: string, lines: number[] | null, action: HunkActionDto) => typedError<null, AppError>(__TAURI_INVOKE("apply_hunk", { path, file, index, header, lines, action })),
 	/**  Commits staged changes (or amends HEAD) and returns the new commit id. */
 	commitChanges: (path: string, message: string, amend: boolean) => typedError<string, AppError>(__TAURI_INVOKE("commit_changes", { path, message, amend })),
 	/**  The message of the HEAD commit, to prefill an amend. */
@@ -134,6 +134,12 @@ export const commands = {
 	pendingUndo: (path: string) => typedError<string | null, AppError>(__TAURI_INVOKE("pending_undo", { path })),
 	/**  Reverts the last undoable action and returns what it was. */
 	undo: (path: string) => typedError<string, AppError>(__TAURI_INVOKE("undo", { path })),
+	/**  Graph rows whose commit matches `query` (message, author or id prefix). */
+	searchCommits: (path: string, query: string, hidden: string[]) => typedError<number[], AppError>(__TAURI_INVOKE("search_commits", { path, query, hidden })),
+	/**  Commits that changed `file`, newest first. */
+	fileHistory: (path: string, file: string) => typedError<CommitSummaryDto[], AppError>(__TAURI_INVOKE("file_history", { path, file })),
+	/**  Who last changed each line of `file`. */
+	blameFile: (path: string, file: string) => typedError<BlameLineDto[], AppError>(__TAURI_INVOKE("blame_file", { path, file })),
 };
 
 /** Events */
@@ -158,6 +164,17 @@ export type AppError = {
 
 /**  Stable, machine-readable error categories the UI can switch on. */
 export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "undoOutdated" | "watchFailed" | "internal";
+
+/**  Who last changed one line. */
+export type BlameLineDto = {
+	line: number,
+	commit: string,
+	shortId: string,
+	author: string,
+	time: number,
+	summary: string,
+	content: string,
+};
 
 /**  A branch shown in the sidebar. */
 export type BranchDto = BranchDto_Serialize | BranchDto_Deserialize;
@@ -230,6 +247,14 @@ export type CommitDetailsDto = {
 	author: PersonDto,
 	committer: PersonDto,
 	changes: FileChangeDto[],
+};
+
+/**  A commit in a list outside the graph, e.g. a file's history. */
+export type CommitSummaryDto = {
+	id: string,
+	shortId: string,
+	summary: string,
+	author: PersonDto,
 };
 
 /**  Which version of a conflicted file to keep. */

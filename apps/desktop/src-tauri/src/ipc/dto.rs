@@ -5,7 +5,9 @@ use std::path::Path;
 use panther_application::commit_graph::{GraphEntry, GraphPage};
 use panther_domain::account::Account;
 use panther_domain::branch::{Branch, BranchKind};
-use panther_domain::commit::{ChangeKind, CommitDetails, FileChange, Person, RefKind, RefLabel};
+use panther_domain::commit::{
+    BlameLine, ChangeKind, CommitDetails, CommitSummary, FileChange, Person, RefKind, RefLabel,
+};
 use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::history::ResetMode;
 use panther_domain::ports::HunkAction;
