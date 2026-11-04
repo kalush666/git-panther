@@ -18,6 +18,8 @@ pub enum PatchTarget {
     IndexReverse,
     /// Remove the patch from the work tree.
     WorkTreeReverse,
+    /// Add a whole patch to the index and work tree, merging where it is off.
+    ThreeWay,
 }
 
 /// # Errors
@@ -32,6 +34,7 @@ pub fn apply_patch(
         PatchTarget::Index => &["--cached"],
         PatchTarget::IndexReverse => &["--cached", "--reverse"],
         PatchTarget::WorkTreeReverse => &["--reverse"],
+        PatchTarget::ThreeWay => &["--3way"],
     };
     let mut child = background_command(executable)
         .arg("-C")

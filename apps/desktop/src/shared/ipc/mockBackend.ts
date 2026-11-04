@@ -86,6 +86,8 @@ const WRONG_PASSWORD = 'wrong';
 /** `?mockSync=auth` makes network operations need a sign-in first. */
 /** Built at runtime so the bundle holds no literal external URL (closed-network check). */
 const MOCK_GIT_HOST = ['git', 'example', 'internal'].join('.');
+/** The file the mock's patch picker always picks. */
+const MOCK_PICKED_PATCH = 'C:\\patches\\fix-login.patch';
 /** A commit only the reflog still knows, after a hard reset. */
 const MOCK_LOST_COMMIT = 'dead0beef'.padEnd(40, '0');
 
@@ -602,6 +604,20 @@ function createMockBackend(): Backend {
     pendingUndo: () => Promise.resolve(history.pendingUndo()),
     undo: () => Promise.resolve(history.undo()),
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
+    pickPatchFile: () => Promise.resolve(MOCK_PICKED_PATCH),
+    commitPatch: (_path, id) =>
+      Promise.resolve(
+        ok(
+          `From ${id} Mon Sep 17 00:00:00 2001\nSubject: [PATCH] A mock change\n\n---\ndiff --git a/src/app.ts b/src/app.ts\n`,
+        ),
+      ),
+    applyPatch: (_path, contents) =>
+      Promise.resolve(
+        contents.includes('diff --git')
+          ? ok(null)
+          : failure('gitFailed', 'error: No valid patches in input (allow with "--allow-empty")'),
+      ),
+    applyPatchFile: () => Promise.resolve(ok(null)),
   };
 }
 

@@ -6,6 +6,10 @@ mod error;
 
 /// Builds the typed command and event registry shared by the runtime and
 /// the TypeScript bindings generator.
+#[allow(
+    clippy::too_many_lines,
+    reason = "one line per command, nothing to split"
+)]
 pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
     tauri_specta::Builder::<tauri::Wry>::new()
         .commands(tauri_specta::collect_commands![
@@ -98,6 +102,9 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::compare_file_diff,
             commands::reflog,
             commands::filter_commits,
+            commands::apply_patch,
+            commands::apply_patch_file,
+            commands::commit_patch,
             commands::disconnect_hosting,
             commands::hosting_status,
             commands::list_pull_requests,

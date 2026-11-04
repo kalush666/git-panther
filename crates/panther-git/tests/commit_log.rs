@@ -368,3 +368,16 @@ fn filters_commits_by_author_and_time() {
         assert_eq!(recent, expected, "{name}");
     }
 }
+
+#[test]
+fn formats_a_commit_as_a_mail_patch() {
+    let fixture = merged_history();
+    for (name, log) in implementations() {
+        let patch = log.patch(fixture.dir.path(), &id(fixture.main)).unwrap();
+        assert!(
+            patch.contains("Subject: [PATCH] Main work"),
+            "{name}: {patch}"
+        );
+        assert!(patch.contains("+main"), "{name}: {patch}");
+    }
+}

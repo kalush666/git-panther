@@ -139,6 +139,21 @@ impl CommitLog for GitCommitLog {
         self.libgit2.compare(repository, base, head)
     }
 
+    fn patch(&self, repository: &Path, id: &CommitId) -> Result<String, RepositoryError> {
+        run_git(
+            &self.executable,
+            repository,
+            &["format-patch", "-1", "--stdout", id.as_str()],
+        )
+        .map_err(|details| {
+            if details.contains("unknown revision") || details.contains("bad revision") {
+                RepositoryError::CommitNotFound { id: id.to_string() }
+            } else {
+                RepositoryError::Git { details }
+            }
+        })
+    }
+
     fn filter(
         &self,
         repository: &Path,

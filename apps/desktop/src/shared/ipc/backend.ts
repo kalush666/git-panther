@@ -302,4 +302,11 @@ export interface Backend {
   undo(path: string): Promise<Result<string>>;
   /** Shows the native folder picker; resolves to `null` if the user cancels. */
   pickFolder(title: string): Promise<string | null>;
+  /** Asks for a .patch or .diff file. */
+  pickPatchFile(title: string): Promise<string | null>;
+  /** Commit `id` as a mail-style patch, as `git format-patch` writes it. */
+  commitPatch(path: string, id: string): Promise<Result<string>>;
+  /** Applies a patch's text to the work tree and index (3-way where it is off). */
+  applyPatch(path: string, contents: string): Promise<Result<null>>;
+  applyPatchFile(path: string, file: string): Promise<Result<null>>;
 }

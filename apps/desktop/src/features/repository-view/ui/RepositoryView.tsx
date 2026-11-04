@@ -9,6 +9,7 @@ import { useBranches } from '../api/useBranches';
 import { useHostingStatus, usePipelines } from '../api/useHosting';
 import { useLfsStatus } from '../api/useLayout';
 import { useRepository } from '../api/useRepository';
+import { usePatches, type PatchActions } from '../api/usePatches';
 import { useSync } from '../api/useSync';
 import { useStageFiles, useWorkingTreeStatus, type DiffSource } from '../api/useWorkingTree';
 import { describeHead } from '../model/describeHead';
@@ -54,6 +55,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
   const [conflictFile, setConflictFile] = useState<string | null>(null);
   const history = useHistoryActions(path);
   const sync = useSync(path);
+  const patches = usePatches(path, history.report);
   const [review, setReview] = useState<ReviewTarget | null>(null);
   const [recovering, setRecovering] = useState(false);
   const showReview = (target: ReviewTarget) => {
@@ -96,6 +98,20 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
       run: () => {
         if (headBranch) branchActions.openCreate(headBranch.target, headBranch.name);
       },
+    },
+    {
+      id: 'repository.applyPatchFile',
+      title: 'Apply patch from file…',
+      group: 'Repository',
+      enabled: true,
+      run: patches.applyFile,
+    },
+    {
+      id: 'repository.applyPatchClipboard',
+      title: 'Apply patch from clipboard',
+      group: 'Repository',
+      enabled: true,
+      run: patches.applyClipboard,
     },
     {
       id: 'repository.recover',
@@ -384,7 +400,12 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
               onCheckoutRef={branchActions.checkout}
               pipelines={pipelines.data}
               rowMenu={(entry) => (
-                <CommitMenu entry={entry} actions={branchActions} history={history} />
+                <CommitMenu
+                  entry={entry}
+                  actions={branchActions}
+                  history={history}
+                  patches={patches}
+                />
               )}
               leadingRow={
                 changeCount > 0 ? (
@@ -452,10 +473,12 @@ function CommitMenu({
   entry,
   actions,
   history,
+  patches,
 }: {
   entry: GraphEntryDto;
   actions: BranchActions;
   history: HistoryActions;
+  patches: PatchActions;
 }) {
   const switchable = entry.refs.filter((ref) => ref.kind !== 'tag' && !ref.isHead);
   const tags = entry.refs.filter((ref) => ref.kind === 'tag');
@@ -486,6 +509,14 @@ function CommitMenu({
         }}
       >
         Compare {current} with this commit
+      </ContextMenu.Item>
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          patches.copy(entry.id, `commit ${entry.shortId}`);
+        }}
+      >
+        Copy as patch
       </ContextMenu.Item>
       {switchable.map((ref) => (
         <ContextMenu.Item

@@ -417,3 +417,50 @@ fn identity_is_read_and_written_in_the_repository_config() {
     config.apply(dir.path(), &unsigned).unwrap();
     assert_eq!(config.identity(dir.path()).unwrap(), Some(unsigned));
 }
+
+#[test]
+fn a_commit_copied_as_a_patch_applies_to_the_work_tree() {
+    let dir = TempDir::new().unwrap();
+    let repository = support::empty_repository(dir.path());
+    let first = support::commit(
+        &repository,
+        Some("HEAD"),
+        "First",
+        &[("a.txt", "one\n")],
+        &[],
+    );
+    let second = support::commit(
+        &repository,
+        Some("HEAD"),
+        "Second",
+        &[("a.txt", "one\ntwo\n")],
+        &[first],
+    );
+    let second = CommitId::parse(&second.to_string()).unwrap();
+    let patch = GitCommitLog::default().patch(dir.path(), &second).unwrap();
+    assert!(patch.contains("Subject: [PATCH] Second"), "{patch}");
+    assert!(patch.contains("+two"), "{patch}");
+
+    // Back on `first`, with its file checked out.
+    let branch = repository.head().unwrap().name().unwrap().to_owned();
+    repository.reference(&branch, first, true, "test").unwrap();
+    repository
+        .checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
+        .unwrap();
+    assert_eq!(read_lf(&dir.path().join("a.txt")), "one\n");
+
+    let tree = GitWorkingTree::default();
+    tree.apply_patch(dir.path(), &patch).unwrap();
+    assert_eq!(read_lf(&dir.path().join("a.txt")), "one\ntwo\n");
+
+    // Text that is no patch is refused with git's explanation.
+    assert!(matches!(
+        tree.apply_patch(dir.path(), "just some notes\n"),
+        Err(RepositoryError::Git { details }) if details.contains("patch")
+    ));
+}
+
+/// A file's text with `core.autocrlf` line endings undone.
+fn read_lf(path: &Path) -> String {
+    fs::read_to_string(path).unwrap().replace("\r\n", "\n")
+}

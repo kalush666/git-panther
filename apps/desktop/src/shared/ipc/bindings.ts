@@ -199,6 +199,12 @@ export const commands = {
 	 *  (Unix seconds), top to bottom.
 	 */
 	filterCommits: (path: string, author: string | null, since: number | null, hidden: string[]) => typedError<number[], AppError>(__TAURI_INVOKE("filter_commits", { path, author, since, hidden })),
+	/**  Applies a patch (pasted or read from a file) to the work tree and index. */
+	applyPatch: (path: string, contents: string) => typedError<null, AppError>(__TAURI_INVOKE("apply_patch", { path, contents })),
+	/**  Applies the patch in `file` to the work tree and index. */
+	applyPatchFile: (path: string, file: string) => typedError<null, AppError>(__TAURI_INVOKE("apply_patch_file", { path, file })),
+	/**  Commit `id` as a mail-style patch. */
+	commitPatch: (path: string, id: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_patch", { path, id })),
 	/**  Forgets a code review server and its token. */
 	disconnectHosting: (server: string) => typedError<null, AppError>(__TAURI_INVOKE("disconnect_hosting", { server })),
 	/**  The repository's project on a code review server, if a remote points to one. */
