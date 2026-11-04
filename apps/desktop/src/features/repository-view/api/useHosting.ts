@@ -21,6 +21,27 @@ export function usePullRequests(path: string, enabled: boolean) {
   });
 }
 
+/** How often pipelines refresh while one runs, and otherwise. */
+const PIPELINES_BUSY_MS = 15_000;
+const PIPELINES_IDLE_MS = 60_000;
+
+/** The newest pipeline per commit id; refreshes faster while one is running. */
+export function usePipelines(path: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['hosting', path, 'pipelines'],
+    queryFn: async () =>
+      new Map(unwrap(await ipc.listPipelines(path)).map((pipeline) => [pipeline.commit, pipeline])),
+    enabled,
+    staleTime: PIPELINES_BUSY_MS,
+    refetchInterval: (query) =>
+      [...(query.state.data?.values() ?? [])].some(
+        (pipeline) => pipeline.state === 'running' || pipeline.state === 'pending',
+      )
+        ? PIPELINES_BUSY_MS
+        : PIPELINES_IDLE_MS,
+  });
+}
+
 export function useIssues(path: string, enabled: boolean) {
   return useQuery({
     queryKey: ['hosting', path, 'issues'],

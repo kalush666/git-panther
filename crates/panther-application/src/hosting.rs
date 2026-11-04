@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use panther_domain::account::{Account, Password, Server};
 use panther_domain::hosting::{
-    HostedProject, HostingAccess, HostingKind, Issue, NewPullRequest, PullRequest,
+    HostedProject, HostingAccess, HostingKind, Issue, NewPullRequest, Pipeline, PullRequest,
     PullRequestReview,
 };
 use panther_domain::ports::{CredentialStore, HostingProvider, RemoteSync, SettingsStore};
@@ -198,6 +198,16 @@ impl Hosting {
     ) -> Result<PullRequest, RepositoryError> {
         self.with_session(repository, |provider, project, token| {
             provider.create_pull_request(project, token, request)
+        })
+    }
+
+    /// The newest pipeline of each recently built commit.
+    ///
+    /// # Errors
+    /// Like [`Hosting::pull_requests`].
+    pub fn pipelines(&self, repository: &Path) -> Result<Vec<Pipeline>, RepositoryError> {
+        self.with_session(repository, |provider, project, token| {
+            provider.pipelines(project, token)
         })
     }
 
@@ -449,6 +459,14 @@ mod tests {
             _: &Password,
             _: u64,
         ) -> Result<PullRequestReview, RepositoryError> {
+            unreachable!()
+        }
+
+        fn pipelines(
+            &self,
+            _: &HostedProject,
+            _: &Password,
+        ) -> Result<Vec<Pipeline>, RepositoryError> {
             unreachable!()
         }
 

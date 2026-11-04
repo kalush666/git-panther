@@ -6,7 +6,7 @@ import { useCommands } from '../../../shared/commands';
 import type { GraphEntryDto } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
 import { useBranches } from '../api/useBranches';
-import { useHostingStatus } from '../api/useHosting';
+import { useHostingStatus, usePipelines } from '../api/useHosting';
 import { useLfsStatus } from '../api/useLayout';
 import { useRepository } from '../api/useRepository';
 import { useSync } from '../api/useSync';
@@ -67,6 +67,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
     },
   );
   const hostingKind = useHostingStatus(path).data?.kind;
+  const pipelines = usePipelines(path, hostingKind != null);
   const lfs = useLfsStatus(path);
   const branches = useBranches(path);
   const stage = useStageFiles(path);
@@ -331,6 +332,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
               }}
               onSelectedCommitChange={keepSelectedCommit}
               onCheckoutRef={branchActions.checkout}
+              pipelines={pipelines.data}
               rowMenu={(entry) => (
                 <CommitMenu entry={entry} actions={branchActions} history={history} />
               )}

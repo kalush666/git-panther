@@ -2,7 +2,8 @@
 
 use panther_domain::account::{Account, Password, Server};
 use panther_domain::hosting::{
-    HostedProject, Issue, NewPullRequest, PullRequest, PullRequestReview, ReviewComment,
+    HostedProject, Issue, NewPullRequest, Pipeline, PipelineState, PullRequest, PullRequestReview,
+    ReviewComment,
 };
 use panther_domain::ports::HostingProvider;
 use panther_domain::repository::RepositoryError;
@@ -10,7 +11,7 @@ use reqwest::blocking::{Client, RequestBuilder};
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::http::{client, json, send};
+use crate::http::{client, json, newest_per_commit, send};
 
 /// Talks to `<server>/api/v3` with a personal access token.
 pub struct GitHubProvider {
@@ -58,6 +59,19 @@ impl From<Pull> for PullRequest {
             draft: pull.draft,
         }
     }
+}
+
+#[derive(Deserialize)]
+struct WorkflowRuns {
+    workflow_runs: Vec<WorkflowRun>,
+}
+
+#[derive(Deserialize)]
+struct WorkflowRun {
+    head_sha: String,
+    status: String,
+    conclusion: Option<String>,
+    html_url: String,
 }
 
 #[derive(Deserialize)]
@@ -172,6 +186,25 @@ impl HostingProvider for GitHubProvider {
         }));
         let created: Pull = json(request, &project.server.to_string())?;
         Ok(created.into())
+    }
+
+    fn pipelines(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+    ) -> Result<Vec<Pipeline>, RepositoryError> {
+        let path = format!("/repos/{}/actions/runs?per_page=100", project.path);
+        let runs: WorkflowRuns = json(
+            self.get(&project.server, &path, token),
+            &project.server.to_string(),
+        )?;
+        Ok(newest_per_commit(runs.workflow_runs.into_iter().map(
+            |run| Pipeline {
+                state: PipelineState::from_github(&run.status, run.conclusion.as_deref()),
+                commit: run.head_sha,
+                url: run.html_url,
+            },
+        )))
     }
 
     fn review(

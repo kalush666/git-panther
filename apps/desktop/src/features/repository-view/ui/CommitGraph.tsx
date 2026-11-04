@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { GraphEntryDto } from '../../../shared/ipc';
+import type { GraphEntryDto, Pipeline } from '../../../shared/ipc';
 import { useGraphPages } from '../api/useGraph';
 import { columnTemplate, useColumnsStore, type ColumnVisibility } from '../model/columns';
 import { drawGraph, readPalette, type VisibleRow } from '../model/drawGraph';
@@ -21,6 +21,7 @@ import { ROW_HEIGHT, graphColumnWidth, paletteIndex } from '../model/graphGeomet
 import { groupRefs, initialsOf, type RefPill } from '../model/refPills';
 import { ColumnMenu } from './ColumnMenu';
 import { GraphSearch } from './GraphSearch';
+import { PipelineBadge } from './PipelineBadge';
 import styles from './CommitGraph.module.css';
 import menuStyles from './menu.module.css';
 
@@ -40,6 +41,8 @@ interface CommitGraphProps {
   rowMenu?: (entry: GraphEntryDto) => ReactNode;
   /** Double-clicking a branch label checks the branch out. */
   onCheckoutRef?: (name: string) => void;
+  /** CI results by commit id, when the server is connected. */
+  pipelines?: ReadonlyMap<string, Pipeline>;
 }
 
 /**
@@ -77,6 +80,7 @@ export function CommitGraph({
   leadingRow,
   rowMenu,
   onCheckoutRef,
+  pipelines,
 }: CommitGraphProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -231,6 +235,7 @@ export function CommitGraph({
               onCheckoutRef={onCheckoutRef}
               isSelected={item.index === selectedIndex}
               isMatch={matches.has(item.index)}
+              pipeline={pipelines?.get(graph.entryAt(item.index)?.id ?? '')}
               onSelect={select}
             />
           ))}
@@ -253,6 +258,7 @@ interface CommitRowProps {
   isSelected: boolean;
   /** Matches the current search. */
   isMatch: boolean;
+  pipeline: Pipeline | undefined;
   onSelect: (index: number) => void;
 }
 
@@ -266,6 +272,7 @@ function CommitRow({
   onCheckoutRef,
   isSelected,
   isMatch,
+  pipeline,
   onSelect,
 }: CommitRowProps) {
   const row = (
@@ -290,6 +297,7 @@ function CommitRow({
             {!columns.refs && entry.refs.length > 0 && (
               <RefPills entry={entry} onCheckout={onCheckoutRef} />
             )}
+            {pipeline && <PipelineBadge pipeline={pipeline} />}
             <span className={styles.summaryText}>{entry.summary}</span>
             {entry.bodyPreview && <span className={styles.preview}>{entry.bodyPreview}</span>}
           </span>

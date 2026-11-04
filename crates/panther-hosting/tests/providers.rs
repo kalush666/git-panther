@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use panther_domain::account::{Account, Password, Server};
-use panther_domain::hosting::{HostedProject, NewPullRequest};
+use panther_domain::hosting::{HostedProject, NewPullRequest, PipelineState};
 use panther_domain::ports::HostingProvider;
 use panther_domain::repository::RepositoryError;
 use panther_hosting::{GitHubProvider, GitLabProvider};
@@ -345,4 +345,33 @@ fn github_reviews_pull_requests_with_both_kinds_of_comments() {
         .map(|comment| comment.body.as_str())
         .collect();
     assert_eq!(bodies, ["Typo", "Nice"], "oldest first");
+}
+
+#[test]
+fn both_servers_report_the_newest_pipeline_per_commit() {
+    let (server, _) = serve(vec![
+        (
+            "/api/v4/projects/team%2Fapp/pipelines",
+            200,
+            r#"[{"sha":"aaa","status":"running","web_url":"http://x/p/3"},{"sha":"aaa","status":"failed","web_url":"http://x/p/2"},{"sha":"bbb","status":"success","web_url":"http://x/p/1"}]"#,
+        ),
+        (
+            "/api/v3/repos/team/app/actions/runs",
+            200,
+            r#"{"workflow_runs":[{"head_sha":"ccc","status":"completed","conclusion":"failure","html_url":"http://x/r/9"}]}"#,
+        ),
+    ]);
+    let gitlab = GitLabProvider::default()
+        .pipelines(&project(&server), &token())
+        .unwrap();
+    assert_eq!(gitlab.len(), 2);
+    assert_eq!(gitlab[0].commit, "aaa");
+    assert_eq!(gitlab[0].state, PipelineState::Running);
+    assert_eq!(gitlab[1].state, PipelineState::Passed);
+
+    let github = GitHubProvider::default()
+        .pipelines(&project(&server), &token())
+        .unwrap();
+    assert_eq!(github[0].state, PipelineState::Failed);
+    assert_eq!(github[0].url, "http://x/r/9");
 }

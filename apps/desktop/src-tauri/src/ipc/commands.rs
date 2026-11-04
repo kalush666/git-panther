@@ -29,7 +29,7 @@ use crate::infra::watcher::RepositoryWatcher;
 use panther_application::accounts::SignIn;
 use panther_domain::hosting::NewPullRequest;
 
-use super::dto::{ComparisonDto, PullRequestReviewDto};
+use super::dto::{ComparisonDto, PipelineDto, PullRequestReviewDto};
 use panther_domain::remote::{PushOptions, RemoteName};
 
 /// Runs blocking work (git, disk) off the async runtime's worker threads.
@@ -947,6 +947,24 @@ pub async fn create_pull_request(
         Ok(hosting
             .create_pull_request(&PathBuf::from(path), &request)?
             .into())
+    })
+    .await
+}
+
+/// The newest CI pipeline of each recently built commit.
+#[tauri::command]
+#[specta::specta]
+pub async fn list_pipelines(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Vec<PipelineDto>, AppError> {
+    let hosting = services.hosting.clone();
+    run_blocking(move || {
+        Ok(hosting
+            .pipelines(&PathBuf::from(path))?
+            .into_iter()
+            .map(PipelineDto::from)
+            .collect())
     })
     .await
 }

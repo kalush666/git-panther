@@ -28,6 +28,8 @@ export type {
   DiffSide,
   FileDiff,
   HunkAction,
+  Pipeline,
+  PipelineState,
   HostingAccess,
   HostingKind,
   HostingStatus,
