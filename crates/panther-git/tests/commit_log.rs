@@ -264,3 +264,41 @@ fn file_history_and_blame_name_the_commits_that_touched_a_file() {
         assert_eq!(blame[0].summary, "Main work", "{name}");
     }
 }
+
+#[test]
+fn compares_a_branch_with_where_it_forked() {
+    let fixture = merged_history();
+    for (name, log) in implementations() {
+        let comparison = log
+            .compare(fixture.dir.path(), &fixture.main.to_string(), "topic")
+            .unwrap();
+        assert_eq!(comparison.fork, id(fixture.base), "{name}");
+        assert_eq!(comparison.head, id(fixture.topic), "{name}");
+        let commits: Vec<&CommitId> = comparison.commits.iter().map(|commit| &commit.id).collect();
+        assert_eq!(commits, [&id(fixture.topic)], "{name}");
+        assert_eq!(comparison.changes.len(), 1, "{name}");
+        assert_eq!(comparison.changes[0].path, "b.txt", "{name}");
+        assert!(
+            matches!(&comparison.changes[0].kind, ChangeKind::Renamed { from } if from == "a.txt"),
+            "{name}"
+        );
+
+        let diff = log
+            .compare_file_diff(
+                fixture.dir.path(),
+                &comparison.fork,
+                &comparison.head,
+                "b.txt",
+            )
+            .unwrap();
+        assert_eq!(diff.hunks.len(), 1, "{name}");
+
+        assert!(
+            matches!(
+                log.compare(fixture.dir.path(), "main", "no-such-branch"),
+                Err(RepositoryError::CommitNotFound { id }) if id == "no-such-branch"
+            ),
+            "{name}"
+        );
+    }
+}

@@ -3,6 +3,7 @@ import type {
   Backend,
   CloneProgress,
   HostingAccess,
+  PullRequestReview,
   Identity,
   Issue,
   OnProgress,
@@ -148,6 +149,27 @@ function createMockBackend(): Backend {
       labels: ['bug'],
     },
   ];
+  const reviews = new Map<number, PullRequestReview>([
+    [
+      7,
+      {
+        description: 'Adds the login form with personal number and password.',
+        approvedBy: [],
+        comments: [
+          {
+            author: 'Grace Hopper',
+            body: 'Please keep the password out of the logs.',
+            createdAt: '2026-10-01T09:30:00Z',
+            file: 'src/login.ts',
+            line: 12,
+          },
+        ],
+        mergeable: true,
+      },
+    ],
+  ]);
+  const reviewOf = (number: number): PullRequestReview =>
+    reviews.get(number) ?? { description: '', approvedBy: [], comments: [], mergeable: true };
   const mockServer = `https://${MOCK_GIT_HOST}`;
   const connected = () => hosting.some((access) => access.server === mockServer);
   const notConnected = () =>
@@ -410,6 +432,57 @@ function createMockBackend(): Backend {
       ),
     listPullRequests: () => Promise.resolve(connected() ? ok(pullRequests) : notConnected()),
     listIssues: () => Promise.resolve(connected() ? ok(issues) : notConnected()),
+    pullRequestReview: (_path, number) =>
+      Promise.resolve(connected() ? ok(reviewOf(number)) : notConnected()),
+    commentPullRequest: (_path, number, body) => {
+      const review = reviewOf(number);
+      reviews.set(number, {
+        ...review,
+        comments: [
+          ...review.comments,
+          {
+            author: 'Git Panther Demo',
+            body,
+            createdAt: new Date().toISOString(),
+            file: null,
+            line: null,
+          },
+        ],
+      });
+      return Promise.resolve(ok(null));
+    },
+    approvePullRequest: (_path, number) => {
+      const review = reviewOf(number);
+      reviews.set(number, { ...review, approvedBy: [...review.approvedBy, 'Git Panther Demo'] });
+      return Promise.resolve(ok(null));
+    },
+    mergePullRequest: (_path, number) => {
+      pullRequests = pullRequests.filter((request) => request.number !== number);
+      return Promise.resolve(ok(null));
+    },
+    compareRefs: (_path, base, head) => {
+      const known = (name: string) =>
+        /^[0-9a-f]{40}$/.test(name) ||
+        ['main', 'develop', 'origin/main', 'origin/develop', 'HEAD'].includes(name);
+      const missing = [base, head].find((name) => !known(name));
+      if (missing !== undefined) {
+        return Promise.resolve(failure('commitNotFound', `Commit ${missing} does not exist.`));
+      }
+      const commits = mockFileHistory().slice(0, 3);
+      return Promise.resolve(
+        ok({
+          fork: mockFileHistory()[4]?.id ?? '',
+          head: commits[0]?.id ?? '',
+          commits,
+          changes: [
+            { kind: 'modified', path: 'src/app.ts' },
+            { kind: 'added', path: 'src/login.ts' },
+          ],
+        }),
+      );
+    },
+    compareFileDiff: (_path, _from, _to, file) =>
+      Promise.resolve(workingTree.diff(file, 'unstaged')),
     createPullRequest: (_path, source, target, title) => {
       if (!connected()) return Promise.resolve(notConnected());
       const created = {

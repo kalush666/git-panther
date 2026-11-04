@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use panther_domain::commit::{
-    BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel,
+    BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, Comparison, RefLabel,
 };
 use panther_domain::ports::CommitLog;
 use panther_domain::repository::RepositoryError;
@@ -126,5 +126,24 @@ impl CommitLog for GitCommitLog {
         path: &str,
     ) -> Result<FileDiff, RepositoryError> {
         self.libgit2.commit_file_diff(repository, id, path)
+    }
+
+    fn compare(
+        &self,
+        repository: &Path,
+        base: &str,
+        head: &str,
+    ) -> Result<Comparison, RepositoryError> {
+        self.libgit2.compare(repository, base, head)
+    }
+
+    fn compare_file_diff(
+        &self,
+        repository: &Path,
+        from: &CommitId,
+        to: &CommitId,
+        path: &str,
+    ) -> Result<FileDiff, RepositoryError> {
+        self.libgit2.compare_file_diff(repository, from, to, path)
     }
 }

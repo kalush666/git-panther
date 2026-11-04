@@ -7,18 +7,37 @@ import { useRepositoryMutation } from './useRepositoryMutation';
 /** What a diff shows: uncommitted work on one side of the index, or a commit. */
 export type DiffSource =
   | { kind: 'workingTree'; file: string; side: DiffSide }
-  | { kind: 'commit'; file: string; commitId: string };
+  | { kind: 'commit'; file: string; commitId: string }
+  /** Between two commits, e.g. a merge request's fork point and its head. */
+  | { kind: 'compare'; file: string; from: string; to: string };
+
+/** What tells two diffs of the same file apart. */
+function diffVersion(source: DiffSource): string {
+  switch (source.kind) {
+    case 'workingTree':
+      return source.side;
+    case 'commit':
+      return source.commitId;
+    case 'compare':
+      return `${source.from}..${source.to}`;
+  }
+}
+
+function loadDiff(path: string, source: DiffSource) {
+  switch (source.kind) {
+    case 'workingTree':
+      return ipc.fileDiff(path, source.file, source.side);
+    case 'commit':
+      return ipc.commitFileDiff(path, source.commitId, source.file);
+    case 'compare':
+      return ipc.compareFileDiff(path, source.from, source.to, source.file);
+  }
+}
 
 const statusKey = (path: string) => [...repositoryQueryKey(path), 'status'] as const;
 
 const diffKey = (path: string, source: DiffSource) =>
-  [
-    ...repositoryQueryKey(path),
-    'diff',
-    source.kind,
-    source.file,
-    source.kind === 'commit' ? source.commitId : source.side,
-  ] as const;
+  [...repositoryQueryKey(path), 'diff', source.kind, source.file, diffVersion(source)] as const;
 
 export function useWorkingTreeStatus(path: string) {
   return useQuery({
@@ -34,11 +53,7 @@ export function useFileDiff(path: string, source: DiffSource | null) {
       if (!source) {
         throw new Error('useFileDiff runs only with a source');
       }
-      return unwrap(
-        await (source.kind === 'commit'
-          ? ipc.commitFileDiff(path, source.commitId, source.file)
-          : ipc.fileDiff(path, source.file, source.side)),
-      );
+      return unwrap(await loadDiff(path, source));
     },
     enabled: source !== null,
   });

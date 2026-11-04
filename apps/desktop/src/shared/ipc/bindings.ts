@@ -178,6 +178,18 @@ export const commands = {
 	connectHosting: (server: string, kind: HostingKindDto, token: string) => typedError<HostingAccessDto, AppError>(__TAURI_INVOKE("connect_hosting", { server, kind, token })),
 	/**  Connects a GitLab server with the user's git sign-in instead of a token. */
 	connectHostingWithLogin: (server: string) => typedError<HostingAccessDto, AppError>(__TAURI_INVOKE("connect_hosting_with_login", { server })),
+	/**  Description, approvals and comments of request `number`. */
+	pullRequestReview: (path: string, number: number) => typedError<PullRequestReviewDto_Serialize, AppError>(__TAURI_INVOKE("pull_request_review", { path, number })),
+	/**  Comments on request `number`. */
+	commentPullRequest: (path: string, number: number, body: string) => typedError<null, AppError>(__TAURI_INVOKE("comment_pull_request", { path, number, body })),
+	/**  Approves request `number`. */
+	approvePullRequest: (path: string, number: number) => typedError<null, AppError>(__TAURI_INVOKE("approve_pull_request", { path, number })),
+	/**  Merges request `number` on the server. */
+	mergePullRequest: (path: string, number: number) => typedError<null, AppError>(__TAURI_INVOKE("merge_pull_request", { path, number })),
+	/**  What `head` changes since it forked from `base` (branches, tags or ids). */
+	compareRefs: (path: string, base: string, head: string) => typedError<ComparisonDto, AppError>(__TAURI_INVOKE("compare_refs", { path, base, head })),
+	/**  How `file` differs between commits `from` and `to`. */
+	compareFileDiff: (path: string, from: string, to: string, file: string) => typedError<FileDiffDto_Serialize, AppError>(__TAURI_INVOKE("compare_file_diff", { path, from, to, file })),
 	/**  Forgets a code review server and its token. */
 	disconnectHosting: (server: string) => typedError<null, AppError>(__TAURI_INVOKE("disconnect_hosting", { server })),
 	/**  The repository's project on a code review server, if a remote points to one. */
@@ -303,6 +315,15 @@ export type CommitSummaryDto = {
 	shortId: string,
 	summary: string,
 	author: PersonDto,
+};
+
+/**  What a branch changes since it forked from another, like a merge request. */
+export type ComparisonDto = {
+	/**  Where the head forked (the merge base); diffs run from here. */
+	fork: string,
+	head: string,
+	commits: CommitSummaryDto[],
+	changes: FileChangeDto[],
 };
 
 /**  A piece of a conflicted file. */
@@ -500,6 +521,25 @@ export type PullRequestDto = {
 	draft: boolean,
 };
 
+/**  Description, approvals and comments of a request. */
+export type PullRequestReviewDto = PullRequestReviewDto_Serialize | PullRequestReviewDto_Deserialize;
+
+/**  Description, approvals and comments of a request. */
+export type PullRequestReviewDto_Deserialize = {
+	description: string,
+	approvedBy: string[],
+	comments: ReviewCommentDto_Deserialize[],
+	mergeable: boolean,
+};
+
+/**  Description, approvals and comments of a request. */
+export type PullRequestReviewDto_Serialize = {
+	description: string,
+	approvedBy: string[],
+	comments: ReviewCommentDto_Serialize[],
+	mergeable: boolean,
+};
+
 /**  How a pull combines fetched work with local commits. */
 export type PullStrategyDto = "fastForwardOnly" | "merge" | "rebase";
 
@@ -547,6 +587,24 @@ export type RepositorySummaryDto = {
 
 /**  How far a reset goes beyond moving the branch. */
 export type ResetModeDto = "soft" | "mixed" | "hard";
+
+export type ReviewCommentDto = ReviewCommentDto_Serialize | ReviewCommentDto_Deserialize;
+
+export type ReviewCommentDto_Deserialize = {
+	author: string,
+	body: string,
+	createdAt: string,
+	file?: string | null,
+	line?: number | null,
+};
+
+export type ReviewCommentDto_Serialize = {
+	author: string,
+	body: string,
+	createdAt: string,
+	file: string | null,
+	line: number | null,
+};
 
 /**  A line within half a graph row. */
 export type SegmentDto = {

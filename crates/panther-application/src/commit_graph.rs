@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use panther_domain::commit::{
-    BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel,
+    BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, Comparison, RefLabel,
 };
 use panther_domain::ports::CommitLog;
 use panther_domain::repository::RepositoryError;
@@ -145,6 +145,33 @@ impl CommitGraph {
         path: &str,
     ) -> Result<FileDiff, RepositoryError> {
         self.log.commit_file_diff(repository, id, path)
+    }
+
+    /// What `head` changes since it forked from `base`, e.g. a merge request.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] if a revision is unknown.
+    pub fn compare(
+        &self,
+        repository: &Path,
+        base: &str,
+        head: &str,
+    ) -> Result<Comparison, RepositoryError> {
+        self.log.compare(repository, base, head)
+    }
+
+    /// How `path` differs between commits `from` and `to`.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] if a commit is unknown.
+    pub fn compare_file_diff(
+        &self,
+        repository: &Path,
+        from: &CommitId,
+        to: &CommitId,
+        path: &str,
+    ) -> Result<FileDiff, RepositoryError> {
+        self.log.compare_file_diff(repository, from, to, path)
     }
 
     /// Rows of the graph (as [`Self::page`] numbers them) whose commit
@@ -381,6 +408,22 @@ mod tests {
             _: &str,
         ) -> Result<FileDiff, RepositoryError> {
             Err(RepositoryError::CommitNotFound { id: id.to_string() })
+        }
+
+        fn compare(&self, _: &Path, base: &str, _: &str) -> Result<Comparison, RepositoryError> {
+            Err(RepositoryError::CommitNotFound { id: base.into() })
+        }
+
+        fn compare_file_diff(
+            &self,
+            _: &Path,
+            from: &CommitId,
+            _: &CommitId,
+            _: &str,
+        ) -> Result<FileDiff, RepositoryError> {
+            Err(RepositoryError::CommitNotFound {
+                id: from.to_string(),
+            })
         }
     }
 

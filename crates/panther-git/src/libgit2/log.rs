@@ -8,8 +8,8 @@ use git2::{
     Commit, Delta, DiffFindOptions, DiffOptions, ErrorCode, Oid, Reference, Repository, Sort,
 };
 use panther_domain::commit::{
-    BlameLine, ChangeKind, CommitDetails, CommitId, CommitNode, CommitSummary, FileChange, Person,
-    RefKind, RefLabel, body_preview,
+    BlameLine, ChangeKind, CommitDetails, CommitId, CommitNode, CommitSummary, Comparison,
+    FileChange, Person, RefKind, RefLabel, body_preview,
 };
 use panther_domain::ports::CommitLog;
 use panther_domain::repository::RepositoryError;
@@ -165,13 +165,61 @@ impl CommitLog for Git2CommitLog {
             Ok(parent) => Some(parent.tree().map_err(|error| git_error(&error))?),
             Err(_) => None,
         };
-        // Limited to one path, so a rename shows as the file being added.
-        let mut options = DiffOptions::new();
-        options.pathspec(path).disable_pathspec_match(true);
-        let diff = repository
-            .diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), Some(&mut options))
+        tree_file_diff(&repository, parent_tree.as_ref(), &tree, path)
+    }
+
+    fn compare(
+        &self,
+        repository_path: &Path,
+        base: &str,
+        head: &str,
+    ) -> Result<Comparison, RepositoryError> {
+        let repository = open(repository_path)?;
+        let base_commit = resolve(&repository, base)?;
+        let head_commit = resolve(&repository, head)?;
+        let fork = repository
+            .merge_base(base_commit.id(), head_commit.id())
             .map_err(|error| git_error(&error))?;
-        file_diff(&diff, path)
+        let fork_tree = repository
+            .find_commit(fork)
+            .and_then(|commit| commit.tree())
+            .map_err(|error| git_error(&error))?;
+        let head_tree = head_commit.tree().map_err(|error| git_error(&error))?;
+        let changes = tree_changes(&repository, Some(&fork_tree), &head_tree)?;
+
+        let mut walk = repository.revwalk().map_err(|error| git_error(&error))?;
+        walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)
+            .and_then(|()| walk.push(head_commit.id()))
+            .and_then(|()| walk.hide(fork))
+            .map_err(|error| git_error(&error))?;
+        let ids: Vec<CommitId> = walk
+            .take(Comparison::MAX_COMMITS)
+            .map(|oid| oid.map(commit_id).map_err(|error| git_error(&error)))
+            .collect::<Result<_, _>>()?;
+        Ok(Comparison {
+            fork: commit_id(fork),
+            head: commit_id(head_commit.id()),
+            commits: self.summaries(repository_path, &ids)?,
+            changes,
+        })
+    }
+
+    fn compare_file_diff(
+        &self,
+        repository: &Path,
+        from: &CommitId,
+        to: &CommitId,
+        path: &str,
+    ) -> Result<FileDiff, RepositoryError> {
+        let repository = open(repository)?;
+        let tree_of = |id: &CommitId| {
+            find_commit(&repository, id)?
+                .tree()
+                .map_err(|error| git_error(&error))
+        };
+        let from_tree = tree_of(from)?;
+        let to_tree = tree_of(to)?;
+        tree_file_diff(&repository, Some(&from_tree), &to_tree, path)
     }
 
     fn search(&self, repository: &Path, query: &str) -> Result<Vec<CommitId>, RepositoryError> {
@@ -365,6 +413,35 @@ fn person(signature: &git2::Signature<'_>) -> Person {
     }
 }
 
+/// The commit a revision (branch, tag, id) names.
+fn resolve<'repo>(
+    repository: &'repo Repository,
+    revision: &str,
+) -> Result<Commit<'repo>, RepositoryError> {
+    repository
+        .revparse_single(revision)
+        .and_then(|object| object.peel_to_commit())
+        .map_err(|_| RepositoryError::CommitNotFound {
+            id: revision.to_owned(),
+        })
+}
+
+/// How `path` differs from `old` to `new`.
+fn tree_file_diff(
+    repository: &Repository,
+    old: Option<&git2::Tree<'_>>,
+    new: &git2::Tree<'_>,
+    path: &str,
+) -> Result<FileDiff, RepositoryError> {
+    // Limited to one path, so a rename shows as the file being added.
+    let mut options = DiffOptions::new();
+    options.pathspec(path).disable_pathspec_match(true);
+    let diff = repository
+        .diff_tree_to_tree(old, Some(new), Some(&mut options))
+        .map_err(|error| git_error(&error))?;
+    file_diff(&diff, path)
+}
+
 /// Files changed compared to the first parent (or added, for a root commit).
 fn changes(
     repository: &Repository,
@@ -375,8 +452,17 @@ fn changes(
         Ok(parent) => Some(parent.tree().map_err(|error| git_error(&error))?),
         Err(_) => None,
     };
+    tree_changes(repository, parent_tree.as_ref(), &tree)
+}
+
+/// Files changed from `old` (nothing, for a root commit) to `new`, with renames.
+fn tree_changes(
+    repository: &Repository,
+    old: Option<&git2::Tree<'_>>,
+    new: &git2::Tree<'_>,
+) -> Result<Vec<FileChange>, RepositoryError> {
     let mut diff = repository
-        .diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), None)
+        .diff_tree_to_tree(old, Some(new), None)
         .map_err(|error| git_error(&error))?;
     diff.find_similar(Some(DiffFindOptions::new().renames(true)))
         .map_err(|error| git_error(&error))?;

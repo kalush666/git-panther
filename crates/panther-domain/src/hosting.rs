@@ -86,6 +86,29 @@ pub struct NewPullRequest {
     pub description: String,
 }
 
+/// What reviewing a request shows besides its changes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PullRequestReview {
+    pub description: String,
+    /// Who approved it, by display name.
+    pub approved_by: Vec<String>,
+    /// Oldest first; the server's own system notes are left out.
+    pub comments: Vec<ReviewComment>,
+    /// The server would merge it now (no conflicts, nothing blocking).
+    pub mergeable: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReviewComment {
+    pub author: String,
+    pub body: String,
+    /// As the server wrote it (RFC 3339).
+    pub created_at: String,
+    /// For a comment on a line of the changes: the file and its line.
+    pub file: Option<String>,
+    pub line: Option<u32>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Issue {
     pub number: u64,

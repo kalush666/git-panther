@@ -5,13 +5,16 @@ use std::path::Path;
 use panther_application::commit_graph::{GraphEntry, GraphPage};
 use panther_domain::account::Account;
 use panther_domain::branch::{Branch, BranchKind};
+use panther_domain::commit::Comparison;
 use panther_domain::commit::{
     BlameLine, ChangeKind, CommitDetails, CommitSummary, FileChange, Person, RefKind, RefLabel,
 };
 use panther_domain::conflict::ConflictChunk;
 use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::history::{RebaseAction, RebaseStep, ResetMode};
-use panther_domain::hosting::{HostingAccess, HostingKind, Issue, PullRequest};
+use panther_domain::hosting::{
+    HostingAccess, HostingKind, Issue, PullRequest, PullRequestReview, ReviewComment,
+};
 use panther_domain::identity::{Identity, Signing, SigningFormat};
 use panther_domain::layout::{LfsStatus, Submodule, SubmoduleState, Worktree};
 use panther_domain::ports::HunkAction;
@@ -1025,6 +1028,83 @@ impl From<PullRequest> for PullRequestDto {
             target_branch: request.target_branch,
             url: request.url,
             draft: request.draft,
+        }
+    }
+}
+
+/// Description, approvals and comments of a request.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PullRequestReviewDto {
+    pub description: String,
+    pub approved_by: Vec<String>,
+    pub comments: Vec<ReviewCommentDto>,
+    pub mergeable: bool,
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReviewCommentDto {
+    pub author: String,
+    pub body: String,
+    pub created_at: String,
+    pub file: Option<String>,
+    pub line: Option<u32>,
+}
+
+impl From<ReviewComment> for ReviewCommentDto {
+    fn from(comment: ReviewComment) -> Self {
+        Self {
+            author: comment.author,
+            body: comment.body,
+            created_at: comment.created_at,
+            file: comment.file,
+            line: comment.line,
+        }
+    }
+}
+
+impl From<PullRequestReview> for PullRequestReviewDto {
+    fn from(review: PullRequestReview) -> Self {
+        Self {
+            description: review.description,
+            approved_by: review.approved_by,
+            comments: review
+                .comments
+                .into_iter()
+                .map(ReviewCommentDto::from)
+                .collect(),
+            mergeable: review.mergeable,
+        }
+    }
+}
+
+/// What a branch changes since it forked from another, like a merge request.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ComparisonDto {
+    /// Where the head forked (the merge base); diffs run from here.
+    pub fork: String,
+    pub head: String,
+    pub commits: Vec<CommitSummaryDto>,
+    pub changes: Vec<FileChangeDto>,
+}
+
+impl From<Comparison> for ComparisonDto {
+    fn from(comparison: Comparison) -> Self {
+        Self {
+            fork: comparison.fork.to_string(),
+            head: comparison.head.to_string(),
+            commits: comparison
+                .commits
+                .into_iter()
+                .map(CommitSummaryDto::from)
+                .collect(),
+            changes: comparison
+                .changes
+                .into_iter()
+                .map(FileChangeDto::from)
+                .collect(),
         }
     }
 }

@@ -1,14 +1,16 @@
 //! GitLab self-managed: merge requests and issues through REST API v4.
 
 use panther_domain::account::{Account, Password, Server};
-use panther_domain::hosting::{HostedProject, Issue, NewPullRequest, PullRequest};
+use panther_domain::hosting::{
+    HostedProject, Issue, NewPullRequest, PullRequest, PullRequestReview, ReviewComment,
+};
 use panther_domain::ports::HostingProvider;
 use panther_domain::repository::RepositoryError;
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::http::{client, encode_path, json};
+use crate::http::{client, encode_path, json, send};
 
 /// Answers of `/oauth/token` that mean "not with these credentials" rather
 /// than a broken server.
@@ -58,6 +60,44 @@ impl From<MergeRequest> for PullRequest {
 }
 
 #[derive(Deserialize)]
+struct MergeRequestState {
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    detailed_merge_status: Option<String>,
+    #[serde(default)]
+    merge_status: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct Approvals {
+    #[serde(default)]
+    approved_by: Vec<Approver>,
+}
+
+#[derive(Deserialize)]
+struct Approver {
+    user: Author,
+}
+
+#[derive(Deserialize)]
+struct Note {
+    body: String,
+    author: Author,
+    created_at: String,
+    #[serde(default)]
+    system: bool,
+    #[serde(default)]
+    position: Option<NotePosition>,
+}
+
+#[derive(Deserialize)]
+struct NotePosition {
+    new_path: Option<String>,
+    new_line: Option<u32>,
+}
+
+#[derive(Deserialize)]
 struct OAuthToken {
     access_token: String,
 }
@@ -75,6 +115,10 @@ struct GitLabIssue {
 impl GitLabProvider {
     fn api(server: &Server, path: &str) -> String {
         format!("{server}/api/v4{path}")
+    }
+
+    fn merge_request(project: &HostedProject, number: u64, path: &str) -> String {
+        Self::project(project, &format!("/merge_requests/{number}{path}"))
     }
 
     fn project(project: &HostedProject, path: &str) -> String {
@@ -159,6 +203,97 @@ impl HostingProvider for GitLabProvider {
             }));
         let created: MergeRequest = json(request, &project.server.to_string())?;
         Ok(created.into())
+    }
+
+    fn review(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+        number: u64,
+    ) -> Result<PullRequestReview, RepositoryError> {
+        let server = project.server.to_string();
+        let get = |path: &str| {
+            self.client
+                .get(Self::merge_request(project, number, path))
+                .bearer_auth(token.expose())
+        };
+        let state: MergeRequestState = json(get(""), &server)?;
+        // Approvals are missing on some editions; the review still shows.
+        let approvals: Approvals = json(get("/approvals"), &server).unwrap_or(Approvals {
+            approved_by: Vec::new(),
+        });
+        let notes: Vec<Note> = json(
+            get("/notes?sort=asc&order_by=created_at&per_page=100"),
+            &server,
+        )?;
+        let mergeable = state.detailed_merge_status.as_deref() == Some("mergeable")
+            || state.merge_status.as_deref() == Some("can_be_merged");
+        Ok(PullRequestReview {
+            description: state.description.unwrap_or_default(),
+            approved_by: approvals
+                .approved_by
+                .into_iter()
+                .map(|approver| approver.user.name)
+                .collect(),
+            comments: notes
+                .into_iter()
+                .filter(|note| !note.system)
+                .map(|note| {
+                    let (file, line) = note.position.map_or((None, None), |position| {
+                        (position.new_path, position.new_line)
+                    });
+                    ReviewComment {
+                        author: note.author.name,
+                        body: note.body,
+                        created_at: note.created_at,
+                        file,
+                        line,
+                    }
+                })
+                .collect(),
+            mergeable,
+        })
+    }
+
+    fn comment(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+        number: u64,
+        body: &str,
+    ) -> Result<(), RepositoryError> {
+        let request = self
+            .client
+            .post(Self::merge_request(project, number, "/notes"))
+            .bearer_auth(token.expose())
+            .json(&json!({ "body": body }));
+        send(request, &project.server.to_string())
+    }
+
+    fn approve(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+        number: u64,
+    ) -> Result<(), RepositoryError> {
+        let request = self
+            .client
+            .post(Self::merge_request(project, number, "/approve"))
+            .bearer_auth(token.expose());
+        send(request, &project.server.to_string())
+    }
+
+    fn merge(
+        &self,
+        project: &HostedProject,
+        token: &Password,
+        number: u64,
+    ) -> Result<(), RepositoryError> {
+        let request = self
+            .client
+            .put(Self::merge_request(project, number, "/merge"))
+            .bearer_auth(token.expose());
+        send(request, &project.server.to_string())
     }
 
     fn issues(
