@@ -13,6 +13,7 @@ panther-domain = { path = "crates/panther-domain" }
 panther-application = { path = "crates/panther-application" }
 panther-git = { path = "crates/panther-git" }
 panther-graph = { path = "crates/panther-graph" }
+panther-hosting = { path = "crates/panther-hosting" }
 thiserror = "2"
 
 [workspace.lints.rust]

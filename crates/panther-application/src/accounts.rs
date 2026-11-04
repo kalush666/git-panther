@@ -148,6 +148,18 @@ mod tests {
             Ok(())
         }
 
+        fn store_token(&self, _: &Server, _: &Password) -> Result<(), RepositoryError> {
+            unreachable!("signing in keeps no API token")
+        }
+
+        fn token(&self, _: &Server) -> Result<Option<Password>, RepositoryError> {
+            unreachable!("signing in reads no API token")
+        }
+
+        fn erase_token(&self, _: &Server) -> Result<(), RepositoryError> {
+            unreachable!("signing in erases no API token")
+        }
+
         fn verify(&self, _url: &str) -> Result<(), RepositoryError> {
             let stored = self.stored.lock().unwrap();
             if stored.iter().any(|(_, password)| password == GOOD_PASSWORD) {

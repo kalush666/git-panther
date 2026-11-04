@@ -110,6 +110,13 @@ export const tauriBackend: Backend = {
   addWorktree: commands.addWorktree,
   removeWorktree: commands.removeWorktree,
   lfsStatus: commands.lfsStatus,
+  listHosting: commands.listHosting,
+  connectHosting: commands.connectHosting,
+  disconnectHosting: commands.disconnectHosting,
+  hostingStatus: commands.hostingStatus,
+  listPullRequests: commands.listPullRequests,
+  listIssues: commands.listIssues,
+  createPullRequest: commands.createPullRequest,
   getIdentity: commands.getIdentity,
   setIdentity: commands.setIdentity,
   onRepositoryChanged: (listener) =>

@@ -105,9 +105,11 @@ Command palette, configurable keyboard shortcuts, git identity profiles, commit 
 
 **Demo:** Ctrl+K opens the command palette: every action, every branch to check out and every tab, matched by a few letters. Common actions have shortcuts (Fetch Ctrl+Shift+F, Push Ctrl+Shift+P, Stash Ctrl+Shift+S, Undo Ctrl+Z, …), each rebindable in Settings by pressing the new keys. The commit box shows who commits; one click switches the repository to a saved identity, and editing it inline (name, email, optional GPG or SSH signing key) writes the repository's git config.
 
-### ⏳ M13 — Hosting
+### ✅ M13 — Hosting
 
-Pull requests and issues for self-hosted GitHub Enterprise Server, GitLab self-managed, Bitbucket Data Center and Azure DevOps Server.
+Pull requests and issues for self-hosted GitLab self-managed and GitHub Enterprise Server (Bitbucket Data Center and Azure DevOps Server can be added behind the same port).
+
+**Demo:** a repository whose remote is on a code review server shows "Connect <server>" in the sidebar; an access token (checked, then kept in Git Credential Manager) lists its open merge / pull requests and issues. Double-clicking a request checks out its source branch, "+" opens one from the current branch (target suggested, link copied), and every row copies its link. Requests use the operating system's certificate store, so internal certificate authorities work.
 
 ## Later (to be prioritised together)
 

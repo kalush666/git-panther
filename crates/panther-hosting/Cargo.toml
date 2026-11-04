@@ -1,0 +1,18 @@
+[package]
+name = "panther-hosting"
+description = "Git Panther adapters for self-hosted code review servers (GitLab, GitHub Enterprise)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+panther-domain.workspace = true
+# Blocking HTTP with the operating system's TLS, so certificates of an
+# internal certificate authority installed on the machine are trusted.
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "native-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lints]
+workspace = true

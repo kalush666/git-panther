@@ -15,10 +15,15 @@ import type {
   GitInstallationDto,
   GraphPageDto,
   HunkActionDto,
+  HostingAccessDto,
+  HostingKindDto,
+  HostingStatusDto,
   HunkDto_Serialize,
   IdentityDto_Serialize,
   LfsStatusDto,
+  IssueDto,
   OperationDto,
+  PullRequestDto,
   PullStrategyDto,
   RebaseStepDto,
   RecentRepositoryDto,
@@ -60,6 +65,11 @@ export type Submodule = SubmoduleDto;
 export type Worktree = WorktreeDto_Serialize;
 export type LfsStatus = LfsStatusDto;
 export type Identity = IdentityDto_Serialize;
+export type HostingKind = HostingKindDto;
+export type HostingAccess = HostingAccessDto;
+export type HostingStatus = HostingStatusDto;
+export type PullRequest = PullRequestDto;
+export type Issue = IssueDto;
 
 /** Where and how to push. */
 export interface PushOptions {
@@ -170,6 +180,21 @@ export interface Backend {
   addWorktree(path: string, branch: string): Promise<Result<string>>;
   removeWorktree(path: string, worktree: string): Promise<Result<null>>;
   lfsStatus(path: string): Promise<Result<LfsStatus>>;
+  /** Code review servers connected with an access token. */
+  listHosting(): Promise<Result<HostingAccess[]>>;
+  /** Checks the token against the server, then keeps it in the credential helper. */
+  connectHosting(server: string, kind: HostingKind, token: string): Promise<Result<HostingAccess>>;
+  disconnectHosting(server: string): Promise<Result<null>>;
+  /** The repository's project on a code review server, if a remote points to one. */
+  hostingStatus(path: string): Promise<Result<HostingStatus | null>>;
+  listPullRequests(path: string): Promise<Result<PullRequest[]>>;
+  listIssues(path: string): Promise<Result<Issue[]>>;
+  createPullRequest(
+    path: string,
+    source: string,
+    target: string,
+    title: string,
+  ): Promise<Result<PullRequest>>;
   /** Who commits in the repository, or `null` when git does not know yet. */
   getIdentity(path: string): Promise<Result<Identity | null>>;
   /** Writes who commits (and how commits are signed) into the repository's config. */

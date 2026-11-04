@@ -172,6 +172,20 @@ export const commands = {
 	getIdentity: (path: string) => typedError<IdentityDto_Serialize | null, AppError>(__TAURI_INVOKE("get_identity", { path })),
 	/**  Writes who commits (and how commits are signed) into the repository's config. */
 	setIdentity: (path: string, identity: IdentityDto_Deserialize) => typedError<null, AppError>(__TAURI_INVOKE("set_identity", { path, identity })),
+	/**  The code review servers connected with an access token. */
+	listHosting: () => typedError<HostingAccessDto[], AppError>(__TAURI_INVOKE("list_hosting")),
+	/**  Checks and keeps an access token for a code review server. */
+	connectHosting: (server: string, kind: HostingKindDto, token: string) => typedError<HostingAccessDto, AppError>(__TAURI_INVOKE("connect_hosting", { server, kind, token })),
+	/**  Forgets a code review server and its token. */
+	disconnectHosting: (server: string) => typedError<null, AppError>(__TAURI_INVOKE("disconnect_hosting", { server })),
+	/**  The repository's project on a code review server, if a remote points to one. */
+	hostingStatus: (path: string) => typedError<HostingStatusDto_Serialize | null, AppError>(__TAURI_INVOKE("hosting_status", { path })),
+	/**  Open merge / pull requests of the repository's project. */
+	listPullRequests: (path: string) => typedError<PullRequestDto[], AppError>(__TAURI_INVOKE("list_pull_requests", { path })),
+	/**  Open issues of the repository's project. */
+	listIssues: (path: string) => typedError<IssueDto[], AppError>(__TAURI_INVOKE("list_issues", { path })),
+	/**  Opens a merge / pull request from `source` into `target`. */
+	createPullRequest: (path: string, source: string, target: string, title: string) => typedError<PullRequestDto, AppError>(__TAURI_INVOKE("create_pull_request", { path, source, target, title })),
 };
 
 /** Events */
@@ -195,7 +209,7 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "undoOutdated" | "invalidRebasePlan" | "invalidRemoteName" | "remoteExists" | "remoteNotFound" | "worktreeFailed" | "invalidIdentity" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "undoOutdated" | "invalidRebasePlan" | "invalidRemoteName" | "remoteExists" | "remoteNotFound" | "worktreeFailed" | "invalidIdentity" | "hostingUnauthorized" | "hostingNotConnected" | "noHostedProject" | "hostingFailed" | "watchFailed" | "internal";
 
 /**  Who last changed one line. */
 export type BlameLineDto = {
@@ -379,6 +393,33 @@ export type GraphRowDto = {
 /**  Where HEAD points, as shown in a repository tab. */
 export type HeadDto = { kind: "branch"; name: string } | { kind: "detached"; commit: string } | { kind: "unborn"; name: string };
 
+/**  A connected code review server. */
+export type HostingAccessDto = {
+	server: string,
+	kind: HostingKindDto,
+};
+
+export type HostingKindDto = "gitLab" | "gitHub";
+
+/**  A repository's project on a code review server. */
+export type HostingStatusDto = HostingStatusDto_Serialize | HostingStatusDto_Deserialize;
+
+/**  A repository's project on a code review server. */
+export type HostingStatusDto_Deserialize = {
+	server: string,
+	project: string,
+	/**  `None` until the server is connected. */
+	kind?: HostingKindDto | null,
+};
+
+/**  A repository's project on a code review server. */
+export type HostingStatusDto_Serialize = {
+	server: string,
+	project: string,
+	/**  `None` until the server is connected. */
+	kind: HostingKindDto | null,
+};
+
 export type HunkActionDto = "stage" | "unstage" | "discard";
 
 export type HunkDto = HunkDto_Serialize | HunkDto_Deserialize;
@@ -418,6 +459,14 @@ export type IdentityDto_Serialize = {
 	signing: SigningDto | null,
 };
 
+export type IssueDto = {
+	number: number,
+	title: string,
+	author: string,
+	url: string,
+	labels: string[],
+};
+
 export type LfsStatusDto = {
 	used: boolean,
 	installed: boolean,
@@ -436,6 +485,17 @@ export type PersonDto = {
 	 *  fit a JS number exactly, so no `BigInt` is needed.
 	 */
 	time: number,
+};
+
+/**  A merge request (GitLab) or pull request (GitHub). */
+export type PullRequestDto = {
+	number: number,
+	title: string,
+	author: string,
+	sourceBranch: string,
+	targetBranch: string,
+	url: string,
+	draft: boolean,
 };
 
 /**  How a pull combines fetched work with local commits. */

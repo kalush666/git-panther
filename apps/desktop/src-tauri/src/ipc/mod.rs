@@ -86,6 +86,13 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::lfs_status,
             commands::get_identity,
             commands::set_identity,
+            commands::list_hosting,
+            commands::connect_hosting,
+            commands::disconnect_hosting,
+            commands::hosting_status,
+            commands::list_pull_requests,
+            commands::list_issues,
+            commands::create_pull_request,
         ])
         .events(tauri_specta::collect_events![dto::RepositoryChanged])
 }

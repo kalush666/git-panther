@@ -216,6 +216,16 @@ pub enum RepositoryError {
     WorktreeFailed { path: PathBuf, details: String },
     #[error(transparent)]
     InvalidIdentity(#[from] crate::identity::InvalidIdentity),
+    #[error(
+        "{server} refused the access token. Create a new one with API access and connect again."
+    )]
+    HostingUnauthorized { server: String },
+    #[error("Connect {server} with an access token to see its merge requests and issues.")]
+    HostingNotConnected { server: String },
+    #[error("This repository has no remote on a code review server.")]
+    NoHostedProject,
+    #[error("The server answered with an error: {details}")]
+    HostingFailed { details: String },
 }
 
 #[cfg(test)]

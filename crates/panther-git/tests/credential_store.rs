@@ -77,3 +77,26 @@ fn verifying_a_readable_remote_succeeds() {
         .verify(&remote.to_string_lossy())
         .unwrap();
 }
+
+#[test]
+fn keeps_api_tokens_apart_from_git_passwords() {
+    let dir = TempDir::new().unwrap();
+    let store = file_backed_store(dir.path());
+    let server = Server::parse("https://gitlab.example.internal").unwrap();
+    store
+        .store(&account(), &Password::new("s3cret".into()).unwrap())
+        .unwrap();
+
+    assert!(store.token(&server).unwrap().is_none());
+    store
+        .store_token(&server, &Password::new("glpat-123".into()).unwrap())
+        .unwrap();
+    assert_eq!(store.token(&server).unwrap().unwrap().expose(), "glpat-123");
+
+    store.erase_token(&server).unwrap();
+    assert!(store.token(&server).unwrap().is_none());
+    assert!(
+        stored(dir.path()).contains("p9493378:s3cret"),
+        "the git login is untouched"
+    );
+}

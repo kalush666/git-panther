@@ -17,6 +17,7 @@ tauri-build = { version = "2", features = [] }
 panther-domain.workspace = true
 panther-application.workspace = true
 panther-git.workspace = true
+panther-hosting.workspace = true
 panther-graph.workspace = true
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"

@@ -19,9 +19,11 @@ import { useHiddenRefs, useHiddenRefsStore } from '../model/hiddenRefs';
 import menu from './menu.module.css';
 import styles from './BranchSidebar.module.css';
 import { SubmoduleList, WorktreeList } from './LayoutLists';
+import { ReviewLists } from './ReviewLists';
 import { StashList } from './StashList';
 import type { BranchActions } from './useBranchActions';
 import type { HistoryActions } from './useHistoryActions';
+import type { HostingActions } from './useHostingActions';
 import type { RemoteActions } from './useRemoteActions';
 
 /** Drag-and-drop payload: the dragged branch's name. */
@@ -32,6 +34,7 @@ interface BranchSidebarProps {
   actions: BranchActions;
   history: HistoryActions;
   remoteActions: RemoteActions;
+  hostingActions: HostingActions;
   onOpenRepository: (path: string) => void;
 }
 
@@ -56,6 +59,7 @@ export function BranchSidebar({
   actions,
   history,
   remoteActions,
+  hostingActions,
   onOpenRepository,
 }: BranchSidebarProps) {
   const branches = useBranches(path);
@@ -137,6 +141,7 @@ export function BranchSidebar({
           visibility={visibility}
           remoteActions={remoteActions}
         />
+        <ReviewLists path={path} actions={hostingActions} />
         <StashList path={path} />
         <WorktreeList path={path} actions={remoteActions} onOpenRepository={onOpenRepository} />
         <SubmoduleList path={path} onOpenRepository={onOpenRepository} />

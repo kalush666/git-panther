@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::account::Account;
+use crate::hosting::HostingAccess;
 
 /// Run when no git executable is configured, resolved through `PATH`.
 pub const DEFAULT_GIT_EXECUTABLE: &str = "git";
@@ -13,6 +14,8 @@ pub struct Settings {
     pub git_executable: Option<PathBuf>,
     /// Servers the user signed in to; their passwords live in the credential helper.
     pub accounts: Vec<Account>,
+    /// Code review servers connected with an access token (kept in the credential helper).
+    pub hosting: Vec<HostingAccess>,
 }
 
 impl Settings {

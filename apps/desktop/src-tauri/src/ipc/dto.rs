@@ -11,6 +11,7 @@ use panther_domain::commit::{
 use panther_domain::conflict::ConflictChunk;
 use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::history::{RebaseAction, RebaseStep, ResetMode};
+use panther_domain::hosting::{HostingAccess, HostingKind, Issue, PullRequest};
 use panther_domain::identity::{Identity, Signing, SigningFormat};
 use panther_domain::layout::{LfsStatus, Submodule, SubmoduleState, Worktree};
 use panther_domain::ports::HunkAction;
@@ -934,6 +935,119 @@ impl From<IdentityDto> for Identity {
                 },
                 key: signing.key,
             }),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum HostingKindDto {
+    GitLab,
+    GitHub,
+}
+
+impl From<HostingKind> for HostingKindDto {
+    fn from(kind: HostingKind) -> Self {
+        match kind {
+            HostingKind::GitLab => Self::GitLab,
+            HostingKind::GitHub => Self::GitHub,
+        }
+    }
+}
+
+impl From<HostingKindDto> for HostingKind {
+    fn from(kind: HostingKindDto) -> Self {
+        match kind {
+            HostingKindDto::GitLab => Self::GitLab,
+            HostingKindDto::GitHub => Self::GitHub,
+        }
+    }
+}
+
+/// A connected code review server.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct HostingAccessDto {
+    pub server: String,
+    pub kind: HostingKindDto,
+}
+
+impl From<HostingAccess> for HostingAccessDto {
+    fn from(access: HostingAccess) -> Self {
+        Self {
+            server: access.server.to_string(),
+            kind: access.kind.into(),
+        }
+    }
+}
+
+/// A repository's project on a code review server.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct HostingStatusDto {
+    pub server: String,
+    pub project: String,
+    /// `None` until the server is connected.
+    pub kind: Option<HostingKindDto>,
+}
+
+impl From<panther_application::hosting::HostingStatus> for HostingStatusDto {
+    fn from(status: panther_application::hosting::HostingStatus) -> Self {
+        Self {
+            server: status.project.server.to_string(),
+            project: status.project.path,
+            kind: status.kind.map(HostingKindDto::from),
+        }
+    }
+}
+
+/// A merge request (GitLab) or pull request (GitHub).
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PullRequestDto {
+    #[specta(type = u32)]
+    pub number: u64,
+    pub title: String,
+    pub author: String,
+    pub source_branch: String,
+    pub target_branch: String,
+    pub url: String,
+    pub draft: bool,
+}
+
+impl From<PullRequest> for PullRequestDto {
+    fn from(request: PullRequest) -> Self {
+        Self {
+            number: request.number,
+            title: request.title,
+            author: request.author,
+            source_branch: request.source_branch,
+            target_branch: request.target_branch,
+            url: request.url,
+            draft: request.draft,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct IssueDto {
+    #[specta(type = u32)]
+    pub number: u64,
+    pub title: String,
+    pub author: String,
+    pub url: String,
+    pub labels: Vec<String>,
+}
+
+impl From<Issue> for IssueDto {
+    fn from(issue: Issue) -> Self {
+        Self {
+            number: issue.number,
+            title: issue.title,
+            author: issue.author,
+            url: issue.url,
+            labels: issue.labels,
         }
     }
 }
