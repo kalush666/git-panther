@@ -20,7 +20,7 @@ pub use clone::GitCliCloner;
 pub use commit::commit;
 pub use history::read_history;
 pub use probe::SystemGitProbe;
-pub use run::run_git;
+pub use run::{run_git, run_git_with_env};
 pub use sync::{classify as classify_sync_failure, pull_args, run_sync};
 
 /// Builds a git command that never flashes a console window on Windows and

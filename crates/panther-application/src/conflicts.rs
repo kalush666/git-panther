@@ -4,6 +4,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use panther_domain::conflict::ConflictChunk;
 use panther_domain::ports::ConflictResolver;
 use panther_domain::repository::RepositoryError;
 use panther_domain::stash::{ConflictSide, Operation};
@@ -32,6 +33,27 @@ impl Conflicts {
         side: ConflictSide,
     ) -> Result<(), RepositoryError> {
         self.resolver.take(repository, path, side)
+    }
+
+    /// # Errors
+    /// Propagates [`ConflictResolver::conflict_chunks`] errors.
+    pub fn chunks(
+        &self,
+        repository: &Path,
+        path: &str,
+    ) -> Result<Vec<ConflictChunk>, RepositoryError> {
+        self.resolver.conflict_chunks(repository, path)
+    }
+
+    /// # Errors
+    /// Propagates [`ConflictResolver::resolve_with`] errors.
+    pub fn resolve_with(
+        &self,
+        repository: &Path,
+        path: &str,
+        content: &str,
+    ) -> Result<(), RepositoryError> {
+        self.resolver.resolve_with(repository, path, content)
     }
 
     /// # Errors

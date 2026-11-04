@@ -206,3 +206,117 @@ fn creates_deletes_and_pushes_tags() {
         Err(RepositoryError::TagNotFound { .. })
     ));
 }
+
+/// `main` with three more commits after `base.txt`: one.txt, two.txt, three.txt.
+fn three_commits(dir: &TempDir) -> (CommitId, Vec<CommitId>) {
+    let repo = dir.path();
+    let base = id(repo, "HEAD");
+    for file in ["one.txt", "two.txt", "three.txt"] {
+        commit_file(repo, file, &format!("{file}\n"));
+    }
+    let commits = editor().commits_since(repo, &base).unwrap();
+    (base, commits)
+}
+
+fn subjects(repo: &Path) -> Vec<String> {
+    git(repo, &["log", "--format=%s", "main"])
+        .lines()
+        .map(str::to_owned)
+        .collect()
+}
+
+#[test]
+fn lists_commits_since_a_base_oldest_first() {
+    let dir = repository();
+    let (_, commits) = three_commits(&dir);
+    assert_eq!(commits.len(), 3);
+    assert_eq!(commits[0], id(dir.path(), "HEAD~2"));
+}
+
+#[test]
+fn interactive_rebase_rewords_squashes_reorders_and_drops() {
+    use panther_domain::history::{RebaseAction, RebaseStep};
+    let dir = repository();
+    let repo = dir.path();
+    let (base, commits) = three_commits(&dir);
+    let step = |index: usize, action| RebaseStep {
+        commit: commits[index].clone(),
+        action,
+    };
+
+    editor()
+        .rebase_interactive(
+            repo,
+            &base,
+            &[
+                step(2, RebaseAction::Reword("Three, reworded".into())),
+                step(0, RebaseAction::Pick),
+                step(1, RebaseAction::Fixup),
+            ],
+        )
+        .unwrap();
+
+    assert_eq!(
+        subjects(repo)[..2],
+        ["Write one.txt".to_owned(), "Three, reworded".to_owned()]
+    );
+    assert!(repo.join("two.txt").exists(), "fixup keeps the changes");
+
+    let (base, commits) = (
+        id(repo, "HEAD~2"),
+        editor().commits_since(repo, &id(repo, "HEAD~2")).unwrap(),
+    );
+    editor()
+        .rebase_interactive(
+            repo,
+            &base,
+            &[
+                RebaseStep {
+                    commit: commits[0].clone(),
+                    action: RebaseAction::Drop,
+                },
+                RebaseStep {
+                    commit: commits[1].clone(),
+                    action: RebaseAction::Pick,
+                },
+            ],
+        )
+        .unwrap();
+    assert!(
+        !repo.join("three.txt").exists(),
+        "the dropped commit is gone"
+    );
+    assert_eq!(
+        GitConflictResolver::default().operation(repo).unwrap(),
+        None
+    );
+}
+
+#[test]
+fn conflicted_files_split_into_chunks_and_can_be_resolved_with_text() {
+    use panther_domain::conflict::ConflictChunk;
+    let dir = repository();
+    let repo = dir.path();
+    commit_file(repo, "topic.txt", "main's version\n");
+    assert!(editor().merge(repo, "topic").is_err());
+    let resolver = GitConflictResolver::default();
+
+    let chunks = resolver.conflict_chunks(repo, "topic.txt").unwrap();
+    assert_eq!(
+        chunks,
+        [ConflictChunk::Conflict {
+            mine: "main's version\n".into(),
+            base: None,
+            incoming: "topic\n".into(),
+        }]
+    );
+
+    resolver
+        .resolve_with(repo, "topic.txt", "both versions\n")
+        .unwrap();
+    assert_eq!(
+        fs::read_to_string(repo.join("topic.txt")).unwrap(),
+        "both versions\n"
+    );
+    resolver.continue_operation(repo).unwrap();
+}

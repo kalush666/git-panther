@@ -2,14 +2,16 @@
 //! CLI merges, rebases, cherry-picks, reverts and resets, so hooks and git's
 //! own safety checks apply.
 
+use std::ffi::OsStr;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use panther_domain::commit::CommitId;
-use panther_domain::history::{HeadSnapshot, ResetMode};
+use panther_domain::history::{HeadSnapshot, RebaseAction, RebaseStep, ResetMode};
 use panther_domain::ports::HistoryEditor;
 use panther_domain::repository::RepositoryError;
 
-use crate::cli::run_git;
+use crate::cli::{run_git, run_git_with_env};
 use crate::libgit2::working_tree::open;
 
 #[derive(Debug, Clone)]
@@ -87,6 +89,54 @@ fn is_merge(repository: &Path, commit: &CommitId) -> Result<bool, RepositoryErro
             id: commit.to_string(),
         })?;
     Ok(commit.parent_count() > 1)
+}
+
+/// Where the files of an interactive rebase live: inside `.git`, because a
+/// rebase that stops on a conflict still needs them when it continues.
+fn rebase_scratch(repository: &Path) -> Result<PathBuf, RepositoryError> {
+    let dir = open(repository)?.path().join("git-panther").join("rebase");
+    // Left over from an earlier rebase that finished.
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).map_err(|error| RepositoryError::Git {
+        details: format!("could not prepare the rebase: {error}"),
+    })?;
+    Ok(dir)
+}
+
+/// A path as git's shell (sh, also on Windows) reads it, quoted.
+fn shell_path(path: &Path) -> String {
+    format!("\"{}\"", path.to_string_lossy().replace('\\', "/"))
+}
+
+/// The rebase todo list for `steps`. Rewording runs `git commit --amend`
+/// with a message file, so no editor is ever needed.
+fn rebase_todo(steps: &[RebaseStep], scratch: &Path) -> Result<String, RepositoryError> {
+    let mut lines = Vec::with_capacity(steps.len());
+    for (index, step) in steps.iter().enumerate() {
+        let commit = step.commit.as_str();
+        lines.push(match &step.action {
+            RebaseAction::Pick => format!("pick {commit}"),
+            RebaseAction::Squash => format!("squash {commit}"),
+            RebaseAction::Fixup => format!("fixup {commit}"),
+            RebaseAction::Drop => format!("drop {commit}"),
+            RebaseAction::Reword(message) => {
+                let file = scratch.join(format!("message-{index}.txt"));
+                fs::write(&file, message).map_err(|error| RepositoryError::Git {
+                    details: format!("could not prepare the rebase: {error}"),
+                })?;
+                format!(
+                    "pick {commit}
+exec git commit --amend --only --allow-empty --no-verify --file={}",
+                    shell_path(&file)
+                )
+            }
+        });
+    }
+    lines.push(String::new());
+    Ok(lines.join(
+        "
+",
+    ))
 }
 
 fn is_empty_change(message: &str) -> bool {
@@ -176,6 +226,50 @@ impl HistoryEditor for GitHistoryEditor {
             &["switch", "--quiet", "--detach", commit.as_str()],
             "checkout",
         )
+    }
+
+    fn commits_since(
+        &self,
+        repository: &Path,
+        base: &CommitId,
+    ) -> Result<Vec<CommitId>, RepositoryError> {
+        let range = format!("{base}..HEAD");
+        let output = run_git(
+            &self.executable,
+            repository,
+            &["rev-list", "--reverse", "--no-merges", &range],
+        )
+        .map_err(|_| RepositoryError::CommitNotFound {
+            id: base.to_string(),
+        })?;
+        Ok(output
+            .lines()
+            .filter_map(|line| CommitId::parse(line).ok())
+            .collect())
+    }
+
+    fn rebase_interactive(
+        &self,
+        repository: &Path,
+        base: &CommitId,
+        steps: &[RebaseStep],
+    ) -> Result<(), RepositoryError> {
+        let scratch = rebase_scratch(repository)?;
+        let todo = scratch.join("todo");
+        fs::write(&todo, rebase_todo(steps, &scratch)?).map_err(|error| RepositoryError::Git {
+            details: format!("could not prepare the rebase: {error}"),
+        })?;
+        // git runs the sequence editor with its own todo file as argument;
+        // copying ours over it replaces the plan.
+        let sequence_editor = format!("cp {}", shell_path(&todo));
+        run_git_with_env(
+            &self.executable,
+            repository,
+            &["rebase", "--interactive", base.as_str()],
+            &[("GIT_SEQUENCE_EDITOR", OsStr::new(&sequence_editor))],
+        )
+        .map(drop)
+        .map_err(|message| classify(&message, "rebase"))
     }
 
     fn restore(&self, repository: &Path, snapshot: &HeadSnapshot) -> Result<(), RepositoryError> {

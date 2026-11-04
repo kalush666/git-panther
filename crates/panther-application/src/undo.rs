@@ -209,6 +209,17 @@ mod tests {
         fn checkout_commit(&self, _: &Path, _: &CommitId) -> Result<(), RepositoryError> {
             unreachable!()
         }
+        fn commits_since(&self, _: &Path, _: &CommitId) -> Result<Vec<CommitId>, RepositoryError> {
+            unreachable!()
+        }
+        fn rebase_interactive(
+            &self,
+            _: &Path,
+            _: &CommitId,
+            _: &[panther_domain::history::RebaseStep],
+        ) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
     }
 
     #[derive(Default)]

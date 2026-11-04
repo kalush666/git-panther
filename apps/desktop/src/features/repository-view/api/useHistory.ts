@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { ipc, unwrap, type ResetMode } from '../../../shared/ipc';
+import { ipc, unwrap, type RebaseStep, type ResetMode } from '../../../shared/ipc';
 import { repositoryQueryKey } from './useRepository';
 import { useRepositoryMutation } from './useRepositoryMutation';
 
@@ -8,6 +8,7 @@ import { useRepositoryMutation } from './useRepositoryMutation';
 export type HistoryRequest =
   | { action: 'merge'; branch: string }
   | { action: 'rebase'; onto: string }
+  | { action: 'rebaseInteractive'; base: string; label: string; steps: RebaseStep[] }
   | { action: 'cherryPick'; commit: string; label: string }
   | { action: 'revert'; commit: string; label: string }
   | { action: 'reset'; commit: string; label: string; mode: ResetMode }
@@ -22,6 +23,8 @@ function send(path: string, request: HistoryRequest) {
       return ipc.mergeBranch(path, request.branch);
     case 'rebase':
       return ipc.rebaseOnto(path, request.onto);
+    case 'rebaseInteractive':
+      return ipc.rebaseInteractive(path, request.base, request.steps);
     case 'cherryPick':
       return ipc.cherryPick(path, request.commit);
     case 'revert':
@@ -46,6 +49,8 @@ export function describeDone(request: HistoryRequest): string {
       return `Merged ${request.branch}`;
     case 'rebase':
       return `Rebased onto ${request.onto}`;
+    case 'rebaseInteractive':
+      return `Rebased the commits after ${request.label}`;
     case 'cherryPick':
       return `Cherry-picked ${request.label}`;
     case 'revert':

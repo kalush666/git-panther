@@ -1,9 +1,11 @@
 //! The production [`ConflictResolver`]: libgit2 reads the repository state,
 //! the git CLI resolves, continues and aborts.
 
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use git2::RepositoryState;
+use panther_domain::conflict::{ConflictChunk, parse_conflicts};
 use panther_domain::ports::ConflictResolver;
 use panther_domain::repository::RepositoryError;
 use panther_domain::stash::{ConflictSide, Operation};
@@ -97,6 +99,30 @@ impl ConflictResolver for GitConflictResolver {
             Err(message) => Err(message),
         }
         .map_err(git_failed)
+    }
+
+    fn conflict_chunks(
+        &self,
+        repository: &Path,
+        path: &str,
+    ) -> Result<Vec<ConflictChunk>, RepositoryError> {
+        let file = repository.join(path);
+        let bytes = fs::read(&file).map_err(|_| RepositoryError::NotFound { path: file })?;
+        let rebasing = self.operation(repository)? == Some(Operation::Rebase);
+        Ok(parse_conflicts(&String::from_utf8_lossy(&bytes), !rebasing))
+    }
+
+    fn resolve_with(
+        &self,
+        repository: &Path,
+        path: &str,
+        content: &str,
+    ) -> Result<(), RepositoryError> {
+        fs::write(repository.join(path), content).map_err(|error| RepositoryError::Git {
+            details: format!("could not write {path}: {error}"),
+        })?;
+        self.git(repository, &["add", "--", path])
+            .map_err(git_failed)
     }
 
     fn mark_resolved(&self, repository: &Path, paths: &[String]) -> Result<(), RepositoryError> {

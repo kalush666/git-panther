@@ -14,9 +14,10 @@ use tauri_specta::Event;
 
 use super::dto::{
     AccountDto, BlameLineDto, BranchDto, CloneProgressDto, CommitDetailsDto, CommitSummaryDto,
-    ConflictSideDto, DiffSideDto, FileDiffDto, GitInstallationDto, GraphPageDto, HunkActionDto,
-    OperationDto, PullStrategyDto, RecentRepositoryDto, RemoteDto, RepositoryChanged,
-    RepositorySummaryDto, ResetModeDto, SettingsDto, StashDto, WorkingTreeStatusDto,
+    ConflictChunkDto, ConflictSideDto, DiffSideDto, FileDiffDto, GitInstallationDto, GraphPageDto,
+    HunkActionDto, OperationDto, PullStrategyDto, RebaseStepDto, RecentRepositoryDto, RemoteDto,
+    RepositoryChanged, RepositorySummaryDto, ResetModeDto, SettingsDto, StashDto,
+    WorkingTreeStatusDto,
 };
 use super::error::{AppError, AppErrorKind};
 use crate::composition::AppServices;
@@ -925,6 +926,77 @@ pub async fn push_tag(
 ) -> Result<(), AppError> {
     let history = services.history.clone();
     run_blocking(move || Ok(history.push_tag(&PathBuf::from(path), &name)?)).await
+}
+
+/// The commits an interactive rebase onto `base` would rewrite, oldest first.
+#[tauri::command]
+#[specta::specta]
+pub async fn rebase_plan(
+    services: State<'_, AppServices>,
+    path: String,
+    base: String,
+) -> Result<Vec<CommitSummaryDto>, AppError> {
+    let history = services.history.clone();
+    run_blocking(move || {
+        Ok(history
+            .rebase_plan(&PathBuf::from(path), &base)?
+            .into_iter()
+            .map(CommitSummaryDto::from)
+            .collect())
+    })
+    .await
+}
+
+/// Rewrites the commits after `base` as `steps` says.
+#[tauri::command]
+#[specta::specta]
+pub async fn rebase_interactive(
+    services: State<'_, AppServices>,
+    path: String,
+    base: String,
+    steps: Vec<RebaseStepDto>,
+) -> Result<(), AppError> {
+    let history = services.history.clone();
+    run_blocking(move || {
+        let steps = steps
+            .into_iter()
+            .map(RebaseStepDto::into_step)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(history.rebase_interactive(&PathBuf::from(path), &base, &steps)?)
+    })
+    .await
+}
+
+/// A conflicted file split into agreed text and conflicts.
+#[tauri::command]
+#[specta::specta]
+pub async fn conflict_chunks(
+    services: State<'_, AppServices>,
+    path: String,
+    file: String,
+) -> Result<Vec<ConflictChunkDto>, AppError> {
+    let conflicts = services.conflicts.clone();
+    run_blocking(move || {
+        Ok(conflicts
+            .chunks(&PathBuf::from(path), &file)?
+            .into_iter()
+            .map(ConflictChunkDto::from)
+            .collect())
+    })
+    .await
+}
+
+/// Writes the user's resolution of a conflicted file and stages it.
+#[tauri::command]
+#[specta::specta]
+pub async fn resolve_conflict_with(
+    services: State<'_, AppServices>,
+    path: String,
+    file: String,
+    content: String,
+) -> Result<(), AppError> {
+    let conflicts = services.conflicts.clone();
+    run_blocking(move || Ok(conflicts.resolve_with(&PathBuf::from(path), &file, &content)?)).await
 }
 
 /// What Undo would revert, e.g. "Merge topic".

@@ -23,9 +23,11 @@ interface StagingPanelProps {
   path: string;
   openFile: { file: string; side: DiffSide } | null;
   onOpenFile: (file: string, side: DiffSide) => void;
+  /** Opens the conflict editor for a conflicted file. */
+  onResolveFile: (file: string) => void;
 }
 
-export function StagingPanel({ path, openFile, onOpenFile }: StagingPanelProps) {
+export function StagingPanel({ path, openFile, onOpenFile, onResolveFile }: StagingPanelProps) {
   const status = useWorkingTreeStatus(path);
   const stage = useStageFiles(path);
   const unstage = useUnstageFiles(path);
@@ -48,13 +50,7 @@ export function StagingPanel({ path, openFile, onOpenFile }: StagingPanelProps) 
   return (
     <aside className={styles.panel} aria-label="Working copy">
       <div className={styles.lists}>
-        <ConflictSection
-          path={path}
-          conflicted={conflicted}
-          onOpenFile={(file) => {
-            onOpenFile(file, 'unstaged');
-          }}
-        />
+        <ConflictSection path={path} conflicted={conflicted} onOpenFile={onResolveFile} />
         <FileSection
           title="Unstaged files"
           files={unstaged}

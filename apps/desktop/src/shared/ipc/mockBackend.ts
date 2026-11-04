@@ -293,6 +293,23 @@ function createMockBackend(): Backend {
     createTag: (_path, name) => Promise.resolve(history.createTag(name.trim())),
     deleteTag: (_path, name) => Promise.resolve(history.deleteTag(name)),
     pushTag: () => Promise.resolve(history.pushTag()),
+    rebasePlan: () => Promise.resolve(ok(mockFileHistory().reverse())),
+    rebaseInteractive: (_path, base, steps) =>
+      Promise.resolve(history.rebaseInteractive(base, steps.length)),
+    conflictChunks: (_path, file) =>
+      Promise.resolve(
+        ok([
+          { kind: 'common', text: `// ${file}\nexport const speed = 1;\n` },
+          {
+            kind: 'conflict',
+            mine: 'const name = "Panther";\n',
+            base: 'const name = "Cat";\n',
+            incoming: 'const name = "Git Panther";\nconst version = 2;\n',
+          },
+          { kind: 'common', text: 'export default name;\n' },
+        ]),
+      ),
+    resolveConflictWith: (_path, file) => Promise.resolve(workingTree.resolve([file])),
     pendingUndo: () => Promise.resolve(history.pendingUndo()),
     undo: () => Promise.resolve(history.undo()),
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
