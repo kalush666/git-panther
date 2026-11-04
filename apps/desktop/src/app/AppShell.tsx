@@ -1,4 +1,4 @@
-import { Settings } from 'lucide-react';
+import { LayoutGrid, Settings } from 'lucide-react';
 import { useState } from 'react';
 
 import { CommandPalette, useShortcutDispatcher } from '../features/command-palette';
@@ -8,20 +8,26 @@ import { RepositoryView } from '../features/repository-view';
 import { SettingsView } from '../features/settings';
 import { ThemeMenu } from '../features/theme';
 import { WelcomeScreen } from '../features/welcome';
+import { WorkspacesView } from '../features/workspaces';
 import { useCommands } from '../shared/commands';
 import { ipc } from '../shared/ipc';
 import { useThemeStore } from '../shared/preferences/theme';
 import { Button } from '../shared/ui/Button/Button';
 import styles from './AppShell.module.css';
 
+/** What fills the window besides the open repository. */
+type Page = 'settings' | 'workspaces' | null;
+
 export function AppShell() {
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [page, setPage] = useState<Page>(null);
+  const tabs = useTabsStore((state) => state.tabs);
+  const openTab = useTabsStore((state) => state.openTab);
   const openSettings = () => {
-    setSettingsOpen(true);
+    setPage('settings');
   };
   useShortcutDispatcher();
-  useAppCommands(() => {
-    setSettingsOpen(true);
+  useAppCommands(openSettings, () => {
+    setPage('workspaces');
   });
   return (
     <div className={styles.shell}>
@@ -35,11 +41,23 @@ export function AppShell() {
           <Button
             size="sm"
             variant="ghost"
+            aria-label="Workspaces"
+            aria-pressed={page === 'workspaces'}
+            title="Workspaces"
+            onClick={() => {
+              setPage(page === 'workspaces' ? null : 'workspaces');
+            }}
+          >
+            <LayoutGrid size={16} strokeWidth={1.75} />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
             aria-label="Settings"
-            aria-pressed={settingsOpen}
+            aria-pressed={page === 'settings'}
             title="Settings"
             onClick={() => {
-              setSettingsOpen(!settingsOpen);
+              setPage(page === 'settings' ? null : 'settings');
             }}
           >
             <Settings size={16} strokeWidth={1.75} />
@@ -47,10 +65,25 @@ export function AppShell() {
         </div>
       </header>
       <main className={styles.content}>
-        {settingsOpen ? (
+        {page === 'settings' ? (
           <SettingsView
             onClose={() => {
-              setSettingsOpen(false);
+              setPage(null);
+            }}
+          />
+        ) : page === 'workspaces' ? (
+          <WorkspacesView
+            openPaths={tabs.map((tab) => tab.path)}
+            onOpenRepository={(path) => {
+              void ipc.openRepository(path).then((result) => {
+                if (result.status === 'ok') {
+                  openTab({ path: result.data.path, name: result.data.name });
+                  setPage(null);
+                }
+              });
+            }}
+            onClose={() => {
+              setPage(null);
             }}
           />
         ) : (
@@ -65,8 +98,8 @@ export function AppShell() {
   );
 }
 
-/** App-wide commands: settings, theme and switching tabs. */
-function useAppCommands(openSettings: () => void) {
+/** App-wide commands: settings, workspaces, theme and switching tabs. */
+function useAppCommands(openSettings: () => void, openWorkspaces: () => void) {
   const tabs = useTabsStore((state) => state.tabs);
   const activate = useTabsStore((state) => state.activate);
   const activePath = useTabsStore((state) => state.activePath);
@@ -85,6 +118,7 @@ function useAppCommands(openSettings: () => void) {
     (preference === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   useCommands('app', [
     { id: 'app.settings', title: 'Open settings', group: 'App', run: openSettings },
+    { id: 'app.workspaces', title: 'Open workspaces', group: 'App', run: openWorkspaces },
     {
       id: 'app.openRepository',
       title: 'Open a repository',

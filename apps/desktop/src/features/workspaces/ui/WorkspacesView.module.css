@@ -1,0 +1,121 @@
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-space-4);
+  max-width: var(--gp-content-max-width);
+  margin: 0 auto;
+  padding: var(--gp-space-5) var(--gp-space-4) var(--gp-space-7);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gp-space-2);
+}
+
+.title {
+  margin: 0 var(--gp-space-2) 0 0;
+  font-size: var(--gp-text-xl);
+  font-weight: var(--gp-weight-semibold);
+}
+
+.picker {
+  height: var(--gp-control-height-sm);
+  padding: 0 var(--gp-space-2);
+  border: 1px solid var(--gp-border-strong);
+  border-radius: var(--gp-radius-sm);
+  background: var(--gp-bg-surface);
+  color: var(--gp-text-primary);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.hint {
+  margin: 0;
+  color: var(--gp-text-muted);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--gp-menu-min-width) * 1.8), 1fr));
+  gap: var(--gp-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-space-2);
+  padding: var(--gp-space-3);
+  border: 1px solid var(--gp-border-subtle);
+  border-radius: var(--gp-radius-md);
+  background: var(--gp-bg-surface);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-space-2);
+}
+
+.repoName {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+  color: var(--gp-text-primary);
+  font-weight: var(--gp-weight-semibold);
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.repoName:hover {
+  color: var(--gp-accent-text);
+}
+
+.repoName:focus-visible {
+  outline: 2px solid var(--gp-focus-ring);
+  outline-offset: 1px;
+}
+
+.meta {
+  margin: 0;
+  overflow: hidden;
+  color: var(--gp-text-muted);
+  font-size: var(--gp-text-sm);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.listTitle {
+  margin: var(--gp-space-1) 0 0;
+  color: var(--gp-text-secondary);
+  font-size: var(--gp-text-xs);
+  font-weight: var(--gp-weight-semibold);
+  text-transform: uppercase;
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--gp-text-sm);
+}
+
+.item {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
