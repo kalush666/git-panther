@@ -105,6 +105,8 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::apply_patch,
             commands::apply_patch_file,
             commands::commit_patch,
+            commands::gitflow_start,
+            commands::gitflow_finish,
             commands::disconnect_hosting,
             commands::hosting_status,
             commands::list_pull_requests,

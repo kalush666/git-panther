@@ -205,6 +205,10 @@ export const commands = {
 	applyPatchFile: (path: string, file: string) => typedError<null, AppError>(__TAURI_INVOKE("apply_patch_file", { path, file })),
 	/**  Commit `id` as a mail-style patch. */
 	commitPatch: (path: string, id: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_patch", { path, id })),
+	/**  Starts a git flow branch and checks it out; returns its full name. */
+	gitflowStart: (path: string, kind: FlowKindDto, name: string) => typedError<string, AppError>(__TAURI_INVOKE("gitflow_start", { path, kind, name })),
+	/**  Finishes a git flow branch: merges, tags a release or hotfix, deletes it. */
+	gitflowFinish: (path: string, branch: string) => typedError<FlowFinishedDto_Serialize, AppError>(__TAURI_INVOKE("gitflow_finish", { path, branch })),
 	/**  Forgets a code review server and its token. */
 	disconnectHosting: (server: string) => typedError<null, AppError>(__TAURI_INVOKE("disconnect_hosting", { server })),
 	/**  The repository's project on a code review server, if a remote points to one. */
@@ -395,6 +399,24 @@ export type FileDiffDto_Serialize = {
 	isTruncated: boolean,
 	hunks: HunkDto_Serialize[],
 };
+
+/**  What finishing a flow branch did. */
+export type FlowFinishedDto = FlowFinishedDto_Serialize | FlowFinishedDto_Deserialize;
+
+/**  What finishing a flow branch did. */
+export type FlowFinishedDto_Deserialize = {
+	mergedInto: string[],
+	tag?: string | null,
+};
+
+/**  What finishing a flow branch did. */
+export type FlowFinishedDto_Serialize = {
+	mergedInto: string[],
+	tag: string | null,
+};
+
+/**  A git flow branch kind, as the UI sends it. */
+export type FlowKindDto = "feature" | "release" | "hotfix";
 
 /**  The system git status, as shown by the UI. */
 export type GitInstallationDto = { status: "supported"; version: string } | { status: "unsupported"; found: string; minimum: string } | { status: "missing"; minimum: string };

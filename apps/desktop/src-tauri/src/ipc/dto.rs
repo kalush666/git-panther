@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use panther_application::commit_graph::{GraphEntry, GraphPage};
+use panther_application::gitflow::FlowFinished;
 use panther_domain::account::Account;
 use panther_domain::branch::{Branch, BranchKind};
 use panther_domain::commit::{
@@ -11,6 +12,7 @@ use panther_domain::commit::{
 use panther_domain::commit::{Comparison, ReflogEntry};
 use panther_domain::conflict::ConflictChunk;
 use panther_domain::git_installation::{GitInstallation, GitVersion};
+use panther_domain::gitflow::FlowKind;
 use panther_domain::history::{RebaseAction, RebaseStep, ResetMode};
 use panther_domain::hosting::{
     HostingAccess, HostingKind, Issue, Pipeline, PipelineState, PullRequest, PullRequestReview,
@@ -1113,6 +1115,42 @@ impl From<PullRequestReview> for PullRequestReviewDto {
                 .map(ReviewCommentDto::from)
                 .collect(),
             mergeable: review.mergeable,
+        }
+    }
+}
+
+/// A git flow branch kind, as the UI sends it.
+#[derive(Debug, Clone, Copy, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum FlowKindDto {
+    Feature,
+    Release,
+    Hotfix,
+}
+
+impl From<FlowKindDto> for FlowKind {
+    fn from(kind: FlowKindDto) -> Self {
+        match kind {
+            FlowKindDto::Feature => Self::Feature,
+            FlowKindDto::Release => Self::Release,
+            FlowKindDto::Hotfix => Self::Hotfix,
+        }
+    }
+}
+
+/// What finishing a flow branch did.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FlowFinishedDto {
+    pub merged_into: Vec<String>,
+    pub tag: Option<String>,
+}
+
+impl From<FlowFinished> for FlowFinishedDto {
+    fn from(finished: FlowFinished) -> Self {
+        Self {
+            merged_into: finished.merged_into,
+            tag: finished.tag,
         }
     }
 }

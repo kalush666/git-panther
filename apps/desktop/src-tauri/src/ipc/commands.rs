@@ -29,7 +29,9 @@ use crate::infra::watcher::RepositoryWatcher;
 use panther_application::accounts::SignIn;
 use panther_domain::hosting::NewPullRequest;
 
-use super::dto::{ComparisonDto, PipelineDto, PullRequestReviewDto, ReflogEntryDto};
+use super::dto::{
+    ComparisonDto, FlowFinishedDto, FlowKindDto, PipelineDto, PullRequestReviewDto, ReflogEntryDto,
+};
 use panther_domain::remote::{PushOptions, RemoteName};
 
 /// Runs blocking work (git, disk) off the async runtime's worker threads.
@@ -1102,6 +1104,31 @@ pub async fn compare_refs(
 ) -> Result<ComparisonDto, AppError> {
     let graph = services.commit_graph.clone();
     run_blocking(move || Ok(graph.compare(&PathBuf::from(path), &base, &head)?.into())).await
+}
+
+/// Starts a git flow branch and checks it out; returns its full name.
+#[tauri::command]
+#[specta::specta]
+pub async fn gitflow_start(
+    services: State<'_, AppServices>,
+    path: String,
+    kind: FlowKindDto,
+    name: String,
+) -> Result<String, AppError> {
+    let gitflow = services.gitflow.clone();
+    run_blocking(move || Ok(gitflow.start(&PathBuf::from(path), kind.into(), &name)?)).await
+}
+
+/// Finishes a git flow branch: merges, tags a release or hotfix, deletes it.
+#[tauri::command]
+#[specta::specta]
+pub async fn gitflow_finish(
+    services: State<'_, AppServices>,
+    path: String,
+    branch: String,
+) -> Result<FlowFinishedDto, AppError> {
+    let gitflow = services.gitflow.clone();
+    run_blocking(move || Ok(gitflow.finish(&PathBuf::from(path), &branch)?.into())).await
 }
 
 /// Where HEAD pointed recently, for recovering lost commits.

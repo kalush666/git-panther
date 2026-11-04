@@ -31,6 +31,7 @@ import { WorkingCopyRow } from './WorkingCopyRow';
 import menu from './menu.module.css';
 import styles from './RepositoryView.module.css';
 import { useBranchActions, type BranchActions } from './useBranchActions';
+import { FLOW_KINDS, flowKindOf, useGitflowActions } from './useGitflowActions';
 import { useHistoryActions, type HistoryActions } from './useHistoryActions';
 import { useHostingActions } from './useHostingActions';
 import { useRemoteActions } from './useRemoteActions';
@@ -64,9 +65,15 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
     setRecovering(false);
     setReview(target);
   };
-  const branchActions = useBranchActions(path, history.report, (base, head) => {
-    showReview({ base, head, request: null });
-  });
+  const gitflow = useGitflowActions(path, history.report);
+  const branchActions = useBranchActions(
+    path,
+    history.report,
+    (base, head) => {
+      showReview({ base, head, request: null });
+    },
+    gitflow.openFinish,
+  );
   const remoteActions = useRemoteActions(path, history.report, onOpenRepository);
   const hostingActions = useHostingActions(
     path,
@@ -97,6 +104,24 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
       enabled: headBranch !== undefined,
       run: () => {
         if (headBranch) branchActions.openCreate(headBranch.target, headBranch.name);
+      },
+    },
+    ...FLOW_KINDS.map((kind) => ({
+      id: `repository.gitflow.start.${kind}`,
+      title: `Start ${kind}…`,
+      group: 'Git flow',
+      enabled: true,
+      run: () => {
+        gitflow.openStart(kind);
+      },
+    })),
+    {
+      id: 'repository.gitflow.finish',
+      title: headBranch ? `Finish ${headBranch.name}` : 'Finish the flow branch',
+      group: 'Git flow',
+      enabled: headBranch !== undefined && flowKindOf(headBranch.name) !== null,
+      run: () => {
+        if (headBranch) gitflow.openFinish(headBranch.name);
       },
     },
     {
@@ -302,6 +327,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
       )}
       <SyncSignIn path={path} sync={sync} />
       {branchActions.prompt}
+      {gitflow.prompt}
       {history.prompt}
       {remoteActions.prompt}
       {hostingActions.prompt}

@@ -28,6 +28,7 @@ export type {
   DiffSide,
   FileDiff,
   HunkAction,
+  FlowKind,
   Pipeline,
   RebaseAction,
   ReflogEntry,

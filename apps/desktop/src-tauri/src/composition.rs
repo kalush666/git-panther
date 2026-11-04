@@ -9,6 +9,7 @@ use panther_application::check_git_installation::CheckGitInstallation;
 use panther_application::clone_repository::CloneRepository;
 use panther_application::commit_graph::CommitGraph;
 use panther_application::conflicts::Conflicts;
+use panther_application::gitflow::Gitflow;
 use panther_application::history::History;
 use panther_application::hosting::Hosting;
 use panther_application::identity::Identities;
@@ -50,6 +51,7 @@ pub struct AppServices {
     pub settings: Arc<AppSettings>,
     pub accounts: Arc<Accounts>,
     pub history: Arc<History>,
+    pub gitflow: Arc<Gitflow>,
     pub remotes: Arc<Remotes>,
     pub layout: Arc<Layout>,
     pub identities: Arc<Identities>,
@@ -104,6 +106,11 @@ impl AppServices {
                 git.clone(),
             )))),
             layout: Arc::new(Layout::new(Arc::new(GitRepositoryLayout::new(git.clone())))),
+            gitflow: Arc::new(Gitflow::new(
+                Arc::new(GitBranchStore::new(git.clone())),
+                history_editor.clone(),
+                Arc::new(GitTagStore::new(git.clone())),
+            )),
             history: Arc::new(History::new(
                 history_editor,
                 Arc::new(GitTagStore::new(git.clone())),

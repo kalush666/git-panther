@@ -22,6 +22,8 @@ import type {
   ReviewCommentDto,
   ComparisonDto,
   ReflogEntryDto,
+  FlowKindDto,
+  FlowFinishedDto,
   PipelineDto,
   PipelineStateDto,
   HunkDto_Serialize,
@@ -79,6 +81,8 @@ export type PullRequestReview = PullRequestReviewDto;
 export type ReviewComment = ReviewCommentDto;
 export type Comparison = ComparisonDto;
 export type ReflogEntry = ReflogEntryDto;
+export type FlowKind = FlowKindDto;
+export type FlowFinished = FlowFinishedDto;
 export type Pipeline = PipelineDto;
 export type PipelineState = PipelineStateDto;
 export type PullRequest = PullRequestDto;
@@ -302,6 +306,10 @@ export interface Backend {
   undo(path: string): Promise<Result<string>>;
   /** Shows the native folder picker; resolves to `null` if the user cancels. */
   pickFolder(title: string): Promise<string | null>;
+  /** Starts `<kind>/<name>` from develop (or main for a hotfix) and checks it out. */
+  gitflowStart(path: string, kind: FlowKind, name: string): Promise<Result<string>>;
+  /** Merges a flow branch where git flow says, tags releases and hotfixes, deletes it. */
+  gitflowFinish(path: string, branch: string): Promise<Result<FlowFinished>>;
   /** Asks for a .patch or .diff file. */
   pickPatchFile(title: string): Promise<string | null>;
   /** Commit `id` as a mail-style patch, as `git format-patch` writes it. */

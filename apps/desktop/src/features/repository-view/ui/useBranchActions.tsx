@@ -27,6 +27,8 @@ export interface BranchActions {
   compare: (base: string, head: string) => void;
   /** Asks which two branches, tags or commits to compare, prefilled. */
   openCompare: (base: string, head: string) => void;
+  /** Asks to finish a git flow branch (feature/, release/, hotfix/). */
+  finishFlow: (branch: string) => void;
   /** The last checkout error, shown next to the branch list. */
   checkoutError: string | null;
   /** The name bar, when one is open. */
@@ -38,6 +40,7 @@ export function useBranchActions(
   path: string,
   report: Report,
   compare: (base: string, head: string) => void,
+  finishFlow: (branch: string) => void,
 ): BranchActions {
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [switchTo, setSwitchTo] = useState(true);
@@ -145,6 +148,7 @@ export function useBranchActions(
       setPrompt({ kind: 'create', start, startLabel });
     },
     compare,
+    finishFlow,
     openCompare: (base, head) => {
       setPrompt({ kind: 'compare', base, head });
     },
