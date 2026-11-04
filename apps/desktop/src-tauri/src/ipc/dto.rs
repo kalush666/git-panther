@@ -11,6 +11,7 @@ use panther_domain::commit::{
 use panther_domain::conflict::ConflictChunk;
 use panther_domain::git_installation::{GitInstallation, GitVersion};
 use panther_domain::history::{RebaseAction, RebaseStep, ResetMode};
+use panther_domain::identity::{Identity, Signing, SigningFormat};
 use panther_domain::layout::{LfsStatus, Submodule, SubmoduleState, Worktree};
 use panther_domain::ports::HunkAction;
 use panther_domain::remote::{PullStrategy, Remote};
@@ -875,6 +876,64 @@ impl From<LfsStatus> for LfsStatusDto {
         Self {
             used: status.used,
             installed: status.installed,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum SigningFormatDto {
+    OpenPgp,
+    Ssh,
+    X509,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SigningDto {
+    pub format: SigningFormatDto,
+    pub key: String,
+}
+
+/// Who commits, and with which signing key if any.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct IdentityDto {
+    pub name: String,
+    pub email: String,
+    pub signing: Option<SigningDto>,
+}
+
+impl From<Identity> for IdentityDto {
+    fn from(identity: Identity) -> Self {
+        Self {
+            name: identity.name,
+            email: identity.email,
+            signing: identity.signing.map(|signing| SigningDto {
+                format: match signing.format {
+                    SigningFormat::OpenPgp => SigningFormatDto::OpenPgp,
+                    SigningFormat::Ssh => SigningFormatDto::Ssh,
+                    SigningFormat::X509 => SigningFormatDto::X509,
+                },
+                key: signing.key,
+            }),
+        }
+    }
+}
+
+impl From<IdentityDto> for Identity {
+    fn from(identity: IdentityDto) -> Self {
+        Self {
+            name: identity.name,
+            email: identity.email,
+            signing: identity.signing.map(|signing| Signing {
+                format: match signing.format {
+                    SigningFormatDto::OpenPgp => SigningFormat::OpenPgp,
+                    SigningFormatDto::Ssh => SigningFormat::Ssh,
+                    SigningFormatDto::X509 => SigningFormat::X509,
+                },
+                key: signing.key,
+            }),
         }
     }
 }
