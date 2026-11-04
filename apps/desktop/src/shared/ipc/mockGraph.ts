@@ -155,6 +155,18 @@ export function mockCommitDetails(id: string): CommitDetailsDto | null {
 }
 
 /** Rows whose message, author or SHA contains `query`, like the real search. */
+export function mockFilter(author: string | null, since: number | null): number[] {
+  const needle = author?.trim().toLowerCase() ?? '';
+  return mockGraphPage(0, MOCK_HISTORY_LENGTH)
+    .entries.map((entry, row) => ({ entry, row }))
+    .filter(
+      ({ entry }) =>
+        (needle === '' || entry.author.name.toLowerCase().includes(needle)) &&
+        (since === null || entry.author.time >= since),
+    )
+    .map(({ row }) => row);
+}
+
 export function mockSearch(query: string): number[] {
   const needle = query.trim().toLowerCase();
   if (needle === '') return [];

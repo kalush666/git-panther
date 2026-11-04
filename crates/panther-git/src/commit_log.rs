@@ -2,6 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
+use panther_domain::commit::CommitFilter;
 use panther_domain::commit::ReflogEntry;
 use panther_domain::commit::{
     BlameLine, CommitDetails, CommitId, CommitNode, CommitSummary, Comparison, RefLabel,
@@ -136,6 +137,33 @@ impl CommitLog for GitCommitLog {
         head: &str,
     ) -> Result<Comparison, RepositoryError> {
         self.libgit2.compare(repository, base, head)
+    }
+
+    fn filter(
+        &self,
+        repository: &Path,
+        filter: &CommitFilter,
+    ) -> Result<Vec<CommitId>, RepositoryError> {
+        let mut args = vec![
+            "log".to_owned(),
+            "--all".to_owned(),
+            "--format=%H".to_owned(),
+            "--regexp-ignore-case".to_owned(),
+            "--fixed-strings".to_owned(),
+        ];
+        if let Some(author) = filter.author_needle() {
+            args.push(format!("--author={author}"));
+        }
+        if let Some(since) = filter.since {
+            args.push(format!("--since=@{since}"));
+        }
+        let args: Vec<&str> = args.iter().map(String::as_str).collect();
+        let output = run_git(&self.executable, repository, &args)
+            .map_err(|details| RepositoryError::Git { details })?;
+        Ok(output
+            .lines()
+            .filter_map(|line| CommitId::parse(line).ok())
+            .collect())
     }
 
     fn reflog(&self, repository: &Path) -> Result<Vec<ReflogEntry>, RepositoryError> {

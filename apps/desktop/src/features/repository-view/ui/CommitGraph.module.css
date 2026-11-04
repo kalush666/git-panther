@@ -197,3 +197,19 @@
   background: var(--gp-accent-subtle);
   box-shadow: 0 0 0 2px var(--gp-accent-subtle);
 }
+
+.toolbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  border-bottom: 1px solid var(--gp-border-subtle);
+  background: var(--gp-bg-surface);
+}
+
+.toolbar:focus-within {
+  box-shadow: inset 0 -2px 0 var(--gp-accent);
+}
+
+.row[data-dimmed='true'] > * {
+  opacity: 0.35;
+}

@@ -194,6 +194,11 @@ export const commands = {
 	compareFileDiff: (path: string, from: string, to: string, file: string) => typedError<FileDiffDto_Serialize, AppError>(__TAURI_INVOKE("compare_file_diff", { path, from, to, file })),
 	/**  Where HEAD pointed recently, for recovering lost commits. */
 	reflog: (path: string) => typedError<ReflogEntryDto[], AppError>(__TAURI_INVOKE("reflog", { path })),
+	/**
+	 *  Rows of the graph by `author` (name or email, any case) and/or `since`
+	 *  (Unix seconds), top to bottom.
+	 */
+	filterCommits: (path: string, author: string | null, since: number | null, hidden: string[]) => typedError<number[], AppError>(__TAURI_INVOKE("filter_commits", { path, author, since, hidden })),
 	/**  Forgets a code review server and its token. */
 	disconnectHosting: (server: string) => typedError<null, AppError>(__TAURI_INVOKE("disconnect_hosting", { server })),
 	/**  The repository's project on a code review server, if a remote points to one. */

@@ -3,7 +3,7 @@
 mod support;
 
 use git2::{Oid, Repository};
-use panther_domain::commit::{ChangeKind, CommitId, RefKind};
+use panther_domain::commit::{ChangeKind, CommitFilter, CommitId, RefKind};
 use panther_domain::ports::CommitLog;
 use panther_domain::repository::RepositoryError;
 use panther_git::{Git2CommitLog, GitCommitLog};
@@ -323,5 +323,48 @@ fn reflog_marks_commits_no_branch_contains_as_lost() {
         let lost = reflog.iter().find(|entry| entry.id == id(second)).unwrap();
         assert!(lost.lost, "{name}");
         assert_eq!(lost.summary, "Second", "{name}");
+    }
+}
+
+#[test]
+fn filters_commits_by_author_and_time() {
+    let fixture = merged_history();
+    for (name, log) in implementations() {
+        let everyone = log
+            .filter(
+                fixture.dir.path(),
+                &CommitFilter {
+                    author: Some("GIT PANTHER tests".into()),
+                    since: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(everyone.len(), 4, "{name}");
+
+        let nobody = log
+            .filter(
+                fixture.dir.path(),
+                &CommitFilter {
+                    author: Some("someone else".into()),
+                    since: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(nobody, [], "{name}");
+
+        // The fixture's commits are a minute apart, starting at 1_700_000_000.
+        let mut recent = log
+            .filter(
+                fixture.dir.path(),
+                &CommitFilter {
+                    author: None,
+                    since: Some(1_700_000_000 + 120),
+                },
+            )
+            .unwrap();
+        recent.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+        let mut expected = vec![id(fixture.topic), id(fixture.merge)];
+        expected.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+        assert_eq!(recent, expected, "{name}");
     }
 }

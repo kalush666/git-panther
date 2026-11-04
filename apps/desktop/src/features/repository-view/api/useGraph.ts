@@ -63,6 +63,18 @@ export function useCommitSearch(path: string, query: string) {
   });
 }
 
+/** Rows that pass an author / since filter; nothing while no filter is set. */
+export function useCommitFilter(path: string, author: string, since: number | null) {
+  const hidden = useHiddenRefs(path);
+  const trimmed = author.trim();
+  return useQuery({
+    queryKey: [...repositoryQueryKey(path), 'filter', hidden.join(','), trimmed, since],
+    queryFn: async () => unwrap(await ipc.filterCommits(path, trimmed || null, since, [...hidden])),
+    enabled: trimmed !== '' || since !== null,
+    staleTime: Infinity,
+  });
+}
+
 export function useFileHistory(path: string, file: string) {
   return useQuery({
     queryKey: [...repositoryQueryKey(path), 'fileHistory', file],

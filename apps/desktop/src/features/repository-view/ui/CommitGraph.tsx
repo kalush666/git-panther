@@ -20,6 +20,7 @@ import { formatCommitTime } from '../model/formatTime';
 import { ROW_HEIGHT, graphColumnWidth, paletteIndex } from '../model/graphGeometry';
 import { groupRefs, initialsOf, type RefPill } from '../model/refPills';
 import { ColumnMenu } from './ColumnMenu';
+import { GraphFilter } from './GraphFilter';
 import { GraphSearch } from './GraphSearch';
 import { PipelineBadge } from './PipelineBadge';
 import styles from './CommitGraph.module.css';
@@ -87,6 +88,8 @@ export function CommitGraph({
   const widestGraph = useRef(1);
   const [total, setTotal] = useState(0);
   const [matches, setMatches] = useState<ReadonlySet<number>>(new Set());
+  /** Rows the author / date filter lets through; `null` without a filter. */
+  const [passing, setPassing] = useState<ReadonlySet<number> | null>(null);
   const keepMatches = useCallback((rows: ReadonlySet<number>) => {
     setMatches(rows);
   }, []);
@@ -182,14 +185,17 @@ export function CommitGraph({
   const gridTemplateColumns = columnTemplate(columns, graphWidth);
   return (
     <div className={styles.graph}>
-      <GraphSearch
-        path={path}
-        onMatchesChange={keepMatches}
-        onGoTo={(row) => {
-          onSelectIndex(row);
-          virtualizer.scrollToIndex(row, { align: 'center' });
-        }}
-      />
+      <div className={styles.toolbar}>
+        <GraphSearch
+          path={path}
+          onMatchesChange={keepMatches}
+          onGoTo={(row) => {
+            onSelectIndex(row);
+            virtualizer.scrollToIndex(row, { align: 'center' });
+          }}
+        />
+        <GraphFilter path={path} onRowsChange={setPassing} />
+      </div>
       <div className={styles.header} style={{ gridTemplateColumns }}>
         {columns.refs && <span className={styles.headerCell}>Branch / Tag</span>}
         <span className={styles.headerCell}>Graph</span>
@@ -235,6 +241,7 @@ export function CommitGraph({
               onCheckoutRef={onCheckoutRef}
               isSelected={item.index === selectedIndex}
               isMatch={matches.has(item.index)}
+              isDimmed={passing !== null && !passing.has(item.index)}
               pipeline={pipelines?.get(graph.entryAt(item.index)?.id ?? '')}
               onSelect={select}
             />
@@ -258,6 +265,8 @@ interface CommitRowProps {
   isSelected: boolean;
   /** Matches the current search. */
   isMatch: boolean;
+  /** Left out by the author / date filter. */
+  isDimmed: boolean;
   pipeline: Pipeline | undefined;
   onSelect: (index: number) => void;
 }
@@ -272,6 +281,7 @@ function CommitRow({
   onCheckoutRef,
   isSelected,
   isMatch,
+  isDimmed,
   pipeline,
   onSelect,
 }: CommitRowProps) {
@@ -283,6 +293,7 @@ function CommitRow({
       className={styles.row}
       data-selected={isSelected}
       data-match={isMatch}
+      data-dimmed={isDimmed}
       style={{ transform: `translateY(${start}px)`, gridTemplateColumns }}
       onClick={() => {
         onSelect(index);
