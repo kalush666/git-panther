@@ -9,8 +9,9 @@ use std::sync::{Arc, Mutex, PoisonError};
 use panther_domain::branch::BranchName;
 use panther_domain::commit::CommitId;
 use panther_domain::history::HeadSnapshot;
-use panther_domain::ports::{BranchStore, HistoryEditor};
+use panther_domain::ports::{BranchStore, HistoryEditor, StashStore};
 use panther_domain::repository::RepositoryError;
+use panther_domain::stash::Stash;
 
 #[derive(Clone)]
 enum UndoStep {
@@ -22,6 +23,7 @@ enum UndoStep {
         name: BranchName,
         target: CommitId,
     },
+    RestoreStash(Stash),
 }
 
 #[derive(Clone)]
@@ -34,14 +36,20 @@ struct Entry {
 pub struct UndoLog {
     history: Arc<dyn HistoryEditor>,
     branches: Arc<dyn BranchStore>,
+    stashes: Arc<dyn StashStore>,
     last: Mutex<HashMap<PathBuf, Entry>>,
 }
 
 impl UndoLog {
-    pub fn new(history: Arc<dyn HistoryEditor>, branches: Arc<dyn BranchStore>) -> Self {
+    pub fn new(
+        history: Arc<dyn HistoryEditor>,
+        branches: Arc<dyn BranchStore>,
+        stashes: Arc<dyn StashStore>,
+    ) -> Self {
         Self {
             history,
             branches,
+            stashes,
             last: Mutex::new(HashMap::new()),
         }
     }
@@ -85,6 +93,22 @@ impl UndoLog {
         Ok(())
     }
 
+    /// Runs `action` dropping `stash`, remembering how to bring it back.
+    ///
+    /// # Errors
+    /// Whatever `action` returns.
+    pub fn track_stash_drop(
+        &self,
+        repository: &Path,
+        stash: Stash,
+        action: impl FnOnce() -> Result<(), RepositoryError>,
+    ) -> Result<(), RepositoryError> {
+        action()?;
+        let label = format!("Drop stash \"{}\"", stash.message);
+        self.remember(repository, label, UndoStep::RestoreStash(stash));
+        Ok(())
+    }
+
     /// What the next undo would revert, if anything.
     pub fn pending(&self, repository: &Path) -> Option<String> {
         self.entries()
@@ -112,6 +136,7 @@ impl UndoLog {
             UndoStep::RestoreBranch { name, target } => {
                 self.branches.create(repository, name, target, false)
             }
+            UndoStep::RestoreStash(stash) => self.stashes.restore(repository, stash),
         }
         .inspect_err(|_| {
             // Keep the step when restoring failed (e.g. blocked by local
@@ -250,10 +275,34 @@ mod tests {
         }
     }
 
+    struct NoStashes;
+
+    impl StashStore for NoStashes {
+        fn stashes(&self, _: &Path) -> Result<Vec<Stash>, RepositoryError> {
+            Ok(Vec::new())
+        }
+        fn save(&self, _: &Path, _: Option<&str>, _: bool) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
+        fn apply(&self, _: &Path, _: usize, _: bool) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
+        fn remove(&self, _: &Path, _: usize) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
+        fn restore(&self, _: &Path, _: &Stash) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
+    }
+
     fn log() -> (UndoLog, Arc<FakeHead>, Arc<RecreatedBranches>) {
         let head = Arc::new(FakeHead(Mutex::new(on("main", 1))));
         let branches = Arc::new(RecreatedBranches::default());
-        (UndoLog::new(head.clone(), branches.clone()), head, branches)
+        (
+            UndoLog::new(head.clone(), branches.clone(), Arc::new(NoStashes)),
+            head,
+            branches,
+        )
     }
 
     const REPO: &str = "repo";

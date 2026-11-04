@@ -74,6 +74,7 @@ impl AppServices {
         let undo = Arc::new(UndoLog::new(
             history_editor.clone(),
             Arc::new(GitBranchStore::new(git.clone())),
+            Arc::new(GitStashStore::new(git.clone())),
         ));
         Self {
             check_git_installation: Arc::new(CheckGitInstallation::new(
@@ -102,7 +103,9 @@ impl AppServices {
             sync: Arc::new(
                 Sync::new(Arc::new(GitRemoteSync::new(git.clone()))).with_undo(undo.clone()),
             ),
-            stashes: Arc::new(Stashes::new(Arc::new(GitStashStore::new(git.clone())))),
+            stashes: Arc::new(
+                Stashes::new(Arc::new(GitStashStore::new(git.clone()))).with_undo(undo.clone()),
+            ),
             conflicts: Arc::new(Conflicts::new(Arc::new(GitConflictResolver::new(
                 git.clone(),
             )))),

@@ -105,6 +105,19 @@ impl StashStore for GitStashStore {
         self.git(repository, &["stash", command, &entry])
     }
 
+    fn restore(&self, repository: &Path, stash: &Stash) -> Result<(), RepositoryError> {
+        self.git(
+            repository,
+            &[
+                "stash",
+                "store",
+                "--message",
+                &stash.message,
+                stash.id.as_str(),
+            ],
+        )
+    }
+
     fn remove(&self, repository: &Path, index: usize) -> Result<(), RepositoryError> {
         self.ensure_exists(repository, index)?;
         self.git(
