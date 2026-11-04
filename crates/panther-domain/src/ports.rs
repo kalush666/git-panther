@@ -9,6 +9,7 @@ use crate::account::{Account, Password};
 use crate::branch::{Branch, BranchName};
 use crate::commit::{CommitDetails, CommitId, CommitNode, CommitSummary, RefLabel};
 use crate::git_installation::{GitVersion, GitVersionParseError};
+use crate::history::{HeadSnapshot, ResetMode, TagName};
 use crate::recent::RecentRepositories;
 use crate::remote::{PullStrategy, Remote};
 use crate::repository::{
@@ -368,6 +369,87 @@ pub trait GitBinaryProbe: Send + Sync {
     /// # Errors
     /// Returns [`GitProbeError`] when it exists but cannot be queried.
     fn version_of(&self, executable: &Path) -> Result<Option<GitVersion>, GitProbeError>;
+}
+
+/// Moves HEAD and rewrites history on the current branch.
+pub trait HistoryEditor: Send + Sync {
+    /// Where HEAD is now.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when the repository cannot be read (or has no commit yet).
+    fn head(&self, repository: &Path) -> Result<HeadSnapshot, RepositoryError>;
+
+    /// Merges `branch` (local or remote) into the current branch.
+    ///
+    /// # Errors
+    /// [`RepositoryError::OperationConflict`] or [`RepositoryError::CheckoutConflict`].
+    fn merge(&self, repository: &Path, branch: &str) -> Result<(), RepositoryError>;
+
+    /// Replays the current branch's own commits on top of `onto`.
+    ///
+    /// # Errors
+    /// [`RepositoryError::OperationConflict`] or [`RepositoryError::CheckoutConflict`].
+    fn rebase(&self, repository: &Path, onto: &str) -> Result<(), RepositoryError>;
+
+    /// Applies the changes of `commit` as a new commit on the current branch.
+    ///
+    /// # Errors
+    /// [`RepositoryError::OperationConflict`] or [`RepositoryError::CheckoutConflict`].
+    fn cherry_pick(&self, repository: &Path, commit: &CommitId) -> Result<(), RepositoryError>;
+
+    /// Adds a commit that undoes the changes of `commit`.
+    ///
+    /// # Errors
+    /// [`RepositoryError::OperationConflict`] or [`RepositoryError::CheckoutConflict`].
+    fn revert(&self, repository: &Path, commit: &CommitId) -> Result<(), RepositoryError>;
+
+    /// Moves the current branch to `commit`.
+    ///
+    /// # Errors
+    /// [`RepositoryError`] when git refuses.
+    fn reset(
+        &self,
+        repository: &Path,
+        commit: &CommitId,
+        mode: ResetMode,
+    ) -> Result<(), RepositoryError>;
+
+    /// Checks out `commit` without a branch (detached HEAD).
+    ///
+    /// # Errors
+    /// [`RepositoryError::CheckoutConflict`] if uncommitted changes would be lost.
+    fn checkout_commit(&self, repository: &Path, commit: &CommitId) -> Result<(), RepositoryError>;
+
+    /// Puts HEAD back where `snapshot` says, keeping uncommitted changes.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CheckoutConflict`] if uncommitted changes would be lost.
+    fn restore(&self, repository: &Path, snapshot: &HeadSnapshot) -> Result<(), RepositoryError>;
+}
+
+/// Creates, deletes and publishes tags.
+pub trait TagStore: Send + Sync {
+    /// An annotated tag when `message` is given, else a lightweight one.
+    ///
+    /// # Errors
+    /// [`RepositoryError::TagExists`].
+    fn create(
+        &self,
+        repository: &Path,
+        name: &TagName,
+        target: &CommitId,
+        message: Option<&str>,
+    ) -> Result<(), RepositoryError>;
+
+    /// # Errors
+    /// [`RepositoryError::TagNotFound`].
+    fn delete(&self, repository: &Path, name: &TagName) -> Result<(), RepositoryError>;
+
+    /// Pushes the tag to the default remote.
+    ///
+    /// # Errors
+    /// [`RepositoryError::NoRemote`], authentication or network errors.
+    fn push(&self, repository: &Path, name: &TagName) -> Result<(), RepositoryError>;
 }
 
 /// Hands credentials for HTTPS git servers to the user's credential helper.

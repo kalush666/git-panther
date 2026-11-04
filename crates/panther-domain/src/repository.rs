@@ -187,6 +187,23 @@ pub enum RepositoryError {
         "Git is not set up to remember passwords. Install Git for Windows with Git Credential Manager, or configure credential.helper."
     )]
     CredentialHelperMissing,
+    #[error(
+        "The {operation} stopped with conflicts. Resolve them in the working copy panel, then continue (or abort)."
+    )]
+    OperationConflict {
+        operation: &'static str,
+        details: String,
+    },
+    #[error(transparent)]
+    InvalidTagName(#[from] crate::history::InvalidTagName),
+    #[error("A tag named \"{name}\" already exists.")]
+    TagExists { name: String },
+    #[error("There is no tag named \"{name}\".")]
+    TagNotFound { name: String },
+    #[error("There is nothing to undo.")]
+    NothingToUndo,
+    #[error("The repository changed since that action, so it can no longer be undone safely.")]
+    UndoOutdated,
 }
 
 #[cfg(test)]

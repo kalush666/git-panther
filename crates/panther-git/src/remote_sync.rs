@@ -109,26 +109,27 @@ impl RemoteSync for GitRemoteSync {
                 cancel,
             );
         }
-        let remotes = self.remotes(repository)?;
-        let remote = remotes
-            .iter()
-            .find(|remote| remote.name == DEFAULT_REMOTE)
-            .or_else(|| remotes.first())
-            .ok_or(RepositoryError::NoRemote)?;
+        let remote = default_remote(self.remotes(repository)?)?;
         run_sync(
             &self.executable,
             repository,
-            &[
-                "push",
-                "--progress",
-                "--set-upstream",
-                &remote.name,
-                &branch,
-            ],
+            &["push", "--progress", "--set-upstream", &remote, &branch],
             on_progress,
             cancel,
         )
     }
+}
+
+/// The remote to publish to: `origin`, else the first one configured.
+///
+/// # Errors
+/// [`RepositoryError::NoRemote`] when there is none.
+pub(crate) fn default_remote(remotes: Vec<Remote>) -> Result<String, RepositoryError> {
+    let mut names: Vec<String> = remotes.into_iter().map(|remote| remote.name).collect();
+    if let Some(origin) = names.iter().position(|name| name == DEFAULT_REMOTE) {
+        return Ok(names.swap_remove(origin));
+    }
+    names.into_iter().next().ok_or(RepositoryError::NoRemote)
 }
 
 /// The checked-out branch; syncing a detached HEAD is refused.
