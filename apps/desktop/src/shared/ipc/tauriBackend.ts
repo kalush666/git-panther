@@ -56,6 +56,9 @@ export const tauriBackend: Backend = {
   setGitExecutable: commands.setGitExecutable,
   restartApp: commands.restartApp,
   setZoom: commands.setZoom,
+  listAccounts: commands.listAccounts,
+  signIn: commands.signIn,
+  signOut: commands.signOut,
   pickExecutable: async (title) => {
     const windows = navigator.userAgent.includes('Windows');
     const selection = await open({

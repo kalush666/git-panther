@@ -1,10 +1,14 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { ArrowDownToLine, ArrowUpFromLine, Check, ChevronDown, RefreshCw, X } from 'lucide-react';
 
+import { useState } from 'react';
+
+import { serverOf, SignInDialog } from '../../../shared/accounts';
 import { isIpcError } from '../../../shared/ipc';
 import { PULL_STRATEGIES, usePullStrategyStore } from '../../../shared/preferences/pullStrategy';
 import { Button } from '../../../shared/ui/Button/Button';
 import { useBranches } from '../api/useBranches';
+import { useRemotes } from '../api/useRemotes';
 import { useSync, type SyncAction } from '../api/useSync';
 import menu from './menu.module.css';
 import styles from './SyncToolbar.module.css';
@@ -113,12 +117,17 @@ export function SyncToolbar({ path }: { path: string }) {
           ) : null}
         </Button>
       </div>
-      <SyncStatus sync={sync} />
+      <SyncStatus path={path} sync={sync} />
     </div>
   );
 }
 
-function SyncStatus({ sync }: { sync: ReturnType<typeof useSync> }) {
+function SyncStatus({ path, sync }: { path: string; sync: ReturnType<typeof useSync> }) {
+  const remotes = useRemotes(path);
+  const [signingIn, setSigningIn] = useState(false);
+  const server =
+    remotes.data?.map((remote) => serverOf(remote.url)).find((found) => found !== null) ?? '';
+
   if (sync.running) {
     const percent = sync.progress?.percent;
     return (
@@ -140,6 +149,31 @@ function SyncStatus({ sync }: { sync: ReturnType<typeof useSync> }) {
         <span className={styles.errorText} title={sync.error.message}>
           {sync.error.message}
         </span>
+        {isIpcError(sync.error, 'authenticationFailed') && (
+          <Button
+            size="sm"
+            variant="secondary"
+            className={styles.errorAction}
+            onClick={() => {
+              setSigningIn(true);
+            }}
+          >
+            Sign in…
+          </Button>
+        )}
+        {signingIn && (
+          <SignInDialog
+            initialServer={server}
+            repository={path}
+            onCancel={() => {
+              setSigningIn(false);
+            }}
+            onSignedIn={() => {
+              setSigningIn(false);
+              sync.retry();
+            }}
+          />
+        )}
         <button
           type="button"
           className={styles.dismiss}

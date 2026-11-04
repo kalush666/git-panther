@@ -2,6 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { FolderOpen } from 'lucide-react';
 import { useId, useState, type SyntheticEvent } from 'react';
 
+import { serverOf, SignInDialog } from '../../../shared/accounts';
 import { ipc, isIpcError } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
 import { useClone } from '../api/useClone';
@@ -51,6 +52,8 @@ export function CloneDialog({ open, onOpenChange, onCloned }: CloneDialogProps) 
   };
 
   const wasCancelled = isIpcError(clone.error, 'cancelled');
+  const needsSignIn = isIpcError(clone.error, 'authenticationFailed');
+  const [signingIn, setSigningIn] = useState(false);
 
   return (
     <Dialog.Root open={open} onOpenChange={changeOpen}>
@@ -120,6 +123,27 @@ export function CloneDialog({ open, onOpenChange, onCloned }: CloneDialogProps) 
               <p className={styles.error} role="alert">
                 {wasCancelled ? 'Clone cancelled.' : clone.error.message}
               </p>
+            )}
+            {needsSignIn && (
+              <Button
+                onClick={() => {
+                  setSigningIn(true);
+                }}
+              >
+                Sign in…
+              </Button>
+            )}
+            {signingIn && (
+              <SignInDialog
+                initialServer={serverOf(url) ?? ''}
+                onCancel={() => {
+                  setSigningIn(false);
+                }}
+                onSignedIn={() => {
+                  setSigningIn(false);
+                  clone.start({ url, destination: joinPath(parentFolder, folderName) });
+                }}
+              />
             )}
 
             <div className={styles.actions}>

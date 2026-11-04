@@ -13,6 +13,7 @@ import { mockBackend } from './mockBackend';
 import { tauriBackend } from './tauriBackend';
 
 export type {
+  Account,
   Backend,
   Branch,
   ChangedFile,

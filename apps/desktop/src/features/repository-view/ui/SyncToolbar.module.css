@@ -93,6 +93,11 @@
   user-select: text;
 }
 
+.errorAction {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .dismiss {
   display: inline-flex;
   flex-shrink: 0;
