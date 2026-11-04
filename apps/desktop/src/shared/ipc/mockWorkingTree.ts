@@ -226,6 +226,12 @@ export function createMockWorkingTree() {
       return ok(null);
     },
 
+    /** Stops `next` part-way with the usual conflicted files, like a real conflicting merge. */
+    startConflict: (next: Operation) => {
+      operation = next;
+      conflicted = [...CONFLICTED_FILES];
+    },
+
     abortOperation: (): Result<null> => {
       if (!operation) {
         return failure(

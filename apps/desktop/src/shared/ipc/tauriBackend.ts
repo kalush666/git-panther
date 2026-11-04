@@ -59,6 +59,17 @@ export const tauriBackend: Backend = {
   listAccounts: commands.listAccounts,
   signIn: commands.signIn,
   signOut: commands.signOut,
+  mergeBranch: commands.mergeBranch,
+  rebaseOnto: commands.rebaseOnto,
+  cherryPick: commands.cherryPick,
+  revertCommit: commands.revertCommit,
+  resetToCommit: commands.resetToCommit,
+  checkoutCommit: commands.checkoutCommit,
+  createTag: commands.createTag,
+  deleteTag: commands.deleteTag,
+  pushTag: commands.pushTag,
+  pendingUndo: commands.pendingUndo,
+  undo: commands.undo,
   pickExecutable: async (title) => {
     const windows = navigator.userAgent.includes('Windows');
     const selection = await open({

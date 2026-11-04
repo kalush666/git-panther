@@ -1,0 +1,80 @@
+import { useQuery } from '@tanstack/react-query';
+
+import { ipc, unwrap, type ResetMode } from '../../../shared/ipc';
+import { repositoryQueryKey } from './useRepository';
+import { useRepositoryMutation } from './useRepositoryMutation';
+
+/** One graph action, as the menus and drag-and-drop ask for it. */
+export type HistoryRequest =
+  | { action: 'merge'; branch: string }
+  | { action: 'rebase'; onto: string }
+  | { action: 'cherryPick'; commit: string; label: string }
+  | { action: 'revert'; commit: string; label: string }
+  | { action: 'reset'; commit: string; label: string; mode: ResetMode }
+  | { action: 'checkoutCommit'; commit: string; label: string }
+  | { action: 'createTag'; name: string; target: string; message: string | null }
+  | { action: 'deleteTag'; name: string }
+  | { action: 'pushTag'; name: string };
+
+function send(path: string, request: HistoryRequest) {
+  switch (request.action) {
+    case 'merge':
+      return ipc.mergeBranch(path, request.branch);
+    case 'rebase':
+      return ipc.rebaseOnto(path, request.onto);
+    case 'cherryPick':
+      return ipc.cherryPick(path, request.commit);
+    case 'revert':
+      return ipc.revertCommit(path, request.commit);
+    case 'reset':
+      return ipc.resetToCommit(path, request.commit, request.mode);
+    case 'checkoutCommit':
+      return ipc.checkoutCommit(path, request.commit);
+    case 'createTag':
+      return ipc.createTag(path, request.name, request.target, request.message);
+    case 'deleteTag':
+      return ipc.deleteTag(path, request.name);
+    case 'pushTag':
+      return ipc.pushTag(path, request.name);
+  }
+}
+
+/** What a finished request did, in words for the status line. */
+export function describeDone(request: HistoryRequest): string {
+  switch (request.action) {
+    case 'merge':
+      return `Merged ${request.branch}`;
+    case 'rebase':
+      return `Rebased onto ${request.onto}`;
+    case 'cherryPick':
+      return `Cherry-picked ${request.label}`;
+    case 'revert':
+      return `Reverted ${request.label}`;
+    case 'reset':
+      return `Reset to ${request.label} (${request.mode})`;
+    case 'checkoutCommit':
+      return `Checked out ${request.label}`;
+    case 'createTag':
+      return `Created tag ${request.name}`;
+    case 'deleteTag':
+      return `Deleted tag ${request.name}`;
+    case 'pushTag':
+      return `Pushed tag ${request.name}`;
+  }
+}
+
+export function useHistoryAction(path: string) {
+  return useRepositoryMutation(path, (request: HistoryRequest) => send(path, request));
+}
+
+/** What Undo would revert, e.g. "Merge topic". */
+export function usePendingUndo(path: string) {
+  return useQuery({
+    queryKey: [...repositoryQueryKey(path), 'undo'],
+    queryFn: async () => unwrap(await ipc.pendingUndo(path)),
+  });
+}
+
+export function useUndo(path: string) {
+  return useRepositoryMutation(path, () => ipc.undo(path));
+}

@@ -1,6 +1,7 @@
 import type { Account, Backend, CloneProgress, OnProgress, Result } from './backend';
 import type { GitInstallationDto, RecentRepositoryDto, RepositorySummaryDto } from './bindings';
 import { createMockBranches } from './mockBranches';
+import { createMockHistory } from './mockHistory';
 import { createMockStashes } from './mockStashes';
 import { mockCommitDetails, mockGraphPage } from './mockGraph';
 import { createMockWorkingTree } from './mockWorkingTree';
@@ -95,6 +96,7 @@ function createMockBackend(): Backend {
   const workingTree = createMockWorkingTree();
   const branchStore = createMockBranches();
   const stashes = createMockStashes(workingTree);
+  const history = createMockHistory(branchStore, workingTree);
   let gitExecutable: string | null = null;
   let accounts: Account[] = [];
   const signedIn = () => !needsSignIn() || accounts.length > 0;
@@ -190,9 +192,11 @@ function createMockBackend(): Backend {
     listBranches: () => Promise.resolve(branchStore.list()),
     createBranch: (_path, name, start, checkout) =>
       Promise.resolve(branchStore.create(name, start, checkout)),
-    checkoutBranch: (_path, name) => Promise.resolve(branchStore.checkout(name)),
+    checkoutBranch: (_path, name) =>
+      Promise.resolve(history.trackCheckout(() => branchStore.checkout(name), name)),
     renameBranch: (_path, from, to) => Promise.resolve(branchStore.rename(from, to)),
-    deleteBranch: (_path, name, force) => Promise.resolve(branchStore.delete(name, force)),
+    deleteBranch: (_path, name, force) =>
+      Promise.resolve(history.trackDelete(() => branchStore.delete(name, force), name)),
     listRemotes: () =>
       Promise.resolve(
         ok([
@@ -271,6 +275,17 @@ function createMockBackend(): Backend {
       );
       return Promise.resolve(ok(null));
     },
+    mergeBranch: (_path, branch) => Promise.resolve(history.merge(branch)),
+    rebaseOnto: (_path, onto) => Promise.resolve(history.rebase(onto)),
+    cherryPick: (_path, commit) => Promise.resolve(history.cherryPick(commit)),
+    revertCommit: (_path, commit) => Promise.resolve(history.revert(commit)),
+    resetToCommit: (_path, commit) => Promise.resolve(history.reset(commit)),
+    checkoutCommit: (_path, commit) => Promise.resolve(history.checkoutCommit(commit)),
+    createTag: (_path, name) => Promise.resolve(history.createTag(name.trim())),
+    deleteTag: (_path, name) => Promise.resolve(history.deleteTag(name)),
+    pushTag: () => Promise.resolve(history.pushTag()),
+    pendingUndo: () => Promise.resolve(history.pendingUndo()),
+    undo: () => Promise.resolve(history.undo()),
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
   };
 }

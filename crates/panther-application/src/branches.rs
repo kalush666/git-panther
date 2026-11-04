@@ -3,18 +3,28 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use panther_domain::branch::{Branch, BranchName};
+use panther_domain::branch::{Branch, BranchKind, BranchName};
 use panther_domain::commit::CommitId;
 use panther_domain::ports::BranchStore;
 use panther_domain::repository::RepositoryError;
 
+use crate::undo::{UndoLog, tracked};
+
 pub struct Branches {
     store: Arc<dyn BranchStore>,
+    undo: Option<Arc<UndoLog>>,
 }
 
 impl Branches {
     pub fn new(store: Arc<dyn BranchStore>) -> Self {
-        Self { store }
+        Self { store, undo: None }
+    }
+
+    /// Makes checkouts and deletions undoable.
+    #[must_use]
+    pub fn with_undo(mut self, undo: Arc<UndoLog>) -> Self {
+        self.undo = Some(undo);
+        self
     }
 
     /// # Errors
@@ -44,7 +54,12 @@ impl Branches {
     /// # Errors
     /// Propagates [`BranchStore::checkout`] errors.
     pub fn checkout(&self, repository: &Path, name: &str) -> Result<(), RepositoryError> {
-        self.store.checkout(repository, name)
+        tracked(
+            self.undo.as_deref(),
+            repository,
+            || format!("Check out {name}"),
+            || self.store.checkout(repository, name),
+        )
     }
 
     /// # Errors
@@ -66,8 +81,25 @@ impl Branches {
         name: &str,
         force: bool,
     ) -> Result<(), RepositoryError> {
-        self.store
-            .delete(repository, &BranchName::parse(name)?, force)
+        let name = BranchName::parse(name)?;
+        let target = self.undo.as_ref().and_then(|_| {
+            self.store
+                .branches(repository)
+                .ok()?
+                .into_iter()
+                .find_map(|branch| {
+                    (branch.kind == BranchKind::Local && branch.name == name.as_str())
+                        .then_some(branch.target)
+                })
+        });
+        match (self.undo.as_deref(), target) {
+            (Some(undo), Some(target)) => {
+                undo.track_branch_delete(repository, name.clone(), target, || {
+                    self.store.delete(repository, &name, force)
+                })
+            }
+            _ => self.store.delete(repository, &name, force),
+        }
     }
 }
 

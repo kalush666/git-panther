@@ -138,3 +138,9 @@
   font-size: var(--gp-text-sm);
   user-select: text;
 }
+
+.row[data-drop-target='true'] {
+  outline: 2px dashed var(--gp-accent);
+  outline-offset: -2px;
+  background: var(--gp-accent-subtle);
+}

@@ -18,49 +18,55 @@ pub struct InvalidBranchName {
 
 const FORBIDDEN_CHARACTERS: &[char] = &[' ', '~', '^', ':', '?', '*', '[', '\\'];
 
+/// The first of git's reference-name rules (`check-ref-format`) that `name`
+/// breaks, if any.
+// git's ".lock" rule is case-sensitive (`x.LOCK` is a valid name).
+#[allow(clippy::case_sensitive_file_extension_comparisons)]
+pub(crate) fn ref_name_problem(name: &str) -> Option<&'static str> {
+    if name.is_empty() {
+        return Some("it is empty");
+    }
+    if name == "@" || name == "HEAD" {
+        return Some("it is reserved by git");
+    }
+    if name.starts_with('-') {
+        return Some("it cannot start with a dash");
+    }
+    if name.starts_with('/') || name.ends_with('/') || name.contains("//") {
+        return Some("slashes must separate non-empty parts");
+    }
+    if name.ends_with('.') || name.ends_with(".lock") {
+        return Some("it cannot end with \".\" or \".lock\"");
+    }
+    if name.contains("..") || name.contains("@{") {
+        return Some("it cannot contain \"..\" or \"@{\"");
+    }
+    if name.split('/').any(|part| part.starts_with('.')) {
+        return Some("no part may start with a dot");
+    }
+    if name
+        .chars()
+        .any(|c| c.is_control() || FORBIDDEN_CHARACTERS.contains(&c))
+    {
+        return Some("it cannot contain spaces or any of ~ ^ : ? * [ \\");
+    }
+    None
+}
+
 impl BranchName {
     /// Applies git's `check-ref-format --branch` rules.
     ///
     /// # Errors
     /// [`InvalidBranchName`] explaining the first rule the name breaks.
-    // git's ".lock" rule is case-sensitive (`x.LOCK` is a valid branch name).
-    #[allow(clippy::case_sensitive_file_extension_comparisons)]
     pub fn parse(input: &str) -> Result<Self, InvalidBranchName> {
         let name = input.trim();
-        let reject = |reason| {
-            Err(InvalidBranchName {
+        match ref_name_problem(name) {
+            Some(reason) => Err(InvalidBranchName {
                 name: name.to_owned(),
                 reason,
-            })
-        };
-        if name.is_empty() {
-            return reject("it is empty");
+            }),
+            None => Ok(Self(name.to_owned())),
         }
-        if name == "@" || name == "HEAD" {
-            return reject("it is reserved by git");
-        }
-        if name.starts_with('-') {
-            return reject("it cannot start with a dash");
-        }
-        if name.starts_with('/') || name.ends_with('/') || name.contains("//") {
-            return reject("slashes must separate non-empty parts");
-        }
-        if name.ends_with('.') || name.ends_with(".lock") {
-            return reject("it cannot end with \".\" or \".lock\"");
-        }
-        if name.contains("..") || name.contains("@{") {
-            return reject("it cannot contain \"..\" or \"@{\"");
-        }
-        if name.split('/').any(|part| part.starts_with('.')) {
-            return reject("no part may start with a dot");
-        }
-        if name
-            .chars()
-            .any(|c| c.is_control() || FORBIDDEN_CHARACTERS.contains(&c))
-        {
-            return reject("it cannot contain spaces or any of ~ ^ : ? * [ \\");
-        }
-        Ok(Self(name.to_owned()))
     }
 
     pub fn as_str(&self) -> &str {

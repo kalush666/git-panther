@@ -56,6 +56,17 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::list_accounts,
             commands::sign_in,
             commands::sign_out,
+            commands::merge_branch,
+            commands::rebase_onto,
+            commands::cherry_pick,
+            commands::revert_commit,
+            commands::reset_to_commit,
+            commands::checkout_commit,
+            commands::create_tag,
+            commands::delete_tag,
+            commands::push_tag,
+            commands::pending_undo,
+            commands::undo,
         ])
         .events(tauri_specta::collect_events![dto::RepositoryChanged])
 }

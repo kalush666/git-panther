@@ -46,6 +46,12 @@ pub enum AppErrorKind {
     InvalidServer,
     InvalidCredentials,
     CredentialHelperMissing,
+    OperationConflict,
+    InvalidTagName,
+    TagExists,
+    TagNotFound,
+    NothingToUndo,
+    UndoOutdated,
     WatchFailed,
     Internal,
 }
@@ -125,6 +131,12 @@ impl From<RepositoryError> for AppError {
             RepositoryError::InvalidServer(_) => AppErrorKind::InvalidServer,
             RepositoryError::InvalidCredentials(_) => AppErrorKind::InvalidCredentials,
             RepositoryError::CredentialHelperMissing => AppErrorKind::CredentialHelperMissing,
+            RepositoryError::OperationConflict { .. } => AppErrorKind::OperationConflict,
+            RepositoryError::InvalidTagName(_) => AppErrorKind::InvalidTagName,
+            RepositoryError::TagExists { .. } => AppErrorKind::TagExists,
+            RepositoryError::TagNotFound { .. } => AppErrorKind::TagNotFound,
+            RepositoryError::NothingToUndo => AppErrorKind::NothingToUndo,
+            RepositoryError::UndoOutdated => AppErrorKind::UndoOutdated,
         };
         Self::new(kind, error.to_string())
     }

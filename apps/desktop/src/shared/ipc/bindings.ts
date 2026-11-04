@@ -112,6 +112,28 @@ export const commands = {
 	signIn: (server: string, username: string, password: string, repository: string | null) => typedError<AccountDto, AppError>(__TAURI_INVOKE("sign_in", { server, username, password, repository })),
 	/**  Forgets an account and its stored password. */
 	signOut: (server: string, username: string) => typedError<null, AppError>(__TAURI_INVOKE("sign_out", { server, username })),
+	/**  Merges `branch` into the current branch. */
+	mergeBranch: (path: string, branch: string) => typedError<null, AppError>(__TAURI_INVOKE("merge_branch", { path, branch })),
+	/**  Replays the current branch's own commits on top of `onto`. */
+	rebaseOnto: (path: string, onto: string) => typedError<null, AppError>(__TAURI_INVOKE("rebase_onto", { path, onto })),
+	/**  Applies the changes of `commit` on the current branch. */
+	cherryPick: (path: string, commit: string) => typedError<null, AppError>(__TAURI_INVOKE("cherry_pick", { path, commit })),
+	/**  Adds a commit undoing `commit`. */
+	revertCommit: (path: string, commit: string) => typedError<null, AppError>(__TAURI_INVOKE("revert_commit", { path, commit })),
+	/**  Moves the current branch to `commit`. */
+	resetToCommit: (path: string, commit: string, mode: ResetModeDto) => typedError<null, AppError>(__TAURI_INVOKE("reset_to_commit", { path, commit, mode })),
+	/**  Checks out `commit` without a branch. */
+	checkoutCommit: (path: string, commit: string) => typedError<null, AppError>(__TAURI_INVOKE("checkout_commit", { path, commit })),
+	/**  Tags `target`; annotated when `message` is given. */
+	createTag: (path: string, name: string, target: string, message: string | null) => typedError<null, AppError>(__TAURI_INVOKE("create_tag", { path, name, target, message })),
+	/**  Deletes a local tag. */
+	deleteTag: (path: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_tag", { path, name })),
+	/**  Pushes a tag to the default remote. */
+	pushTag: (path: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("push_tag", { path, name })),
+	/**  What Undo would revert, e.g. "Merge topic". */
+	pendingUndo: (path: string) => typedError<string | null, AppError>(__TAURI_INVOKE("pending_undo", { path })),
+	/**  Reverts the last undoable action and returns what it was. */
+	undo: (path: string) => typedError<string, AppError>(__TAURI_INVOKE("undo", { path })),
 };
 
 /** Events */
@@ -135,7 +157,7 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "undoOutdated" | "watchFailed" | "internal";
 
 /**  A branch shown in the sidebar. */
 export type BranchDto = BranchDto_Serialize | BranchDto_Deserialize;
@@ -363,6 +385,9 @@ export type RepositorySummaryDto = {
 	name: string,
 	head: HeadDto,
 };
+
+/**  How far a reset goes beyond moving the branch. */
+export type ResetModeDto = "soft" | "mixed" | "hard";
 
 /**  A line within half a graph row. */
 export type SegmentDto = {
