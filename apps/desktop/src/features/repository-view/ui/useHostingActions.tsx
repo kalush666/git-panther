@@ -1,19 +1,39 @@
 import { useState, type ReactNode } from 'react';
 
-import type { HostingKind, PullRequest } from '../../../shared/ipc';
+import { SignInPrompt } from '../../../shared/accounts';
+import { isIpcError, type HostingKind, type PullRequest } from '../../../shared/ipc';
 import { InlinePrompt } from '../../../shared/ui/InlinePrompt/InlinePrompt';
 import { useBranches } from '../api/useBranches';
-import { useConnectHosting, useCreatePullRequest, useHostingStatus } from '../api/useHosting';
+import {
+  useConnectHosting,
+  useConnectHostingWithLogin,
+  useCreatePullRequest,
+  useHostingStatus,
+} from '../api/useHosting';
 import type { Report } from './useBranchActions';
 import styles from './useBranchActions.module.css';
 
-type Prompt = { kind: 'connect'; server: string } | { kind: 'create' };
+type Prompt =
+  /** An access token, when the server takes no passwords; `reason` says why. */
+  | { kind: 'connect'; server: string; reason: string | null }
+  /** The git sign-in, when there is none for the server yet. */
+  | { kind: 'signIn'; server: string }
+  | { kind: 'create' };
+
+/** Servers already tried with the git sign-in, so a refusal is not retried on every render. */
+const triedWithLogin = new Set<string>();
 
 /** Branches a merge request usually targets, most likely first. */
 const USUAL_TARGETS = ['main', 'master', 'develop'];
 
 export interface HostingActions {
+  /**
+   * Connects with the git sign-in; asks for the password when there is no
+   * sign-in yet, or for an access token when the server takes no passwords.
+   */
   openConnect: (server: string) => void;
+  /** Tries the git sign-in without asking anything if it does not work. */
+  connectQuietly: (server: string) => void;
   /** Asks for a title and target, for a request from the current branch. */
   openCreate: () => void;
   /** Checks out a request's source branch from `origin`. */
@@ -29,6 +49,7 @@ export function useHostingActions(
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [kind, setKind] = useState<HostingKind>('gitLab');
   const connect = useConnectHosting();
+  const connectWithLogin = useConnectHostingWithLogin();
   const create = useCreatePullRequest(path);
   const branches = useBranches(path);
   // GitLab numbers merge requests !8, GitHub pull requests #8.
@@ -46,10 +67,41 @@ export function useHostingActions(
     create.reset();
   };
 
+  const openConnect = (server: string) => {
+    triedWithLogin.add(server);
+    connect.reset();
+    setPrompt(null);
+    connectWithLogin.mutate(server, {
+      onSuccess: () => {
+        report('done', `Connected ${server} with your sign-in`);
+      },
+      onError: (error) => {
+        setPrompt(
+          isIpcError(error, 'authenticationFailed')
+            ? { kind: 'signIn', server }
+            : { kind: 'connect', server, reason: error.message },
+        );
+      },
+    });
+  };
+
   const bar = (() => {
     switch (prompt?.kind) {
       case undefined:
         return null;
+      case 'signIn':
+        return (
+          <SignInPrompt
+            key={`signIn:${prompt.server}`}
+            server={prompt.server}
+            purpose="to see its merge requests"
+            repository={path}
+            onCancel={close}
+            onSignedIn={() => {
+              openConnect(prompt.server);
+            }}
+          />
+        );
       case 'connect':
         return (
           <InlinePrompt
@@ -70,7 +122,7 @@ export function useHostingActions(
               </select>
             }
             submitLabel="Connect"
-            error={connect.error?.message ?? null}
+            error={connect.error?.message ?? prompt.reason}
             isPending={connect.isPending}
             onCancel={close}
             onSubmit={([token = '']) => {
@@ -118,9 +170,11 @@ export function useHostingActions(
   })();
 
   return {
-    openConnect: (server) => {
-      connect.reset();
-      setPrompt({ kind: 'connect', server });
+    openConnect,
+    connectQuietly: (server) => {
+      if (triedWithLogin.has(server)) return;
+      triedWithLogin.add(server);
+      connectWithLogin.mutate(server);
     },
     openCreate: () => {
       create.reset();

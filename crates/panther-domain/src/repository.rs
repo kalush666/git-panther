@@ -220,8 +220,12 @@ pub enum RepositoryError {
         "{server} refused the access token. Create a new one with API access and connect again."
     )]
     HostingUnauthorized { server: String },
-    #[error("Connect {server} with an access token to see its merge requests and issues.")]
+    #[error("Connect {server} to see its merge requests and issues.")]
     HostingNotConnected { server: String },
+    #[error(
+        "{server} does not let Git Panther use your sign-in for merge requests. Connect it with an access token instead."
+    )]
+    HostingLoginUnsupported { server: String },
     #[error("This repository has no remote on a code review server.")]
     NoHostedProject,
     #[error("The server answered with an error: {details}")]

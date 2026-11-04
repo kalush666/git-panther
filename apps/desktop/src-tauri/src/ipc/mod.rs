@@ -88,6 +88,7 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::set_identity,
             commands::list_hosting,
             commands::connect_hosting,
+            commands::connect_hosting_with_login,
             commands::disconnect_hosting,
             commands::hosting_status,
             commands::list_pull_requests,

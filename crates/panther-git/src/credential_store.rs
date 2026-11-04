@@ -80,6 +80,21 @@ impl GitCredentialStore {
     }
 }
 
+impl GitCredentialStore {
+    /// What the helper keeps for `description`; `None` when it has nothing
+    /// (it may not ask the user instead).
+    #[allow(clippy::unnecessary_wraps, reason = "matches the port's signature")]
+    fn stored_password(&self, description: &str) -> Result<Option<Password>, RepositoryError> {
+        let Ok(output) = self.credential_output("fill", &format!("{description}\n")) else {
+            return Ok(None);
+        };
+        Ok(output
+            .lines()
+            .find_map(|line| line.strip_prefix("password="))
+            .and_then(|password| Password::new(password.to_owned()).ok()))
+    }
+}
+
 impl Default for GitCredentialStore {
     fn default() -> Self {
         Self::new("git")
@@ -141,18 +156,15 @@ impl CredentialStore for GitCredentialStore {
     }
 
     fn token(&self, server: &Server) -> Result<Option<Password>, RepositoryError> {
-        let Ok(output) = self.credential_output("fill", &format!("{}\n", describe_token(server)))
-        else {
-            return Ok(None);
-        };
-        Ok(output
-            .lines()
-            .find_map(|line| line.strip_prefix("password="))
-            .and_then(|token| Password::new(token.to_owned()).ok()))
+        self.stored_password(&describe_token(server))
     }
 
     fn erase_token(&self, server: &Server) -> Result<(), RepositoryError> {
         self.credential("reject", &format!("{}\n", describe_token(server)))
+    }
+
+    fn password(&self, account: &Account) -> Result<Option<Password>, RepositoryError> {
+        self.stored_password(&describe(account))
     }
 
     fn verify(&self, url: &str) -> Result<(), RepositoryError> {

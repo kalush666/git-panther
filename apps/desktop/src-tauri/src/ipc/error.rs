@@ -60,6 +60,7 @@ pub enum AppErrorKind {
     InvalidIdentity,
     HostingUnauthorized,
     HostingNotConnected,
+    HostingLoginUnsupported,
     NoHostedProject,
     HostingFailed,
     WatchFailed,
@@ -155,6 +156,9 @@ impl From<RepositoryError> for AppError {
             RepositoryError::InvalidIdentity(_) => AppErrorKind::InvalidIdentity,
             RepositoryError::HostingUnauthorized { .. } => AppErrorKind::HostingUnauthorized,
             RepositoryError::HostingNotConnected { .. } => AppErrorKind::HostingNotConnected,
+            RepositoryError::HostingLoginUnsupported { .. } => {
+                AppErrorKind::HostingLoginUnsupported
+            }
             RepositoryError::NoHostedProject => AppErrorKind::NoHostedProject,
             RepositoryError::HostingFailed { .. } => AppErrorKind::HostingFailed,
         };
