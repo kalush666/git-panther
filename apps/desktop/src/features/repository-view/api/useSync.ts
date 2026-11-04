@@ -51,5 +51,7 @@ export function useSync(path: string) {
     running: mutation.isPending ? mutation.variables.action : null,
     error: mutation.error,
     succeeded: mutation.isSuccess ? mutation.variables.action : null,
+    /** The fetch, pull or push last started, whatever came of it. */
+    attempted: mutation.variables?.action ?? null,
   };
 }

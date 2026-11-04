@@ -8,6 +8,9 @@ export interface PromptField {
   label: string;
   initial: string;
   placeholder?: string;
+  /** A password: hidden, and kept exactly as typed. */
+  secret?: boolean;
+  autoComplete?: string;
 }
 
 interface InlinePromptProps {
@@ -22,7 +25,7 @@ interface InlinePromptProps {
   extra?: ReactNode;
   error: string | null;
   isPending: boolean;
-  /** The trimmed values, in the order of `fields`. */
+  /** The values in the order of `fields`, trimmed except for secrets. */
   onSubmit: (values: string[]) => void;
   onCancel: () => void;
 }
@@ -44,11 +47,19 @@ export function InlinePrompt({
 }: InlinePromptProps) {
   const id = useId();
   const [values, setValues] = useState(() => fields.map((field) => field.initial));
-  const firstRef = useRef<HTMLInputElement>(null);
+  const focusRef = useRef<HTMLInputElement>(null);
+  // The first field still to fill gets the cursor, e.g. the password when the
+  // user name is remembered.
+  const [focusIndex] = useState(() =>
+    Math.max(
+      0,
+      fields.findIndex((field) => field.initial === ''),
+    ),
+  );
   // Opened from a menu, the bar must win focus back from it once it closes.
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      firstRef.current?.focus();
+      focusRef.current?.focus();
     });
     return () => {
       cancelAnimationFrame(frame);
@@ -62,7 +73,9 @@ export function InlinePrompt({
       aria-label={title}
       onSubmit={(event) => {
         event.preventDefault();
-        if (ready && !isPending) onSubmit(values.map((value) => value.trim()));
+        if (ready && !isPending) {
+          onSubmit(values.map((value, index) => (fields[index]?.secret ? value : value.trim())));
+        }
       }}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
@@ -77,12 +90,14 @@ export function InlinePrompt({
       {fields.map((field, index) => (
         <input
           key={field.label}
-          ref={index === 0 ? firstRef : undefined}
+          ref={index === focusIndex ? focusRef : undefined}
           id={`${id}-${String(index)}`}
           className={styles.input}
           aria-label={field.label}
           value={values[index] ?? ''}
           placeholder={field.placeholder}
+          type={field.secret ? 'password' : 'text'}
+          autoComplete={field.autoComplete}
           spellCheck={false}
           onFocus={(event) => {
             event.target.select();

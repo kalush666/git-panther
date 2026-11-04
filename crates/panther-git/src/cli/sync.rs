@@ -46,6 +46,7 @@ const AUTHENTICATION_SIGNS: &[&str] = &[
     "could not read password",
     "permission denied (publickey",
     "terminal prompts disabled",
+    "user interactivity has been disabled",
     "invalid username or password",
     "access denied",
 ];
@@ -115,6 +116,7 @@ mod tests {
         for message in [
             "fatal: Authentication failed for 'https://git.example.internal/x.git/'",
             "fatal: could not read Username for 'https://host': terminal prompts disabled",
+            "fatal: Cannot prompt because user interactivity has been disabled.",
             "git@host: Permission denied (publickey).",
         ] {
             assert!(

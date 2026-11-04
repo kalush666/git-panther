@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { FolderOpen } from 'lucide-react';
 import { useId, useState, type SyntheticEvent } from 'react';
 
-import { serverOf, SignInDialog } from '../../../shared/accounts';
+import { serverOf, SignInPrompt } from '../../../shared/accounts';
 import { ipc, isIpcError } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
 import { useClone } from '../api/useClone';
@@ -52,8 +52,10 @@ export function CloneDialog({ open, onOpenChange, onCloned }: CloneDialogProps) 
   };
 
   const wasCancelled = isIpcError(clone.error, 'cancelled');
-  const needsSignIn = isIpcError(clone.error, 'authenticationFailed');
-  const [signingIn, setSigningIn] = useState(false);
+  // A refused HTTPS clone asks for the sign-in in place; the server is the URL's.
+  const server = serverOf(url);
+  const needsSignIn =
+    server !== null && !clone.isCloning && isIpcError(clone.error, 'authenticationFailed');
 
   return (
     <Dialog.Root open={open} onOpenChange={changeOpen}>
@@ -119,31 +121,10 @@ export function CloneDialog({ open, onOpenChange, onCloned }: CloneDialogProps) 
             />
 
             {clone.isCloning && <CloneProgressBar progress={clone.progress} />}
-            {clone.error && (
+            {clone.error && !needsSignIn && (
               <p className={styles.error} role="alert">
                 {wasCancelled ? 'Clone cancelled.' : clone.error.message}
               </p>
-            )}
-            {needsSignIn && (
-              <Button
-                onClick={() => {
-                  setSigningIn(true);
-                }}
-              >
-                Sign in…
-              </Button>
-            )}
-            {signingIn && (
-              <SignInDialog
-                initialServer={serverOf(url) ?? ''}
-                onCancel={() => {
-                  setSigningIn(false);
-                }}
-                onSignedIn={() => {
-                  setSigningIn(false);
-                  clone.start({ url, destination: joinPath(parentFolder, folderName) });
-                }}
-              />
             )}
 
             <div className={styles.actions}>
@@ -163,6 +144,17 @@ export function CloneDialog({ open, onOpenChange, onCloned }: CloneDialogProps) 
               </Button>
             </div>
           </form>
+          {needsSignIn && (
+            <SignInPrompt
+              key={server}
+              server={server}
+              purpose="to clone"
+              onCancel={clone.reset}
+              onSignedIn={() => {
+                clone.start({ url, destination: joinPath(parentFolder, folderName) });
+              }}
+            />
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
