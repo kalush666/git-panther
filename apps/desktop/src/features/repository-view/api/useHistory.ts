@@ -8,7 +8,14 @@ import { useRepositoryMutation } from './useRepositoryMutation';
 export type HistoryRequest =
   | { action: 'merge'; branch: string }
   | { action: 'rebase'; onto: string }
-  | { action: 'rebaseInteractive'; base: string; label: string; steps: RebaseStep[] }
+  | {
+      action: 'rebaseInteractive';
+      base: string;
+      label: string;
+      steps: RebaseStep[];
+      /** What to report instead of the generic rebase message. */
+      done?: string;
+    }
   | { action: 'cherryPick'; commit: string; label: string }
   | { action: 'revert'; commit: string; label: string }
   | { action: 'reset'; commit: string; label: string; mode: ResetMode }
@@ -50,7 +57,7 @@ export function describeDone(request: HistoryRequest): string {
     case 'rebase':
       return `Rebased onto ${request.onto}`;
     case 'rebaseInteractive':
-      return `Rebased the commits after ${request.label}`;
+      return request.done ?? `Rebased the commits after ${request.label}`;
     case 'cherryPick':
       return `Cherry-picked ${request.label}`;
     case 'revert':
