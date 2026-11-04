@@ -31,6 +31,10 @@ export function requestTarget(request: PullRequest): ReviewTarget {
 
 type Tab = 'overview' | 'files' | 'commits';
 
+/** A full commit id as its short form; branch and tag names as they are. */
+const shortRevision = (revision: string) =>
+  /^[0-9a-f]{40}$/.test(revision) ? revision.slice(0, 7) : revision;
+
 interface ReviewPanelProps {
   path: string;
   target: ReviewTarget;
@@ -66,7 +70,7 @@ export function ReviewPanel({
   ];
   const title = request
     ? `${prefix}${String(request.number)} ${request.title}`
-    : `${target.head} compared with ${target.base}`;
+    : `${shortRevision(target.head)} compared with ${shortRevision(target.base)}`;
 
   return (
     <section className={list.view} aria-label={`Review of ${title}`}>

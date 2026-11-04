@@ -53,17 +53,22 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
   const [conflictFile, setConflictFile] = useState<string | null>(null);
   const history = useHistoryActions(path);
   const sync = useSync(path);
-  const branchActions = useBranchActions(path, history.report);
-  const remoteActions = useRemoteActions(path, history.report, onOpenRepository);
   const [review, setReview] = useState<ReviewTarget | null>(null);
+  const showReview = (target: ReviewTarget) => {
+    setDiff(null);
+    setFileView(null);
+    setReview(target);
+  };
+  const branchActions = useBranchActions(path, history.report, (base, head) => {
+    showReview({ base, head, request: null });
+  });
+  const remoteActions = useRemoteActions(path, history.report, onOpenRepository);
   const hostingActions = useHostingActions(
     path,
     history.report,
     branchActions.checkout,
     (request) => {
-      setDiff(null);
-      setFileView(null);
-      setReview(requestTarget(request));
+      showReview(requestTarget(request));
     },
   );
   const hostingKind = useHostingStatus(path).data?.kind;
@@ -87,6 +92,18 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
       enabled: headBranch !== undefined,
       run: () => {
         if (headBranch) branchActions.openCreate(headBranch.target, headBranch.name);
+      },
+    },
+    {
+      id: 'repository.compare',
+      title: 'Compare branches…',
+      group: 'Repository',
+      enabled: true,
+      run: () => {
+        branchActions.openCompare(
+          headBranch?.name === 'main' ? 'origin/main' : 'main',
+          headBranch?.name ?? 'HEAD',
+        );
       },
     },
     {
@@ -428,6 +445,14 @@ function CommitMenu({
         }}
       >
         Create tag here…
+      </ContextMenu.Item>
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          actions.compare(entry.id, current);
+        }}
+      >
+        Compare {current} with this commit
       </ContextMenu.Item>
       {switchable.map((ref) => (
         <ContextMenu.Item

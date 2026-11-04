@@ -10,7 +10,9 @@ import {
 import styles from './useBranchActions.module.css';
 
 type Prompt =
-  { kind: 'create'; start: string; startLabel: string } | { kind: 'rename'; from: string };
+  | { kind: 'create'; start: string; startLabel: string }
+  | { kind: 'rename'; from: string }
+  | { kind: 'compare'; base: string; head: string };
 
 /** Reports a finished action in the banner under the header. */
 export type Report = (tone: 'done' | 'error', message: string) => void;
@@ -21,6 +23,10 @@ export interface BranchActions {
   openRename: (name: string) => void;
   /** Deletes right away: Undo brings the branch back. */
   remove: (name: string) => void;
+  /** Shows what `head` changes since it forked from `base`, in place of the graph. */
+  compare: (base: string, head: string) => void;
+  /** Asks which two branches, tags or commits to compare, prefilled. */
+  openCompare: (base: string, head: string) => void;
   /** The last checkout error, shown next to the branch list. */
   checkoutError: string | null;
   /** The name bar, when one is open. */
@@ -28,7 +34,11 @@ export interface BranchActions {
 }
 
 /** Branch commands, asking for names in a bar under the header. */
-export function useBranchActions(path: string, report: Report): BranchActions {
+export function useBranchActions(
+  path: string,
+  report: Report,
+  compare: (base: string, head: string) => void,
+): BranchActions {
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [switchTo, setSwitchTo] = useState(true);
   const create = useCreateBranch(path);
@@ -46,6 +56,25 @@ export function useBranchActions(path: string, report: Report): BranchActions {
     switch (prompt?.kind) {
       case undefined:
         return null;
+      case 'compare':
+        return (
+          <InlinePrompt
+            key="compare"
+            title="Compare"
+            fields={[
+              { label: 'Base', initial: prompt.base, placeholder: 'main' },
+              { label: 'Compare', initial: prompt.head, placeholder: 'feature/my-change' },
+            ]}
+            submitLabel="Compare"
+            error={null}
+            isPending={false}
+            onCancel={close}
+            onSubmit={([base = '', head = '']) => {
+              close();
+              compare(base, head);
+            }}
+          />
+        );
       case 'create':
         return (
           <InlinePrompt
@@ -114,6 +143,10 @@ export function useBranchActions(path: string, report: Report): BranchActions {
     openCreate: (start, startLabel) => {
       create.reset();
       setPrompt({ kind: 'create', start, startLabel });
+    },
+    compare,
+    openCompare: (base, head) => {
+      setPrompt({ kind: 'compare', base, head });
     },
     openRename: (from) => {
       rename.reset();
