@@ -21,6 +21,9 @@ export function CloneDialog({ open, onOpenChange, onCloned }: CloneDialogProps) 
   const [url, setUrl] = useState('');
   const [parentFolder, setParentFolder] = useState('');
   const [customName, setCustomName] = useState<string | null>(null);
+  /** Digits only; empty clones all of history. */
+  const [depth, setDepth] = useState('');
+  const historyDepth = depth === '' || Number(depth) === 0 ? undefined : Number(depth);
   const clone = useClone((repository) => {
     onOpenChange(false);
     onCloned(repository);
@@ -39,7 +42,7 @@ export function CloneDialog({ open, onOpenChange, onCloned }: CloneDialogProps) 
   const submit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (canClone && !clone.isCloning) {
-      clone.start({ url, destination: joinPath(parentFolder, folderName) });
+      clone.start({ url, destination: joinPath(parentFolder, folderName), depth: historyDepth });
     }
   };
 
@@ -120,6 +123,21 @@ export function CloneDialog({ open, onOpenChange, onCloned }: CloneDialogProps) 
               }}
             />
 
+            <label className={styles.label} htmlFor={`${ids}-depth`}>
+              History
+            </label>
+            <input
+              id={`${ids}-depth`}
+              className={styles.input}
+              inputMode="numeric"
+              placeholder="All commits — or a number for only the latest ones (faster)"
+              value={depth}
+              disabled={clone.isCloning}
+              onChange={(event) => {
+                setDepth(event.target.value.replace(/\D/g, ''));
+              }}
+            />
+
             {clone.isCloning && <CloneProgressBar progress={clone.progress} />}
             {clone.error && !needsSignIn && (
               <p className={styles.error} role="alert">
@@ -151,7 +169,11 @@ export function CloneDialog({ open, onOpenChange, onCloned }: CloneDialogProps) 
               purpose="to clone"
               onCancel={clone.reset}
               onSignedIn={() => {
-                clone.start({ url, destination: joinPath(parentFolder, folderName) });
+                clone.start({
+                  url,
+                  destination: joinPath(parentFolder, folderName),
+                  depth: historyDepth,
+                });
               }}
             />
           )}

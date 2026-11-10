@@ -17,6 +17,7 @@ fn request(source: &Path, destination: &Path) -> CloneRequest {
     CloneRequest {
         url: RemoteUrl::parse(source.to_str().unwrap()).unwrap(),
         destination: destination.to_path_buf(),
+        depth: None,
     }
 }
 
@@ -116,4 +117,39 @@ fn cancellation_stops_the_clone_and_cleans_up() {
 
     assert!(matches!(result, Err(RepositoryError::Cancelled)));
     assert!(!destination.exists());
+}
+
+#[test]
+fn a_shallow_clone_keeps_only_recent_history() {
+    let dir = TempDir::new().unwrap();
+    let source = dir.path().join("source");
+    let repository = support::repository_with_commit(&source);
+    let mut parent = repository.head().unwrap().target().unwrap();
+    for n in 0..3 {
+        parent = support::commit(
+            &repository,
+            Some("HEAD"),
+            &format!("More {n}"),
+            &[("more.txt", &n.to_string())],
+            &[parent],
+        );
+    }
+    let destination = dir.path().join("shallow");
+    // git honours --depth only for URLs, not plain local paths.
+    let url = format!("file:///{}", source.to_string_lossy().replace('\\', "/"));
+    let request = CloneRequest {
+        url: RemoteUrl::parse(&url).unwrap(),
+        destination: destination.clone(),
+        depth: Some(1),
+    };
+
+    clone(&request, &CancellationToken::default()).unwrap();
+
+    let count = std::process::Command::new("git")
+        .arg("-C")
+        .arg(&destination)
+        .args(["rev-list", "--count", "HEAD"])
+        .output()
+        .unwrap();
+    assert_eq!(String::from_utf8_lossy(&count.stdout).trim(), "1");
 }

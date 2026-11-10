@@ -811,6 +811,12 @@ pub trait TagStore: Send + Sync {
     /// # Errors
     /// [`RepositoryError::NoRemote`], authentication or network errors.
     fn push(&self, repository: &Path, name: &TagName) -> Result<(), RepositoryError>;
+
+    /// Deletes tag `name` on the default remote; the local tag stays.
+    ///
+    /// # Errors
+    /// Authentication, network or rejection errors.
+    fn delete_remote(&self, repository: &Path, name: &TagName) -> Result<(), RepositoryError>;
 }
 
 /// Hands credentials for HTTPS git servers to the user's credential helper.

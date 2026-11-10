@@ -185,6 +185,12 @@ impl History {
         self.tags.push(repository, &TagName::parse(name)?)
     }
 
+    /// # Errors
+    /// An invalid name or [`TagStore::delete_remote`] errors.
+    pub fn delete_remote_tag(&self, repository: &Path, name: &str) -> Result<(), RepositoryError> {
+        self.tags.delete_remote(repository, &TagName::parse(name)?)
+    }
+
     /// What Undo would revert, e.g. "Merge topic".
     pub fn pending_undo(&self, repository: &Path) -> Option<String> {
         self.undo.pending(repository)

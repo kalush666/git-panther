@@ -165,12 +165,14 @@ pub async fn clone_repository(
     jobs: State<'_, JobRegistry>,
     url: String,
     destination: String,
+    depth: Option<u32>,
     job_id: String,
     on_progress: Channel<CloneProgressDto>,
 ) -> Result<RepositorySummaryDto, AppError> {
     let request = CloneRequest {
         url: RemoteUrl::parse(&url)?,
         destination: PathBuf::from(destination),
+        depth: depth.filter(|&commits| commits > 0),
     };
     let use_case = services.clone_repository.clone();
     run_job(&jobs, &job_id, on_progress, move |report, cancel| {
@@ -1719,6 +1721,18 @@ pub async fn push_tag(
 ) -> Result<(), AppError> {
     let history = services.history.clone();
     run_blocking(move || Ok(history.push_tag(&PathBuf::from(path), &name)?)).await
+}
+
+/// Deletes a tag on the default remote; the local tag stays.
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_remote_tag(
+    services: State<'_, AppServices>,
+    path: String,
+    name: String,
+) -> Result<(), AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.delete_remote_tag(&PathBuf::from(path), &name)?)).await
 }
 
 /// The commits an interactive rebase onto `base` would rewrite, oldest first.

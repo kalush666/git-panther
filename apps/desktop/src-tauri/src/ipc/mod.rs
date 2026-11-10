@@ -75,6 +75,7 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::create_tag,
             commands::delete_tag,
             commands::push_tag,
+            commands::delete_remote_tag,
             commands::pending_undo,
             commands::undo,
             commands::pending_redo,

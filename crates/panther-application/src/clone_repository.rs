@@ -60,6 +60,7 @@ mod tests {
         CloneRequest {
             url: RemoteUrl::parse("https://example.com/app.git").unwrap(),
             destination: PathBuf::from("/repos/app"),
+            depth: None,
         }
     }
 

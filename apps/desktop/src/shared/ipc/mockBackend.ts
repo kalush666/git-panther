@@ -626,6 +626,7 @@ function createMockBackend(): Backend {
     createTag: (_path, name) => Promise.resolve(history.createTag(name.trim())),
     deleteTag: (_path, name) => Promise.resolve(history.deleteTag(name)),
     pushTag: () => Promise.resolve(history.pushTag()),
+    deleteRemoteTag: () => Promise.resolve(ok(null)),
     rebasePlan: () => Promise.resolve(ok(mockFileHistory().reverse())),
     rebaseInteractive: (_path, base, steps) =>
       Promise.resolve(history.rebaseInteractive(base, steps.length)),

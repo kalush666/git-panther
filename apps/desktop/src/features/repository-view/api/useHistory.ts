@@ -27,6 +27,7 @@ export type HistoryRequest =
   | { action: 'checkoutCommit'; commit: string; label: string }
   | { action: 'createTag'; name: string; target: string; message: string | null }
   | { action: 'deleteTag'; name: string }
+  | { action: 'deleteRemoteTag'; name: string }
   | { action: 'pushTag'; name: string };
 
 function send(path: string, request: HistoryRequest) {
@@ -60,6 +61,8 @@ function send(path: string, request: HistoryRequest) {
       return ipc.createTag(path, request.name, request.target, request.message);
     case 'deleteTag':
       return ipc.deleteTag(path, request.name);
+    case 'deleteRemoteTag':
+      return ipc.deleteRemoteTag(path, request.name);
     case 'pushTag':
       return ipc.pushTag(path, request.name);
   }
@@ -93,6 +96,8 @@ export function describeRunning(request: HistoryRequest): string {
       return `Creating tag ${request.name}…`;
     case 'deleteTag':
       return `Deleting tag ${request.name}…`;
+    case 'deleteRemoteTag':
+      return `Deleting tag ${request.name} from the remote…`;
     case 'pushTag':
       return `Pushing tag ${request.name}…`;
   }
@@ -124,6 +129,8 @@ export function describeDone(request: HistoryRequest): string {
       return `Created tag ${request.name}`;
     case 'deleteTag':
       return `Deleted tag ${request.name}`;
+    case 'deleteRemoteTag':
+      return `Deleted tag ${request.name} from the remote`;
     case 'pushTag':
       return `Pushed tag ${request.name}`;
   }

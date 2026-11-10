@@ -347,6 +347,9 @@ mod tests {
         fn push(&self, _: &Path, _: &TagName) -> Result<(), RepositoryError> {
             unreachable!()
         }
+        fn delete_remote(&self, _: &Path, _: &TagName) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
     }
 
     fn flow(repo: &Arc<FakeRepo>) -> Gitflow {

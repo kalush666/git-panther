@@ -76,7 +76,7 @@ test.describe('graph actions', () => {
     await expect(page.getByText('Created tag v2.0.0')).toBeVisible();
 
     await commitRow(page, 'Change number 4988').click({ button: 'right' });
-    await page.getByRole('menuitem', { name: 'Delete tag v1.0.0' }).click();
+    await page.getByRole('menuitem', { name: 'Delete tag v1.0.0 locally' }).click();
     await expect(page.getByText('Deleted tag v1.0.0')).toBeVisible();
   });
 

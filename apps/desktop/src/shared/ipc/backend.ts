@@ -123,6 +123,8 @@ export interface HunkTarget {
 export interface CloneOptions {
   url: string;
   destination: string;
+  /** Only this many recent commits (a shallow clone); all of history when left out. */
+  depth?: number;
   /** Chosen by the caller so it can cancel the clone with `cancelJob`. */
   jobId: string;
 }
@@ -341,6 +343,8 @@ export interface Backend {
   ): Promise<Result<null>>;
   deleteTag(path: string, name: string): Promise<Result<null>>;
   pushTag(path: string, name: string): Promise<Result<null>>;
+  /** Deletes a tag on the default remote; the local tag stays. */
+  deleteRemoteTag(path: string, name: string): Promise<Result<null>>;
   /** The commits an interactive rebase onto `base` would rewrite, oldest first. */
   rebasePlan(path: string, base: string): Promise<Result<CommitSummary[]>>;
   /** Moves local branch `target` forward to `source` without a merge commit. */

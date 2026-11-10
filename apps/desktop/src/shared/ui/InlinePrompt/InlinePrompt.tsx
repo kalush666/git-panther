@@ -10,6 +10,8 @@ export interface PromptField {
   placeholder?: string;
   /** A password: hidden, and kept exactly as typed. */
   secret?: boolean;
+  /** May be left empty. */
+  optional?: boolean;
   autoComplete?: string;
 }
 
@@ -53,7 +55,7 @@ export function InlinePrompt({
   const [focusIndex] = useState(() =>
     Math.max(
       0,
-      fields.findIndex((field) => field.initial === ''),
+      fields.findIndex((field) => field.initial === '' && !field.optional),
     ),
   );
   // Opened from a menu, the bar must win focus back from it once it closes,
@@ -67,7 +69,7 @@ export function InlinePrompt({
       cancelAnimationFrame(frame);
     };
   }, []);
-  const ready = values.every((value) => value.trim() !== '');
+  const ready = values.every((value, index) => fields[index]?.optional || value.trim() !== '');
 
   return (
     <form
