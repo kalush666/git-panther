@@ -153,7 +153,7 @@ fn classify(message: &str, operation: &'static str) -> RepositoryError {
         || lower.contains("your index contains uncommitted changes")
     {
         RepositoryError::CheckoutConflict {
-            details: message.lines().take(4).collect::<Vec<_>>().join(" "),
+            details: message.lines().take(4).collect::<Vec<_>>().join("\n"),
         }
     } else if lower.contains("conflict") || lower.contains("could not apply") {
         RepositoryError::OperationConflict {
@@ -187,19 +187,23 @@ impl HistoryEditor for GitHistoryEditor {
     }
 
     fn merge(&self, repository: &Path, branch: &str) -> Result<(), RepositoryError> {
-        self.git(repository, &["merge", "--no-edit", branch], "merge")
+        self.git(
+            repository,
+            &["merge", "--autostash", "--no-edit", branch],
+            "merge",
+        )
     }
 
     fn merge_no_ff(&self, repository: &Path, branch: &str) -> Result<(), RepositoryError> {
         self.git(
             repository,
-            &["merge", "--no-ff", "--no-edit", branch],
+            &["merge", "--autostash", "--no-ff", "--no-edit", branch],
             "merge",
         )
     }
 
     fn rebase(&self, repository: &Path, onto: &str) -> Result<(), RepositoryError> {
-        self.git(repository, &["rebase", onto], "rebase")
+        self.git(repository, &["rebase", "--autostash", onto], "rebase")
     }
 
     fn cherry_pick(&self, repository: &Path, commit: &CommitId) -> Result<(), RepositoryError> {
@@ -273,7 +277,7 @@ impl HistoryEditor for GitHistoryEditor {
         run_git_with_env(
             &self.executable,
             repository,
-            &["rebase", "--interactive", base.as_str()],
+            &["rebase", "--interactive", "--autostash", base.as_str()],
             &[("GIT_SEQUENCE_EDITOR", OsStr::new(&sequence_editor))],
         )
         .map(drop)

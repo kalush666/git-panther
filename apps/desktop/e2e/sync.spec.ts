@@ -36,11 +36,11 @@ test.describe('sync', () => {
     await toolbar(page).getByRole('button', { name: 'Choose how to pull' }).click();
     await page.getByRole('menuitemradio', { name: 'Rebase' }).click();
     await toolbar(page).getByRole('button', { name: /^Pull/ }).click();
-    await expect(page.getByRole('status')).toHaveText('Pulled');
+    await expect(page.getByRole('status').filter({ hasNotText: 'Switched' })).toHaveText('Pulled');
     await expect(toolbar(page).getByLabel('2 to pull')).toBeHidden();
 
     await toolbar(page).getByRole('button', { name: /^Push/ }).click();
-    await expect(page.getByRole('status')).toHaveText('Pushed');
+    await expect(page.getByRole('status').filter({ hasNotText: 'Switched' })).toHaveText('Pushed');
     await expect(toolbar(page).getByLabel('1 to push')).toBeHidden();
   });
 

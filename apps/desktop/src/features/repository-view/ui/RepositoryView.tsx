@@ -1,5 +1,5 @@
 import * as ContextMenu from '@radix-ui/react-context-menu';
-import { ChevronRight, GitBranch, TriangleAlert, Undo2, X } from 'lucide-react';
+import { ChevronRight, GitBranch, TriangleAlert, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 
 import { useCommands } from '../../../shared/commands';
@@ -23,6 +23,7 @@ import { ConflictEditor } from './ConflictEditor';
 import { DiffViewer } from './DiffViewer';
 import { FileHistoryView, type FileView } from './FileHistoryView';
 import { OpenInMenu } from './OpenInMenu';
+import { OutcomeBanner } from './OutcomeBanner';
 import { RebasePanel } from './RebasePanel';
 import { RecoverView } from './RecoverView';
 import { requestTarget, ReviewPanel, type ReviewTarget } from './ReviewPanel';
@@ -300,29 +301,13 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
         <StashActions path={path} />
         <SyncToolbar path={path} sync={sync} offer={hostingActions.offer} />
       </header>
-      {history.outcome && (
-        <div
-          className={styles.outcome}
-          data-tone={history.outcome.tone}
-          role={history.outcome.tone === 'error' ? 'alert' : 'status'}
-        >
-          <span className={styles.outcomeText}>{history.outcome.message}</span>
-          {history.outcome.tone === 'done' && history.undoLabel && (
-            <Button size="sm" variant="ghost" onClick={history.undo}>
-              <Undo2 size={14} aria-hidden />
-              Undo
-            </Button>
-          )}
-          <button
-            type="button"
-            className={styles.dismiss}
-            aria-label="Dismiss"
-            onClick={history.dismiss}
-          >
-            <X size={14} aria-hidden />
-          </button>
-        </div>
-      )}
+      <OutcomeBanner
+        running={history.running ?? branchActions.running}
+        outcome={history.outcome}
+        undoLabel={history.undoLabel}
+        onUndo={history.undo}
+        onDismiss={history.dismiss}
+      />
       {lfs.data?.used && !lfs.data.installed && (
         <p className={styles.notice} role="status">
           This repository stores large files with Git LFS, but git-lfs is not installed, so those

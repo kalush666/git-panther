@@ -145,9 +145,9 @@ export function BranchSidebar({
         <WorktreeList path={path} actions={remoteActions} onOpenRepository={onOpenRepository} />
         <SubmoduleList path={path} onOpenRepository={onOpenRepository} />
       </div>
-      {(branches.error ?? actions.checkoutError) && (
+      {branches.error && (
         <p className={styles.error} role="alert">
-          {branches.error?.message ?? actions.checkoutError}
+          {branches.error.message}
         </p>
       )}
     </nav>

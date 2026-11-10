@@ -34,9 +34,15 @@ pub fn run_sync(
 /// The `git pull` flags for a strategy. Merges never open an editor.
 pub fn pull_args(strategy: PullStrategy) -> &'static [&'static str] {
     match strategy {
-        PullStrategy::FastForwardOnly => &["pull", "--progress", "--ff-only"],
-        PullStrategy::Merge => &["pull", "--progress", "--no-rebase", "--no-edit"],
-        PullStrategy::Rebase => &["pull", "--progress", "--rebase"],
+        PullStrategy::FastForwardOnly => &["pull", "--progress", "--autostash", "--ff-only"],
+        PullStrategy::Merge => &[
+            "pull",
+            "--progress",
+            "--autostash",
+            "--no-rebase",
+            "--no-edit",
+        ],
+        PullStrategy::Rebase => &["pull", "--progress", "--autostash", "--rebase"],
     }
 }
 

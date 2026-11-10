@@ -298,8 +298,23 @@ function createMockBackend(): Backend {
     listBranches: () => Promise.resolve(branchStore.list()),
     createBranch: (_path, name, start, checkout) =>
       Promise.resolve(branchStore.create(name, start, checkout)),
-    checkoutBranch: (_path, name) =>
-      Promise.resolve(history.trackCheckout(() => branchStore.checkout(name), name)),
+    checkoutBranch: (_path, name) => {
+      // `?mockCheckout=conflict`: uncommitted changes block switching until stashed.
+      const status = workingTree.status();
+      const blocked =
+        new URLSearchParams(window.location.search).get('mockCheckout') === 'conflict' &&
+        status.status === 'ok' &&
+        status.data.unstaged.length > 0;
+      if (blocked) {
+        return Promise.resolve(
+          failure(
+            'checkoutConflict',
+            'Your uncommitted changes would be overwritten. Commit or stash them first.\nerror: Your local changes to the following files would be overwritten by checkout:\n\tsrc/app.ts',
+          ),
+        );
+      }
+      return Promise.resolve(history.trackCheckout(() => branchStore.checkout(name), name));
+    },
     renameBranch: (_path, from, to) => Promise.resolve(branchStore.rename(from, to)),
     deleteBranch: (_path, name, force) =>
       Promise.resolve(history.trackDelete(() => branchStore.delete(name, force), name)),
@@ -351,9 +366,9 @@ function createMockBackend(): Backend {
       runJob(jobId, SYNC_STEPS, onProgress, () =>
         signedIn() ? branchStore.pull(strategy) : AUTHENTICATION_FAILED,
       ),
-    pushBranch: (_path, _options, jobId, onProgress) =>
+    pushBranch: (_path, options, jobId, onProgress) =>
       runJob(jobId, SYNC_STEPS, onProgress, () =>
-        signedIn() ? branchStore.push() : AUTHENTICATION_FAILED,
+        signedIn() ? branchStore.push(options.forceWithLease ?? false) : AUTHENTICATION_FAILED,
       ),
     listStashes: () => Promise.resolve(stashes.list()),
     saveStash: (_path, message, includeUntracked) =>

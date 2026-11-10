@@ -10,6 +10,7 @@ import { ipc, isIpcError } from '../../../shared/ipc';
 import { useAutoFetchStore } from '../../../shared/preferences/autoFetch';
 import { PULL_STRATEGIES, usePullStrategyStore } from '../../../shared/preferences/pullStrategy';
 import { Button } from '../../../shared/ui/Button/Button';
+import { ConfirmButton } from '../../../shared/ui/ConfirmButton/ConfirmButton';
 import { useBranches } from '../api/useBranches';
 import { useRemotes } from '../api/useRemotes';
 import { repositoryQueryKey } from '../api/useRepository';
@@ -282,6 +283,17 @@ function SyncStatus({
         <span className={styles.errorText} title={sync.error.message}>
           {sync.error.message}
         </span>
+        {isIpcError(sync.error, 'pushRejected') && (
+          <ConfirmButton
+            variant="secondary"
+            confirmLabel="Overwrite the remote branch?"
+            onConfirm={() => {
+              sync.run({ action: 'push', options: { forceWithLease: true } });
+            }}
+          >
+            Force push
+          </ConfirmButton>
+        )}
         <button
           type="button"
           className={styles.dismiss}
