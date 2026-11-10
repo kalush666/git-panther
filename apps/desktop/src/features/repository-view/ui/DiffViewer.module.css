@@ -8,10 +8,11 @@
 .toolbar {
   display: flex;
   flex-shrink: 0;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--gp-space-3);
-  height: var(--gp-titlebar-height);
-  padding: 0 var(--gp-space-3);
+  gap: var(--gp-space-1) var(--gp-space-3);
+  min-height: var(--gp-titlebar-height);
+  padding: var(--gp-space-1) var(--gp-space-3);
   border-bottom: 1px solid var(--gp-border-subtle);
 }
 
@@ -209,4 +210,20 @@
 
 .line[data-picked='true'] .code {
   box-shadow: inset 3px 0 0 var(--gp-accent);
+}
+
+.changeNav {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-space-1);
+}
+
+/* Long lines scroll sideways instead of wrapping. */
+.body[data-wrap='false'] .code {
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+.hunk[data-current='true'] {
+  box-shadow: 0 0 0 2px var(--gp-accent-subtle);
 }

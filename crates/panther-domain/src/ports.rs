@@ -48,7 +48,8 @@ pub trait WorkingTree: Send + Sync {
     /// [`RepositoryError`] when the repository cannot be read.
     fn status(&self, repository: &Path) -> Result<WorkingTreeStatus, RepositoryError>;
 
-    /// The staged or unstaged diff of one file.
+    /// The staged or unstaged diff of one file; with `ignore_whitespace`,
+    /// changes in spacing alone are left out (git diff -w).
     ///
     /// # Errors
     /// [`RepositoryError`] when the repository cannot be read.
@@ -57,6 +58,7 @@ pub trait WorkingTree: Send + Sync {
         repository: &Path,
         path: &str,
         side: DiffSide,
+        ignore_whitespace: bool,
     ) -> Result<FileDiff, RepositoryError>;
 
     /// Stages whole files, including deletions and untracked files.
@@ -570,6 +572,7 @@ pub trait CommitLog: Send + Sync {
         repository: &Path,
         id: &CommitId,
         path: &str,
+        ignore_whitespace: bool,
     ) -> Result<FileDiff, RepositoryError>;
 
     /// What revision `head` changes since it forked from revision `base`
@@ -618,6 +621,7 @@ pub trait CommitLog: Send + Sync {
         from: &CommitId,
         to: &CommitId,
         path: &str,
+        ignore_whitespace: bool,
     ) -> Result<FileDiff, RepositoryError>;
 }
 

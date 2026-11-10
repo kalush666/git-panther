@@ -66,3 +66,10 @@
   cursor: not-allowed;
   opacity: 0.5;
 }
+
+/* A toggle that is on reads as on, whatever its variant. */
+.button[aria-pressed='true'] {
+  border-color: var(--gp-accent);
+  background: var(--gp-accent-subtle);
+  color: var(--gp-accent-text);
+}

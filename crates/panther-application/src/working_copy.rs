@@ -47,8 +47,9 @@ impl WorkingCopy {
         repository: &Path,
         path: &str,
         side: DiffSide,
+        ignore_whitespace: bool,
     ) -> Result<FileDiff, RepositoryError> {
-        self.tree.diff(repository, path, side)
+        self.tree.diff(repository, path, side, ignore_whitespace)
     }
 
     /// # Errors
@@ -209,7 +210,13 @@ mod tests {
             Ok(WorkingTreeStatus::default())
         }
 
-        fn diff(&self, _: &Path, path: &str, _: DiffSide) -> Result<FileDiff, RepositoryError> {
+        fn diff(
+            &self,
+            _: &Path,
+            path: &str,
+            _: DiffSide,
+            _: bool,
+        ) -> Result<FileDiff, RepositoryError> {
             Ok(FileDiff {
                 path: path.into(),
                 old_path: None,

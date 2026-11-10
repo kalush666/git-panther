@@ -68,7 +68,7 @@ fn tree() -> GitWorkingTree {
 }
 
 fn hunk(dir: &TempDir, side: DiffSide, index: usize) -> HunkRef {
-    let diff = tree().diff(dir.path(), "notes.txt", side).unwrap();
+    let diff = tree().diff(dir.path(), "notes.txt", side, false).unwrap();
     HunkRef {
         path: "notes.txt".into(),
         index,
@@ -104,7 +104,7 @@ fn diff_lists_hunks_with_line_numbers() {
     edit_two_places(&dir);
 
     let diff = tree()
-        .diff(dir.path(), "notes.txt", DiffSide::Unstaged)
+        .diff(dir.path(), "notes.txt", DiffSide::Unstaged, false)
         .unwrap();
 
     assert_eq!(diff.hunks.len(), 2);
@@ -134,10 +134,10 @@ fn stages_and_unstages_a_single_hunk() {
         .unwrap();
 
     let staged = tree()
-        .diff(dir.path(), "notes.txt", DiffSide::Staged)
+        .diff(dir.path(), "notes.txt", DiffSide::Staged, false)
         .unwrap();
     let unstaged = tree()
-        .diff(dir.path(), "notes.txt", DiffSide::Unstaged)
+        .diff(dir.path(), "notes.txt", DiffSide::Unstaged, false)
         .unwrap();
     assert_eq!((staged.hunks.len(), unstaged.hunks.len()), (1, 1));
     assert!(staged.hunks[0].header.contains("-1,"));
@@ -150,7 +150,7 @@ fn stages_and_unstages_a_single_hunk() {
         )
         .unwrap();
     let staged = tree()
-        .diff(dir.path(), "notes.txt", DiffSide::Staged)
+        .diff(dir.path(), "notes.txt", DiffSide::Staged, false)
         .unwrap();
     assert_eq!(staged.hunks.len(), 0);
 }
@@ -192,7 +192,7 @@ fn a_hunk_of_a_new_file_stages_the_whole_file() {
     let dir = repository();
     fs::write(dir.path().join("new.txt"), "one\ntwo\n").unwrap();
     let diff = tree()
-        .diff(dir.path(), "new.txt", DiffSide::Unstaged)
+        .diff(dir.path(), "new.txt", DiffSide::Unstaged, false)
         .unwrap();
     let new_file_hunk = HunkRef {
         path: "new.txt".into(),
@@ -322,7 +322,7 @@ fn commit_file_diff_shows_a_committed_change() {
         .unwrap();
 
     let diff = GitCommitLog::default()
-        .commit_file_diff(dir.path(), &id, "notes.txt")
+        .commit_file_diff(dir.path(), &id, "notes.txt", false)
         .unwrap();
 
     assert_eq!(diff.hunks.len(), 2);
@@ -338,7 +338,7 @@ fn edit_neighbouring_lines(dir: &TempDir) {
 
 /// `hunk` limited to the shown lines whose content is in `contents`.
 fn lines_of(dir: &TempDir, side: DiffSide, contents: &[&str]) -> HunkRef {
-    let diff = tree().diff(dir.path(), "notes.txt", side).unwrap();
+    let diff = tree().diff(dir.path(), "notes.txt", side, false).unwrap();
     let lines = diff.hunks[0]
         .lines
         .iter()
@@ -354,7 +354,7 @@ fn lines_of(dir: &TempDir, side: DiffSide, contents: &[&str]) -> HunkRef {
 
 fn changed_contents(dir: &TempDir, side: DiffSide) -> Vec<String> {
     tree()
-        .diff(dir.path(), "notes.txt", side)
+        .diff(dir.path(), "notes.txt", side, false)
         .unwrap()
         .hunks
         .iter()

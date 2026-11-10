@@ -126,8 +126,10 @@ impl CommitLog for GitCommitLog {
         repository: &Path,
         id: &CommitId,
         path: &str,
+        ignore_whitespace: bool,
     ) -> Result<FileDiff, RepositoryError> {
-        self.libgit2.commit_file_diff(repository, id, path)
+        self.libgit2
+            .commit_file_diff(repository, id, path, ignore_whitespace)
     }
 
     fn compare(
@@ -191,7 +193,9 @@ impl CommitLog for GitCommitLog {
         from: &CommitId,
         to: &CommitId,
         path: &str,
+        ignore_whitespace: bool,
     ) -> Result<FileDiff, RepositoryError> {
-        self.libgit2.compare_file_diff(repository, from, to, path)
+        self.libgit2
+            .compare_file_diff(repository, from, to, path, ignore_whitespace)
     }
 }

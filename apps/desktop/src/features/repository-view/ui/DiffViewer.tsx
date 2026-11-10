@@ -1,5 +1,15 @@
-import { ArrowLeft, Columns2, History, Rows3, ScanText } from 'lucide-react';
-import { useState } from 'react';
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Columns2,
+  History,
+  Rows3,
+  ScanText,
+  Space,
+  WrapText,
+} from 'lucide-react';
+import { useRef, useState } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -12,12 +22,27 @@ import styles from './DiffViewer.module.css';
 
 type DiffLayout = 'unified' | 'split';
 
-const useDiffLayout = create<{ layout: DiffLayout; setLayout: (layout: DiffLayout) => void }>()(
+interface DiffViewState {
+  layout: DiffLayout;
+  /** Leave out changes in spacing alone (git diff -w). */
+  ignoreWhitespace: boolean;
+  /** Wrap long lines instead of scrolling sideways. */
+  wrap: boolean;
+  setLayout: (layout: DiffLayout) => void;
+  toggle: (option: 'ignoreWhitespace' | 'wrap') => void;
+}
+
+const useDiffLayout = create<DiffViewState>()(
   persist(
     (set) => ({
       layout: 'unified',
+      ignoreWhitespace: false,
+      wrap: true,
       setLayout: (layout) => {
         set({ layout });
+      },
+      toggle: (option) => {
+        set((state) => ({ [option]: !state[option] }));
       },
     }),
     { name: 'git-panther.diff-layout' },
@@ -39,13 +64,30 @@ type LineSelection = Record<number, number[]>;
 const lineCount = (count: number) => `${count} ${count === 1 ? 'line' : 'lines'}`;
 
 export function DiffViewer({ path, source, onClose, onShowHistory, onShowBlame }: DiffViewerProps) {
-  const diff = useFileDiff(path, source);
   const layout = useDiffLayout((state) => state.layout);
   const setLayout = useDiffLayout((state) => state.setLayout);
+  const ignoreWhitespace = useDiffLayout((state) => state.ignoreWhitespace);
+  const wrap = useDiffLayout((state) => state.wrap);
+  const toggle = useDiffLayout((state) => state.toggle);
+  const diff = useFileDiff(path, source, ignoreWhitespace);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [currentHunk, setCurrentHunk] = useState(-1);
+  const hunkCount = diff.data?.hunks.length ?? 0;
+  /** Scrolls to the change `step` hunks away (wrapping around), F7 / Shift+F7. */
+  const goToChange = (step: 1 | -1) => {
+    if (hunkCount === 0) return;
+    const next = (currentHunk + step + hunkCount) % hunkCount;
+    setCurrentHunk(next);
+    bodyRef.current
+      ?.querySelector(`[data-hunk="${String(next)}"]`)
+      ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
   const applyHunk = useApplyHunk(path);
   const [selection, setSelection] = useState<LineSelection>({});
+  // Hunks are staged as git sees them; with spacing hidden they would not match.
+  const canStage = source.kind === 'workingTree' && !ignoreWhitespace;
   // Lines are picked in the unified view, on uncommitted changes only.
-  const canPickLines = source.kind === 'workingTree' && layout === 'unified';
+  const canPickLines = canStage && layout === 'unified';
   const sideLabel = describeSource(source);
 
   const runHunk = (index: number, action: HunkAction) => {
@@ -112,6 +154,61 @@ export function DiffViewer({ path, source, onClose, onShowHistory, onShowBlame }
           <ScanText size={14} aria-hidden />
           Blame
         </Button>
+        <div className={styles.changeNav}>
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label="Previous change"
+            title="Previous change (Shift+F7)"
+            disabled={hunkCount === 0}
+            onClick={() => {
+              goToChange(-1);
+            }}
+          >
+            <ChevronUp size={14} aria-hidden />
+          </Button>
+          <span className={styles.side} aria-live="polite">
+            {hunkCount === 0
+              ? 'No changes'
+              : `${String(Math.max(currentHunk, 0) + 1)} / ${String(hunkCount)}`}
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label="Next change"
+            title="Next change (F7)"
+            disabled={hunkCount === 0}
+            onClick={() => {
+              goToChange(1);
+            }}
+          >
+            <ChevronDown size={14} aria-hidden />
+          </Button>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-pressed={ignoreWhitespace}
+          title="Leave out changes in spacing alone"
+          onClick={() => {
+            toggle('ignoreWhitespace');
+          }}
+        >
+          <Space size={14} aria-hidden />
+          Ignore whitespace
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-pressed={wrap}
+          title="Wrap long lines"
+          onClick={() => {
+            toggle('wrap');
+          }}
+        >
+          <WrapText size={14} aria-hidden />
+          Wrap
+        </Button>
         <div className={styles.layoutToggle} role="radiogroup" aria-label="Diff layout">
           <LayoutButton current={layout} value="unified" label="Unified" onSelect={setLayout}>
             <Rows3 size={14} aria-hidden />
@@ -122,7 +219,24 @@ export function DiffViewer({ path, source, onClose, onShowHistory, onShowBlame }
         </div>
       </header>
 
-      <div className={styles.body}>
+      <div
+        ref={bodyRef}
+        className={styles.body}
+        data-wrap={wrap}
+        tabIndex={-1}
+        onKeyDown={(event) => {
+          if (event.key === 'F7') {
+            event.preventDefault();
+            goToChange(event.shiftKey ? -1 : 1);
+          }
+        }}
+      >
+        {ignoreWhitespace && source.kind === 'workingTree' && (
+          <p className={styles.hint}>
+            Spacing changes are hidden, so staging hunks is off. Turn off Ignore whitespace to
+            stage.
+          </p>
+        )}
         {diff.isError && (
           <p className={styles.notice} role="alert">
             {diff.error.message}
@@ -154,10 +268,12 @@ export function DiffViewer({ path, source, onClose, onShowHistory, onShowBlame }
               key={`${index}:${hunk.header}`}
               className={styles.hunk}
               aria-label={hunk.header}
+              data-hunk={index}
+              data-current={index === currentHunk}
             >
               <header className={styles.hunkHeader}>
                 <span className={styles.hunkTitle}>{hunk.header}</span>
-                {source.kind === 'workingTree' && (
+                {canStage && (
                   <span className={styles.hunkActions}>
                     {source.side === 'unstaged' ? (
                       <>

@@ -145,8 +145,10 @@ impl CommitGraph {
         repository: &Path,
         id: &CommitId,
         path: &str,
+        ignore_whitespace: bool,
     ) -> Result<FileDiff, RepositoryError> {
-        self.log.commit_file_diff(repository, id, path)
+        self.log
+            .commit_file_diff(repository, id, path, ignore_whitespace)
     }
 
     /// What `head` changes since it forked from `base`, e.g. a merge request.
@@ -180,8 +182,10 @@ impl CommitGraph {
         from: &CommitId,
         to: &CommitId,
         path: &str,
+        ignore_whitespace: bool,
     ) -> Result<FileDiff, RepositoryError> {
-        self.log.compare_file_diff(repository, from, to, path)
+        self.log
+            .compare_file_diff(repository, from, to, path, ignore_whitespace)
     }
 
     /// Rows of the graph (as [`Self::page`] numbers them) whose commit
@@ -454,6 +458,7 @@ mod tests {
             _: &Path,
             id: &CommitId,
             _: &str,
+            _: bool,
         ) -> Result<FileDiff, RepositoryError> {
             Err(RepositoryError::CommitNotFound { id: id.to_string() })
         }
@@ -480,6 +485,7 @@ mod tests {
             from: &CommitId,
             _: &CommitId,
             _: &str,
+            _: bool,
         ) -> Result<FileDiff, RepositoryError> {
             Err(RepositoryError::CommitNotFound {
                 id: from.to_string(),

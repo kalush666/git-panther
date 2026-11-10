@@ -168,9 +168,20 @@ export interface Backend {
   /** Who last changed each line of `file`. */
   blameFile(path: string, file: string): Promise<Result<BlameLine[]>>;
   commitDetails(path: string, id: string): Promise<Result<CommitDetailsDto>>;
-  commitFileDiff(path: string, id: string, file: string): Promise<Result<FileDiff>>;
+  commitFileDiff(
+    path: string,
+    id: string,
+    file: string,
+    ignoreWhitespace?: boolean,
+  ): Promise<Result<FileDiff>>;
   workingTreeStatus(path: string): Promise<Result<WorkingTreeStatus>>;
-  fileDiff(path: string, file: string, side: DiffSide): Promise<Result<FileDiff>>;
+  /** With `ignoreWhitespace`, changes in spacing alone are left out. */
+  fileDiff(
+    path: string,
+    file: string,
+    side: DiffSide,
+    ignoreWhitespace?: boolean,
+  ): Promise<Result<FileDiff>>;
   stageFiles(path: string, files: string[]): Promise<Result<null>>;
   unstageFiles(path: string, files: string[]): Promise<Result<null>>;
   /** Throws away unstaged changes; untracked files are deleted. */
@@ -244,7 +255,13 @@ export interface Backend {
   /** What `head` changes since it forked from `base` (branches, tags or ids). */
   compareRefs(path: string, base: string, head: string): Promise<Result<Comparison>>;
   /** How `file` differs between commits `from` and `to`. */
-  compareFileDiff(path: string, from: string, to: string, file: string): Promise<Result<FileDiff>>;
+  compareFileDiff(
+    path: string,
+    from: string,
+    to: string,
+    file: string,
+    ignoreWhitespace?: boolean,
+  ): Promise<Result<FileDiff>>;
   listIssues(path: string): Promise<Result<Issue[]>>;
   createPullRequest(
     path: string,
