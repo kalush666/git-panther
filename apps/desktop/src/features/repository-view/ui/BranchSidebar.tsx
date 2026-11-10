@@ -9,6 +9,7 @@ import {
   GitBranch,
   Plus,
   Search,
+  Pin,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -65,6 +66,7 @@ export function BranchSidebar({
   const [filter, setFilter] = useState('');
   const all = filterBranches(branches.data ?? [], filter);
   const local = all.filter((branch) => branch.kind === 'local');
+  const pinned = local.filter((branch) => actions.pinned.includes(branch.name));
   const remote = all.filter((branch) => branch.kind === 'remote');
   const hidden = useHiddenRefs(path);
   const toggleHidden = useHiddenRefsStore((state) => state.toggle);
@@ -111,6 +113,18 @@ export function BranchSidebar({
         </button>
       )}
       <div className={styles.sections}>
+        {pinned.length > 0 && (
+          <Section
+            title="Pinned"
+            icon={<Pin size={13} aria-hidden />}
+            branches={pinned}
+            flat
+            actions={actions}
+            history={history}
+            visibility={visibility}
+            remoteActions={remoteActions}
+          />
+        )}
         <Section
           title="Local"
           icon={<GitBranch size={13} aria-hidden />}
@@ -163,10 +177,13 @@ function Section({
   visibility,
   remoteActions,
   action,
+  flat = false,
 }: {
   title: string;
   icon: React.ReactNode;
   branches: Branch[];
+  /** Full names in a plain list instead of folders. */
+  flat?: boolean;
   /** A button next to the section title, e.g. "Add remote". */
   action?: React.ReactNode;
 } & RowActions) {
@@ -191,7 +208,10 @@ function Section({
       </div>
       {open && (
         <ul className={styles.tree} role="tree" aria-label={`${title} branches`}>
-          {buildBranchTree(branches).map((node) => (
+          {(flat
+            ? branches.map((branch) => ({ kind: 'branch' as const, label: branch.name, branch }))
+            : buildBranchTree(branches)
+          ).map((node) => (
             <TreeNode
               key={nodeKey(node)}
               node={node}
@@ -415,6 +435,36 @@ function BranchRow({
             >
               Show only this branch
             </ContextMenu.Item>
+            {isLocal && (
+              <ContextMenu.Item
+                className={menu.item}
+                onSelect={() => {
+                  actions.togglePin(branch.name);
+                }}
+              >
+                {actions.pinned.includes(branch.name) ? 'Unpin from the top' : 'Pin to the top'}
+              </ContextMenu.Item>
+            )}
+            {isLocal && (
+              <ContextMenu.Item
+                className={menu.item}
+                onSelect={() => {
+                  actions.openSetUpstream(branch.name, branch.upstream ?? `origin/${branch.name}`);
+                }}
+              >
+                Set upstream…
+              </ContextMenu.Item>
+            )}
+            {isLocal && branch.upstream && (
+              <ContextMenu.Item
+                className={menu.item}
+                onSelect={() => {
+                  actions.unsetUpstream(branch.name);
+                }}
+              >
+                Stop tracking {branch.upstream}
+              </ContextMenu.Item>
+            )}
             {!branch.isHead && current && (
               <>
                 <ContextMenu.Separator className={menu.separator} />

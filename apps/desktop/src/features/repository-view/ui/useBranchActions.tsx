@@ -7,14 +7,17 @@ import {
   useCreateBranch,
   useDeleteBranch,
   useRenameBranch,
+  useSetUpstream,
 } from '../api/useBranches';
+import { usePinned, usePinnedBranches } from '../model/workspace';
 import type { OutcomeAction } from './OutcomeBanner';
 import styles from './useBranchActions.module.css';
 
 type Prompt =
   | { kind: 'create'; start: string; startLabel: string }
   | { kind: 'rename'; from: string }
-  | { kind: 'compare'; base: string; head: string };
+  | { kind: 'compare'; base: string; head: string }
+  | { kind: 'upstream'; branch: string; upstream: string };
 
 /** Reports a finished action in the banner under the header, with an optional next step. */
 export type Report = (tone: 'done' | 'error', message: string, action?: OutcomeAction) => void;
@@ -31,6 +34,13 @@ export interface BranchActions {
   openCompare: (base: string, head: string) => void;
   /** Asks to finish a git flow branch (feature/, release/, hotfix/). */
   finishFlow: (branch: string) => void;
+  /** Branches pinned to the top of the list. */
+  pinned: string[];
+  togglePin: (branch: string) => void;
+  /** Asks which remote branch `branch` should track, prefilled. */
+  openSetUpstream: (branch: string, upstream: string) => void;
+  /** Stops `branch` tracking a remote branch. */
+  unsetUpstream: (branch: string) => void;
   /** What is running now, for the banner, e.g. "Switching to develop…". */
   running: string | null;
   /** The name bar, when one is open. */
@@ -48,6 +58,9 @@ export function useBranchActions(
   const [switchTo, setSwitchTo] = useState(true);
   const create = useCreateBranch(path);
   const checkout = useCheckoutBranch(path);
+  const upstream = useSetUpstream(path);
+  const pinned = usePinned(path);
+  const togglePin = usePinnedBranches((state) => state.toggle);
   const rename = useRenameBranch(path);
   const remove = useDeleteBranch(path);
 
@@ -100,6 +113,29 @@ export function useBranchActions(
     switch (prompt?.kind) {
       case undefined:
         return null;
+      case 'upstream':
+        return (
+          <InlinePrompt
+            key={`upstream:${prompt.branch}`}
+            title={`Track a remote branch with ${prompt.branch}`}
+            fields={[{ label: 'Upstream', initial: prompt.upstream, placeholder: 'origin/main' }]}
+            submitLabel="Set upstream"
+            error={upstream.error?.message ?? null}
+            isPending={upstream.isPending}
+            onCancel={close}
+            onSubmit={([value = '']) => {
+              upstream.mutate(
+                { branch: prompt.branch, upstream: value },
+                {
+                  onSuccess: () => {
+                    report('done', `${prompt.branch} now tracks ${value}`);
+                    close();
+                  },
+                },
+              );
+            }}
+          />
+        );
       case 'compare':
         return (
           <InlinePrompt
@@ -188,6 +224,27 @@ export function useBranchActions(
     },
     compare,
     finishFlow,
+    pinned,
+    togglePin: (branch) => {
+      togglePin(path, branch);
+    },
+    openSetUpstream: (branch, current) => {
+      upstream.reset();
+      setPrompt({ kind: 'upstream', branch, upstream: current });
+    },
+    unsetUpstream: (branch) => {
+      upstream.mutate(
+        { branch, upstream: null },
+        {
+          onSuccess: () => {
+            report('done', `${branch} no longer tracks a remote branch`);
+          },
+          onError: (error) => {
+            report('error', error.message);
+          },
+        },
+      );
+    },
     openCompare: (base, head) => {
       setPrompt({ kind: 'compare', base, head });
     },

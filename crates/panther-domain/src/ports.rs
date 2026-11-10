@@ -152,6 +152,29 @@ pub trait BranchStore: Send + Sync {
         name: &BranchName,
         force: bool,
     ) -> Result<(), RepositoryError>;
+
+    /// Moves local branch `target` forward to `source` without a merge
+    /// commit, checked out or not.
+    ///
+    /// # Errors
+    /// [`RepositoryError::NotFastForward`] when `target` has commits `source` lacks.
+    fn fast_forward(
+        &self,
+        repository: &Path,
+        target: &BranchName,
+        source: &str,
+    ) -> Result<(), RepositoryError>;
+
+    /// Makes local `branch` track `upstream` (e.g. `origin/main`), or nothing.
+    ///
+    /// # Errors
+    /// [`RepositoryError::BranchNotFound`] for an unknown branch.
+    fn set_upstream(
+        &self,
+        repository: &Path,
+        branch: &BranchName,
+        upstream: Option<&str>,
+    ) -> Result<(), RepositoryError>;
 }
 
 /// Adds, edits and removes remotes, and deletes branches on them.

@@ -42,6 +42,40 @@ export function useCommitDraft(path: string): CommitDraft {
   return useCommitDrafts((state) => state.drafts[path] ?? EMPTY_DRAFT);
 }
 
+/** Branches pinned to the top of the list, per repository. */
+interface PinnedState {
+  byRepository: Record<string, string[]>;
+  toggle: (path: string, branch: string) => void;
+}
+
+export const usePinnedBranches = create<PinnedState>()(
+  persist(
+    (set) => ({
+      byRepository: {},
+      toggle: (path, branch) => {
+        set((state) => {
+          const pinned = state.byRepository[path] ?? [];
+          return {
+            byRepository: {
+              ...state.byRepository,
+              [path]: pinned.includes(branch)
+                ? pinned.filter((name) => name !== branch)
+                : [...pinned, branch],
+            },
+          };
+        });
+      },
+    }),
+    { name: 'git-panther.pinned-branches' },
+  ),
+);
+
+const NO_PINS: string[] = [];
+
+export function usePinned(path: string): string[] {
+  return usePinnedBranches((state) => state.byRepository[path] ?? NO_PINS);
+}
+
 /** Remembered choices of the commit box. */
 interface CommitPreferenceState {
   /** Push right after each commit. */

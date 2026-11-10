@@ -7,7 +7,10 @@ import { useRepositoryMutation } from './useRepositoryMutation';
 /** One graph action, as the menus and drag-and-drop ask for it. */
 export type HistoryRequest =
   | { action: 'merge'; branch: string }
-  | { action: 'rebase'; onto: string }
+  | { action: 'rebase'; onto: string; label?: string }
+  | { action: 'fastForward'; target: string; source: string }
+  /** Pushes local `source` to branch `target` on `remote`. */
+  | { action: 'pushTo'; source: string; remote: string; target: string }
   | {
       action: 'rebaseInteractive';
       base: string;
@@ -32,6 +35,15 @@ function send(path: string, request: HistoryRequest) {
       return ipc.mergeBranch(path, request.branch);
     case 'rebase':
       return ipc.rebaseOnto(path, request.onto);
+    case 'fastForward':
+      return ipc.fastForwardBranch(path, request.target, request.source);
+    case 'pushTo':
+      return ipc.pushBranch(
+        path,
+        { remote: request.remote, source: request.source, target: request.target },
+        crypto.randomUUID(),
+        () => undefined,
+      );
     case 'rebaseInteractive':
       return ipc.rebaseInteractive(path, request.base, request.steps);
     case 'cherryPick':
@@ -60,7 +72,11 @@ export function describeRunning(request: HistoryRequest): string {
     case 'merge':
       return `Merging ${request.branch}…`;
     case 'rebase':
-      return `Rebasing onto ${request.onto}…`;
+      return `Rebasing onto ${request.label ?? request.onto}…`;
+    case 'fastForward':
+      return `Fast-forwarding ${request.target} to ${request.source}…`;
+    case 'pushTo':
+      return `Pushing ${request.source} to ${request.remote}/${request.target}…`;
     case 'rebaseInteractive':
       return `Rewriting the commits after ${request.label}…`;
     case 'cherryPick':
@@ -87,7 +103,11 @@ export function describeDone(request: HistoryRequest): string {
     case 'merge':
       return `Merged ${request.branch}`;
     case 'rebase':
-      return `Rebased onto ${request.onto}`;
+      return `Rebased onto ${request.label ?? request.onto}`;
+    case 'fastForward':
+      return `Fast-forwarded ${request.target} to ${request.source}`;
+    case 'pushTo':
+      return `Pushed ${request.source} to ${request.remote}/${request.target}`;
     case 'rebaseInteractive':
       return request.done ?? `Rebased the commits after ${request.label}`;
     case 'cherryPick':

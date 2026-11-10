@@ -101,4 +101,56 @@ impl BranchStore for GitBranchStore {
             name.as_str(),
         )
     }
+
+    fn fast_forward(
+        &self,
+        repository: &Path,
+        target: &BranchName,
+        source: &str,
+    ) -> Result<(), RepositoryError> {
+        let checked_out = branches(repository)?
+            .into_iter()
+            .any(|branch| branch.is_head && branch.name == target.as_str());
+        let refspec = format!("{source}:refs/heads/{target}");
+        let args: &[&str] = if checked_out {
+            &["merge", "--ff-only", "--autostash", source]
+        } else {
+            // Updates a branch that is not checked out, refusing anything but a fast-forward.
+            &["fetch", ".", &refspec]
+        };
+        self.git(repository, args, target.as_str())
+            .map_err(|error| match error {
+                RepositoryError::Git { details }
+                    if details.contains("non-fast-forward")
+                        || details.contains("Not possible to fast-forward")
+                        || details.contains("rejected") =>
+                {
+                    RepositoryError::NotFastForward
+                }
+                other => other,
+            })
+    }
+
+    fn set_upstream(
+        &self,
+        repository: &Path,
+        branch: &BranchName,
+        upstream: Option<&str>,
+    ) -> Result<(), RepositoryError> {
+        match upstream {
+            Some(upstream) => {
+                let flag = format!("--set-upstream-to={upstream}");
+                self.git(
+                    repository,
+                    &["branch", &flag, "--", branch.as_str()],
+                    branch.as_str(),
+                )
+            }
+            None => self.git(
+                repository,
+                &["branch", "--unset-upstream", "--", branch.as_str()],
+                branch.as_str(),
+            ),
+        }
+    }
 }

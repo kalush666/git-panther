@@ -29,6 +29,10 @@ pub const AUTHENTICATION_HINT: &str = "Git Panther uses your git credentials. Si
 pub struct PushOptions {
     /// Push to this remote instead of the branch's upstream (or `origin`).
     pub remote: Option<RemoteName>,
+    /// The local branch to push; the checked-out one when `None`.
+    pub source: Option<String>,
+    /// The branch name on the remote; the same name as the source when `None`.
+    pub target: Option<String>,
     /// Overwrite the remote branch, but only if it is still where it was
     /// last fetched (`--force-with-lease`), so nobody's work is lost unseen.
     pub force_with_lease: bool,

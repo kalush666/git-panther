@@ -36,6 +36,11 @@ export function createMockHistory(
   return {
     /** Remembers how to undo an action done elsewhere in the mock. */
     remember,
+    /** `result`, remembered for Undo under `label` when it succeeded. */
+    track: <T>(label: string, result: Result<T>): Result<T> => {
+      if (result.status === 'ok') remember(label);
+      return result;
+    },
 
     /** Records a checkout so Undo can switch back. */
     trackCheckout: (run: () => Result<null>, name: string): Result<null> => {

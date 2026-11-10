@@ -566,6 +566,14 @@ function CommitMenu({
       <ContextMenu.Item
         className={menu.item}
         onSelect={() => {
+          history.run({ action: 'rebase', onto: entry.id, label: `commit ${entry.shortId}` });
+        }}
+      >
+        Rebase {current} onto this commit
+      </ContextMenu.Item>
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
           actions.compare(entry.id, current);
         }}
       >

@@ -261,6 +261,19 @@ mod tests {
             self.record(format!("delete {name}"));
             Ok(())
         }
+
+        fn fast_forward(&self, _: &Path, _: &BranchName, _: &str) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
+
+        fn set_upstream(
+            &self,
+            _: &Path,
+            _: &BranchName,
+            _: Option<&str>,
+        ) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
     }
 
     impl HistoryEditor for FakeRepo {

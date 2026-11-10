@@ -23,6 +23,14 @@ export function useCheckoutBranch(path: string) {
   return useRepositoryMutation(path, (name: string) => ipc.checkoutBranch(path, name));
 }
 
+export function useSetUpstream(path: string) {
+  return useRepositoryMutation(
+    path,
+    ({ branch, upstream }: { branch: string; upstream: string | null }) =>
+      ipc.setUpstream(path, branch, upstream),
+  );
+}
+
 export function useRenameBranch(path: string) {
   return useRepositoryMutation(path, ({ from, to }: { from: string; to: string }) =>
     ipc.renameBranch(path, from, to),

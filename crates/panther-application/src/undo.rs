@@ -378,6 +378,19 @@ mod tests {
                 .retain(|existing| *existing != name.as_str());
             Ok(())
         }
+
+        fn fast_forward(&self, _: &Path, _: &BranchName, _: &str) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
+
+        fn set_upstream(
+            &self,
+            _: &Path,
+            _: &BranchName,
+            _: Option<&str>,
+        ) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
     }
 
     struct NoStashes;
