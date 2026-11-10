@@ -175,4 +175,15 @@ impl History {
     pub fn undo(&self, repository: &Path) -> Result<String, RepositoryError> {
         self.undo.undo(repository)
     }
+
+    /// What Redo would do again, e.g. "Merge topic".
+    pub fn pending_redo(&self, repository: &Path) -> Option<String> {
+        self.undo.pending_redo(repository)
+    }
+
+    /// # Errors
+    /// Propagates [`UndoLog::redo`] errors.
+    pub fn redo(&self, repository: &Path) -> Result<String, RepositoryError> {
+        self.undo.redo(repository)
+    }
 }

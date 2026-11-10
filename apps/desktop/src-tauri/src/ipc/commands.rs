@@ -1658,6 +1658,25 @@ pub async fn undo(services: State<'_, AppServices>, path: String) -> Result<Stri
     run_blocking(move || Ok(history.undo(&PathBuf::from(path))?)).await
 }
 
+/// What Redo would do again, if anything.
+#[tauri::command]
+#[specta::specta]
+pub async fn pending_redo(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Option<String>, AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.pending_redo(&PathBuf::from(path)))).await
+}
+
+/// Does the most recently undone action again and returns what it was.
+#[tauri::command]
+#[specta::specta]
+pub async fn redo(services: State<'_, AppServices>, path: String) -> Result<String, AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.redo(&PathBuf::from(path))?)).await
+}
+
 fn widen(value: u32) -> usize {
     usize::try_from(value).expect("usize is at least 32 bits on supported platforms")
 }

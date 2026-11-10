@@ -6,6 +6,7 @@
 export const BINDABLE_COMMANDS = {
   'palette.open': { title: 'Open the command palette', shortcut: 'Ctrl+K' },
   'repository.undo': { title: 'Undo', shortcut: 'Ctrl+Z' },
+  'repository.redo': { title: 'Redo', shortcut: 'Ctrl+Y' },
   'repository.search': { title: 'Search commits', shortcut: 'Ctrl+F' },
   'repository.fetch': { title: 'Fetch', shortcut: 'Ctrl+Shift+F' },
   'repository.pull': { title: 'Pull', shortcut: 'Ctrl+Shift+L' },

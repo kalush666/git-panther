@@ -134,6 +134,10 @@ export const commands = {
 	pendingUndo: (path: string) => typedError<string | null, AppError>(__TAURI_INVOKE("pending_undo", { path })),
 	/**  Reverts the last undoable action and returns what it was. */
 	undo: (path: string) => typedError<string, AppError>(__TAURI_INVOKE("undo", { path })),
+	/**  What Redo would do again, if anything. */
+	pendingRedo: (path: string) => typedError<string | null, AppError>(__TAURI_INVOKE("pending_redo", { path })),
+	/**  Does the most recently undone action again and returns what it was. */
+	redo: (path: string) => typedError<string, AppError>(__TAURI_INVOKE("redo", { path })),
 	/**  Graph rows whose commit matches `query` (message, author or id prefix). */
 	searchCommits: (path: string, query: string, hidden: string[]) => typedError<number[], AppError>(__TAURI_INVOKE("search_commits", { path, query, hidden })),
 	/**  Commits that changed `file`, newest first. */
@@ -256,7 +260,7 @@ export type AppError = {
 };
 
 /**  Stable, machine-readable error categories the UI can switch on. */
-export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "undoOutdated" | "invalidRebasePlan" | "invalidRemoteName" | "remoteExists" | "remoteNotFound" | "worktreeFailed" | "invalidIdentity" | "hostingUnauthorized" | "hostingNotConnected" | "hostingLoginUnsupported" | "noHostedProject" | "hostingFailed" | "watchFailed" | "internal";
+export type AppErrorKind = "gitProbeFailed" | "notFound" | "notARepository" | "alreadyARepository" | "destinationNotEmpty" | "invalidRemoteUrl" | "cloneFailed" | "cancelled" | "gitFailed" | "storageFailed" | "commitNotFound" | "nothingToCommit" | "hunkOutdated" | "identityMissing" | "commitFailed" | "invalidBranchName" | "branchExists" | "branchNotFound" | "branchNotMerged" | "cannotDeleteCurrentBranch" | "checkoutConflict" | "authenticationFailed" | "networkFailed" | "pushRejected" | "noUpstream" | "notFastForward" | "pullConflict" | "noRemote" | "nothingToStash" | "stashNotFound" | "stashConflict" | "noOperationInProgress" | "unresolvedConflicts" | "invalidGitExecutable" | "invalidServer" | "invalidCredentials" | "credentialHelperMissing" | "operationConflict" | "invalidTagName" | "tagExists" | "tagNotFound" | "nothingToUndo" | "nothingToRedo" | "undoOutdated" | "invalidRebasePlan" | "invalidRemoteName" | "remoteExists" | "remoteNotFound" | "worktreeFailed" | "invalidIdentity" | "hostingUnauthorized" | "hostingNotConnected" | "hostingLoginUnsupported" | "noHostedProject" | "hostingFailed" | "watchFailed" | "internal";
 
 /**  Where a bisect stands. */
 export type BisectStatusDto = BisectStatusDto_Serialize | BisectStatusDto_Deserialize;

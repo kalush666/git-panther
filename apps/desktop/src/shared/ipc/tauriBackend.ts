@@ -78,6 +78,8 @@ export const tauriBackend: Backend = {
   resolveConflictWith: commands.resolveConflictWith,
   pendingUndo: commands.pendingUndo,
   undo: commands.undo,
+  pendingRedo: commands.pendingRedo,
+  redo: commands.redo,
   pickPatchFile: async (title) => {
     const selection = await open({
       directory: false,

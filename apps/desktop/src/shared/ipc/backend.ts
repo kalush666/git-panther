@@ -317,6 +317,10 @@ export interface Backend {
   pendingUndo(path: string): Promise<Result<string | null>>;
   /** Resolves to what was undone. */
   undo(path: string): Promise<Result<string>>;
+  /** What Redo would do again, e.g. "Merge topic". */
+  pendingRedo(path: string): Promise<Result<string | null>>;
+  /** Resolves to what was redone. */
+  redo(path: string): Promise<Result<string>>;
   /** Shows the native folder picker; resolves to `null` if the user cancels. */
   pickFolder(title: string): Promise<string | null>;
   /** Starts `<kind>/<name>` from develop (or main for a hotfix) and checks it out. */

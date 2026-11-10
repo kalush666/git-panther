@@ -204,6 +204,8 @@ pub enum RepositoryError {
     TagNotFound { name: String },
     #[error("There is nothing to undo.")]
     NothingToUndo,
+    #[error("There is nothing to redo.")]
+    NothingToRedo,
     #[error("The repository changed since that action, so it can no longer be undone safely.")]
     UndoOutdated,
     #[error(transparent)]
