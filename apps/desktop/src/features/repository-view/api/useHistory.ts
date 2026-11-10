@@ -116,3 +116,15 @@ export function usePendingUndo(path: string) {
 export function useUndo(path: string) {
   return useRepositoryMutation(path, () => ipc.undo(path));
 }
+
+/** What Redo would do again, e.g. "Merge topic". */
+export function usePendingRedo(path: string) {
+  return useQuery({
+    queryKey: [...repositoryQueryKey(path), 'redo'],
+    queryFn: async () => unwrap(await ipc.pendingRedo(path)),
+  });
+}
+
+export function useRedo(path: string) {
+  return useRepositoryMutation(path, () => ipc.redo(path));
+}

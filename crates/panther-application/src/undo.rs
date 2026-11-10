@@ -1,6 +1,7 @@
-//! Remembers how to undo the last action per repository: anything that moved
-//! HEAD (commit, checkout, merge, rebase, cherry-pick, revert, reset, pull)
-//! and deleted branches.
+//! Remembers how to undo recent actions per repository, and how to redo
+//! what was undone: anything that moved HEAD (commit, checkout, merge,
+//! rebase, cherry-pick, revert, reset, pull), deleted branches and dropped
+//! stashes.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -33,11 +34,21 @@ struct Entry {
     step: UndoStep,
 }
 
+/// What can be undone (newest last) and redone (most recently undone last).
+#[derive(Default)]
+struct Stacks {
+    undo: Vec<Entry>,
+    redo: Vec<Entry>,
+}
+
+/// How many actions back Undo reaches.
+const UNDO_DEPTH: usize = 20;
+
 pub struct UndoLog {
     history: Arc<dyn HistoryEditor>,
     branches: Arc<dyn BranchStore>,
     stashes: Arc<dyn StashStore>,
-    last: Mutex<HashMap<PathBuf, Entry>>,
+    stacks: Mutex<HashMap<PathBuf, Stacks>>,
 }
 
 impl UndoLog {
@@ -50,7 +61,7 @@ impl UndoLog {
             history,
             branches,
             stashes,
-            last: Mutex::new(HashMap::new()),
+            stacks: Mutex::new(HashMap::new()),
         }
     }
 
@@ -111,50 +122,134 @@ impl UndoLog {
 
     /// What the next undo would revert, if anything.
     pub fn pending(&self, repository: &Path) -> Option<String> {
-        self.entries()
+        self.stacks()
             .get(repository)
+            .and_then(|stacks| stacks.undo.last())
             .map(|entry| entry.label.clone())
     }
 
-    /// Reverts the last remembered action and returns what it was.
+    /// What the next redo would do again, if anything.
+    pub fn pending_redo(&self, repository: &Path) -> Option<String> {
+        self.stacks()
+            .get(repository)
+            .and_then(|stacks| stacks.redo.last())
+            .map(|entry| entry.label.clone())
+    }
+
+    /// Reverts the newest remembered action and returns what it was; it can
+    /// then be redone.
     ///
     /// # Errors
     /// [`RepositoryError::NothingToUndo`], [`RepositoryError::UndoOutdated`]
     /// when HEAD moved since, or the error restoring it.
     pub fn undo(&self, repository: &Path) -> Result<String, RepositoryError> {
         let entry = self
-            .entries()
-            .remove(repository)
+            .take(repository, |stacks| stacks.undo.pop())
             .ok_or(RepositoryError::NothingToUndo)?;
-        match &entry.step {
-            UndoStep::MoveHead { before, after } => {
-                if &self.history.head(repository)? != after {
-                    return Err(RepositoryError::UndoOutdated);
-                }
-                self.history.restore(repository, before)
+        match self.revert(repository, &entry.step) {
+            Ok(()) => {
+                let label = entry.label.clone();
+                self.put(repository, |stacks| stacks.redo.push(entry));
+                Ok(label)
             }
+            Err(error) => {
+                // Keep the step (e.g. blocked by local changes) so the user
+                // can fix that and try again.
+                self.put(repository, |stacks| stacks.undo.push(entry));
+                Err(error)
+            }
+        }
+    }
+
+    /// Does the most recently undone action again and returns what it was.
+    ///
+    /// # Errors
+    /// [`RepositoryError::NothingToRedo`], [`RepositoryError::UndoOutdated`]
+    /// when HEAD moved since, or the error re-applying it.
+    pub fn redo(&self, repository: &Path) -> Result<String, RepositoryError> {
+        let entry = self
+            .take(repository, |stacks| stacks.redo.pop())
+            .ok_or(RepositoryError::NothingToRedo)?;
+        match self.reapply(repository, &entry.step) {
+            Ok(()) => {
+                let label = entry.label.clone();
+                self.put(repository, |stacks| stacks.undo.push(entry));
+                Ok(label)
+            }
+            Err(error) => {
+                self.put(repository, |stacks| stacks.redo.push(entry));
+                Err(error)
+            }
+        }
+    }
+
+    fn revert(&self, repository: &Path, step: &UndoStep) -> Result<(), RepositoryError> {
+        match step {
+            UndoStep::MoveHead { before, after } => self.move_head(repository, after, before),
             UndoStep::RestoreBranch { name, target } => {
                 self.branches.create(repository, name, target, false)
             }
             UndoStep::RestoreStash(stash) => self.stashes.restore(repository, stash),
         }
-        .inspect_err(|_| {
-            // Keep the step when restoring failed (e.g. blocked by local
-            // changes) so the user can fix that and try again.
-            self.entries()
-                .insert(repository.to_path_buf(), entry.clone());
-        })?;
-        Ok(entry.label)
     }
 
+    fn reapply(&self, repository: &Path, step: &UndoStep) -> Result<(), RepositoryError> {
+        match step {
+            UndoStep::MoveHead { before, after } => self.move_head(repository, before, after),
+            UndoStep::RestoreBranch { name, .. } => self.branches.delete(repository, name, true),
+            UndoStep::RestoreStash(stash) => {
+                // Its position may have changed; find it by commit.
+                let index = self
+                    .stashes
+                    .stashes(repository)?
+                    .into_iter()
+                    .find(|candidate| candidate.id == stash.id)
+                    .ok_or(RepositoryError::UndoOutdated)?
+                    .index;
+                self.stashes.remove(repository, index)
+            }
+        }
+    }
+
+    /// Moves HEAD from `from` to `to`, refusing when it is no longer at `from`.
+    fn move_head(
+        &self,
+        repository: &Path,
+        from: &HeadSnapshot,
+        to: &HeadSnapshot,
+    ) -> Result<(), RepositoryError> {
+        if &self.history.head(repository)? != from {
+            return Err(RepositoryError::UndoOutdated);
+        }
+        self.history.restore(repository, to)
+    }
+
+    /// A new action: it can be undone, and what was undone before is gone.
     fn remember(&self, repository: &Path, label: String, step: UndoStep) {
-        self.entries()
-            .insert(repository.to_path_buf(), Entry { label, step });
+        self.put(repository, |stacks| {
+            stacks.redo.clear();
+            stacks.undo.push(Entry { label, step });
+            if stacks.undo.len() > UNDO_DEPTH {
+                stacks.undo.remove(0);
+            }
+        });
     }
 
-    fn entries(&self) -> std::sync::MutexGuard<'_, HashMap<PathBuf, Entry>> {
+    fn take(
+        &self,
+        repository: &Path,
+        pick: impl FnOnce(&mut Stacks) -> Option<Entry>,
+    ) -> Option<Entry> {
+        self.stacks().get_mut(repository).and_then(pick)
+    }
+
+    fn put(&self, repository: &Path, change: impl FnOnce(&mut Stacks)) {
+        change(self.stacks().entry(repository.to_path_buf()).or_default());
+    }
+
+    fn stacks(&self) -> std::sync::MutexGuard<'_, HashMap<PathBuf, Stacks>> {
         // The map stays consistent even if a holder panicked.
-        self.last.lock().unwrap_or_else(PoisonError::into_inner)
+        self.stacks.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 
@@ -273,8 +368,12 @@ mod tests {
         fn rename(&self, _: &Path, _: &BranchName, _: &BranchName) -> Result<(), RepositoryError> {
             unreachable!()
         }
-        fn delete(&self, _: &Path, _: &BranchName, _: bool) -> Result<(), RepositoryError> {
-            unreachable!()
+        fn delete(&self, _: &Path, name: &BranchName, _: bool) -> Result<(), RepositoryError> {
+            self.0
+                .lock()
+                .unwrap()
+                .retain(|existing| *existing != name.as_str());
+            Ok(())
         }
     }
 
@@ -365,5 +464,51 @@ mod tests {
 
         assert_eq!(log.undo(Path::new(REPO)).unwrap(), "Delete branch topic");
         assert_eq!(*branches.0.lock().unwrap(), ["topic"]);
+    }
+
+    #[test]
+    fn redoes_what_was_undone_until_something_new_happens() {
+        let (log, head, _) = log();
+        for (label, n) in [("First", 2), ("Second", 3)] {
+            log.track(Path::new(REPO), label.into(), || {
+                head.set(on("main", n));
+                Ok(())
+            })
+            .unwrap();
+        }
+
+        assert_eq!(log.undo(Path::new(REPO)).unwrap(), "Second");
+        assert_eq!(log.undo(Path::new(REPO)).unwrap(), "First");
+        assert_eq!(head.get(), on("main", 1));
+        assert_eq!(log.pending_redo(Path::new(REPO)).as_deref(), Some("First"));
+
+        assert_eq!(log.redo(Path::new(REPO)).unwrap(), "First");
+        assert_eq!(head.get(), on("main", 2));
+        assert_eq!(log.pending(Path::new(REPO)).as_deref(), Some("First"));
+
+        // A new action drops what was left to redo.
+        log.track(Path::new(REPO), "Third".into(), || {
+            head.set(on("main", 4));
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(log.pending_redo(Path::new(REPO)), None);
+        assert!(matches!(
+            log.redo(Path::new(REPO)),
+            Err(RepositoryError::NothingToRedo)
+        ));
+    }
+
+    #[test]
+    fn redoing_a_branch_delete_deletes_it_again() {
+        let (log, _, branches) = log();
+        let name = BranchName::parse("topic").unwrap();
+        log.track_branch_delete(Path::new(REPO), name, commit(9), || Ok(()))
+            .unwrap();
+        log.undo(Path::new(REPO)).unwrap();
+        assert_eq!(*branches.0.lock().unwrap(), ["topic"]);
+
+        assert_eq!(log.redo(Path::new(REPO)).unwrap(), "Delete branch topic");
+        assert!(branches.0.lock().unwrap().is_empty());
     }
 }

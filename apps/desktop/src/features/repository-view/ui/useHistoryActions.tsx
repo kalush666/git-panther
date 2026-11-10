@@ -8,7 +8,9 @@ import {
   describeDone,
   describeRunning,
   useHistoryAction,
+  usePendingRedo,
   usePendingUndo,
+  useRedo,
   useUndo,
   type HistoryRequest,
 } from '../api/useHistory';
@@ -68,6 +70,9 @@ export interface HistoryActions {
   /** What Undo would revert, e.g. "Merge topic". */
   undoLabel: string | null;
   undo: () => void;
+  /** What Redo would do again, e.g. "Merge topic". */
+  redoLabel: string | null;
+  redo: () => void;
   report: Report;
   /** The last result to show under the header. */
   outcome: Outcome | null;
@@ -84,6 +89,8 @@ export interface HistoryActions {
 export function useHistoryActions(path: string): HistoryActions {
   const action = useHistoryAction(path);
   const undoAction = useUndo(path);
+  const redoAction = useRedo(path);
+  const pendingRedo = usePendingRedo(path);
   const pendingUndo = usePendingUndo(path);
   const branches = useBranches(path);
   const [prompt, setPrompt] = useState<Prompt | null>(null);
@@ -370,6 +377,19 @@ export function useHistoryActions(path: string): HistoryActions {
       undoAction.mutate(undefined, {
         onSuccess: (label) => {
           report('done', `Undid: ${label}`);
+        },
+        onError: (error) => {
+          report('error', error.message);
+        },
+      });
+    },
+    redoLabel: pendingRedo.data ?? null,
+    redo: () => {
+      if (redoAction.isPending) return;
+      setOutcome(null);
+      redoAction.mutate(undefined, {
+        onSuccess: (label) => {
+          report('done', `Redid: ${label}`);
         },
         onError: (error) => {
           report('error', error.message);

@@ -1,5 +1,5 @@
 import * as ContextMenu from '@radix-ui/react-context-menu';
-import { ChevronRight, GitBranch, TriangleAlert, Undo2 } from 'lucide-react';
+import { ChevronRight, GitBranch, Redo2, TriangleAlert, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 
 import { useCommands } from '../../../shared/commands';
@@ -101,6 +101,13 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
       group: 'Repository',
       enabled: history.undoLabel !== null,
       run: history.undo,
+    },
+    {
+      id: 'repository.redo',
+      title: history.redoLabel ? `Redo: ${history.redoLabel}` : 'Redo',
+      group: 'Repository',
+      enabled: history.redoLabel !== null,
+      run: history.redo,
     },
     {
       id: 'repository.newBranch',
@@ -296,6 +303,16 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
         >
           <Undo2 size={14} aria-hidden />
           Undo
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={!history.redoLabel}
+          title={history.redoLabel ? `Redo: ${history.redoLabel} (Ctrl+Y)` : 'Nothing to redo'}
+          onClick={history.redo}
+        >
+          <Redo2 size={14} aria-hidden />
+          Redo
         </Button>
         <OpenInMenu path={path} report={history.report} />
         <StashActions path={path} />

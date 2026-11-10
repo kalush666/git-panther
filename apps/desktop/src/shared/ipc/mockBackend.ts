@@ -629,6 +629,8 @@ function createMockBackend(): Backend {
     resolveConflictWith: (_path, file) => Promise.resolve(workingTree.resolve([file])),
     pendingUndo: () => Promise.resolve(history.pendingUndo()),
     undo: () => Promise.resolve(history.undo()),
+    pendingRedo: () => Promise.resolve(history.pendingRedo()),
+    redo: () => Promise.resolve(history.redo()),
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
     pickPatchFile: () => Promise.resolve(MOCK_PICKED_PATCH),
     ignorePath: (_path, pattern) => Promise.resolve(workingTree.ignore(pattern)),

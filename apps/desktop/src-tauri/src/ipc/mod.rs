@@ -71,6 +71,8 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::push_tag,
             commands::pending_undo,
             commands::undo,
+            commands::pending_redo,
+            commands::redo,
             commands::search_commits,
             commands::file_history,
             commands::blame_file,

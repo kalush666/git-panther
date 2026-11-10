@@ -25,7 +25,10 @@ export function createMockHistory(
   let last: { label: string; revert: () => void } | null = null;
   const tags = new Set(['v1.0.0']);
 
+  /** The last undone action; redoing it only brings back its label in the mock. */
+  let undone: { label: string } | null = null;
   const remember = (label: string, revert: () => void = () => undefined) => {
+    undone = null;
     last = { label, revert };
     return ok();
   };
@@ -92,6 +95,15 @@ export function createMockHistory(
       const { label, revert } = last;
       last = null;
       revert();
+      undone = { label };
+      return { status: 'ok', data: label };
+    },
+    pendingRedo: (): Result<string | null> => ({ status: 'ok', data: undone?.label ?? null }),
+    redo: (): Result<string> => {
+      if (!undone) return failure('nothingToRedo', 'There is nothing to redo.');
+      const { label } = undone;
+      undone = null;
+      last = { label, revert: () => undefined };
       return { status: 'ok', data: label };
     },
   };
