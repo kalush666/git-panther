@@ -638,6 +638,18 @@ pub trait HistoryEditor: Send + Sync {
     /// [`RepositoryError::OperationConflict`] or [`RepositoryError::CheckoutConflict`].
     fn cherry_pick(&self, repository: &Path, commit: &CommitId) -> Result<(), RepositoryError>;
 
+    /// Applies `commits` in order (oldest first) as one sequence, which
+    /// continues after a conflict is resolved.
+    ///
+    /// # Errors
+    /// [`RepositoryError::OperationConflict`], [`RepositoryError::CheckoutConflict`],
+    /// or [`RepositoryError::Git`] for a merge commit among them.
+    fn cherry_pick_many(
+        &self,
+        repository: &Path,
+        commits: &[CommitId],
+    ) -> Result<(), RepositoryError>;
+
     /// Adds a commit that undoes the changes of `commit`.
     ///
     /// # Errors

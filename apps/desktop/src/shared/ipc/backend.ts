@@ -307,6 +307,8 @@ export interface Backend {
   pushTag(path: string, name: string): Promise<Result<null>>;
   /** The commits an interactive rebase onto `base` would rewrite, oldest first. */
   rebasePlan(path: string, base: string): Promise<Result<CommitSummary[]>>;
+  /** Cherry-picks `commits` (oldest first) as one sequence. */
+  cherryPickMany(path: string, commits: string[]): Promise<Result<null>>;
   /** Rewrites the commits after `base` as `steps` says, oldest first. */
   rebaseInteractive(path: string, base: string, steps: RebaseStep[]): Promise<Result<null>>;
   /** A conflicted file split into agreed text and conflicts. */

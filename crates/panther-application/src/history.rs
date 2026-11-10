@@ -101,6 +101,26 @@ impl History {
         )
     }
 
+    /// Cherry-picks `commits` (oldest first) as one step to undo.
+    ///
+    /// # Errors
+    /// An unknown commit, or [`HistoryEditor::cherry_pick_many`] errors.
+    pub fn cherry_pick_many(
+        &self,
+        repository: &Path,
+        commits: &[String],
+    ) -> Result<(), RepositoryError> {
+        let commits = commits
+            .iter()
+            .map(|commit| commit_id(commit))
+            .collect::<Result<Vec<_>, _>>()?;
+        self.undo.track(
+            repository,
+            format!("Cherry-pick {} commits", commits.len()),
+            || self.editor.cherry_pick_many(repository, &commits),
+        )
+    }
+
     /// # Errors
     /// An unknown commit, or [`HistoryEditor::revert`] errors.
     pub fn revert(&self, repository: &Path, commit: &str) -> Result<(), RepositoryError> {

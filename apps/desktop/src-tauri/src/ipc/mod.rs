@@ -63,6 +63,7 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::merge_branch,
             commands::rebase_onto,
             commands::cherry_pick,
+            commands::cherry_pick_many,
             commands::revert_commit,
             commands::reset_to_commit,
             commands::checkout_commit,

@@ -210,6 +210,26 @@ impl HistoryEditor for GitHistoryEditor {
         self.apply_commit(repository, "cherry-pick", commit)
     }
 
+    fn cherry_pick_many(
+        &self,
+        repository: &Path,
+        commits: &[CommitId],
+    ) -> Result<(), RepositoryError> {
+        for commit in commits {
+            if is_merge(repository, commit)? {
+                return Err(RepositoryError::Git {
+                    details: format!(
+                        "{} is a merge commit; cherry-pick it on its own.",
+                        &commit.as_str()[..7]
+                    ),
+                });
+            }
+        }
+        let mut args = vec!["cherry-pick", "--allow-empty"];
+        args.extend(commits.iter().map(CommitId::as_str));
+        self.git(repository, &args, "cherry-pick")
+    }
+
     fn revert(&self, repository: &Path, commit: &CommitId) -> Result<(), RepositoryError> {
         self.apply_commit(repository, "revert", commit)
     }

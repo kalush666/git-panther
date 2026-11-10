@@ -17,6 +17,8 @@ export type HistoryRequest =
       done?: string;
     }
   | { action: 'cherryPick'; commit: string; label: string }
+  /** Oldest first. */
+  | { action: 'cherryPickMany'; commits: string[] }
   | { action: 'revert'; commit: string; label: string }
   | { action: 'reset'; commit: string; label: string; mode: ResetMode }
   | { action: 'checkoutCommit'; commit: string; label: string }
@@ -34,6 +36,8 @@ function send(path: string, request: HistoryRequest) {
       return ipc.rebaseInteractive(path, request.base, request.steps);
     case 'cherryPick':
       return ipc.cherryPick(path, request.commit);
+    case 'cherryPickMany':
+      return ipc.cherryPickMany(path, request.commits);
     case 'revert':
       return ipc.revertCommit(path, request.commit);
     case 'reset':
@@ -61,6 +65,8 @@ export function describeRunning(request: HistoryRequest): string {
       return `Rewriting the commits after ${request.label}…`;
     case 'cherryPick':
       return `Cherry-picking ${request.label}…`;
+    case 'cherryPickMany':
+      return `Cherry-picking ${String(request.commits.length)} commits…`;
     case 'revert':
       return `Reverting ${request.label}…`;
     case 'reset':
@@ -86,6 +92,8 @@ export function describeDone(request: HistoryRequest): string {
       return request.done ?? `Rebased the commits after ${request.label}`;
     case 'cherryPick':
       return `Cherry-picked ${request.label}`;
+    case 'cherryPickMany':
+      return `Cherry-picked ${String(request.commits.length)} commits`;
     case 'revert':
       return `Reverted ${request.label}`;
     case 'reset':

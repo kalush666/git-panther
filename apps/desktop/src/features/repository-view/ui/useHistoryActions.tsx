@@ -65,6 +65,8 @@ export interface HistoryActions {
   squash: (commit: string, label: string) => void;
   /** Melds a commit into its parent, keeping only the parent's message. */
   fixup: (commit: string, label: string) => void;
+  /** Melds consecutive commits (newest first) into the oldest of them. */
+  squashMany: (commits: string[]) => void;
   /** Whether a graph action is running. */
   isRunning: boolean;
   /** What Undo would revert, e.g. "Merge topic". */
@@ -103,6 +105,49 @@ export function useHistoryActions(path: string): HistoryActions {
 
   const report: Report = (tone, message, next) => {
     setOutcome({ tone, message, action: next });
+  };
+
+  /** Squashes `commits` (newest first, consecutive on the current branch) into one. */
+  const squashRange = async (commits: string[]) => {
+    try {
+      const oldest = commits.at(-1);
+      if (oldest === undefined || commits.length < 2) return;
+      for (const commit of commits) {
+        if (unwrap(await ipc.commitDetails(path, commit)).parents.length > 1) {
+          throw new Error(
+            `${commit.slice(0, 7)} is a merge commit; use Interactive rebase instead.`,
+          );
+        }
+      }
+      const base = unwrap(await ipc.commitDetails(path, oldest)).parents[0];
+      if (base === undefined) {
+        throw new Error('The first commit has no parent to rebuild the squashed commit on.');
+      }
+      const plan = unwrap(await ipc.rebasePlan(path, base));
+      const positions = commits.map((commit) => plan.findIndex((step) => step.id === commit));
+      if (positions.some((position) => position < 0)) {
+        throw new Error(
+          `These commits are not all on ${current}, so they cannot be squashed here.`,
+        );
+      }
+      const sorted = [...positions].sort((a, b) => a - b);
+      if (sorted.some((position, at) => at > 0 && position !== (sorted[at - 1] ?? 0) + 1)) {
+        throw new Error('Select commits that follow each other to squash them.');
+      }
+      const chosen = new Set(commits);
+      run({
+        action: 'rebaseInteractive',
+        base,
+        label: `${String(commits.length)} commits`,
+        steps: plan.map((step) => ({
+          commit: step.id,
+          action: chosen.has(step.id) && step.id !== oldest ? { kind: 'squash' } : { kind: 'pick' },
+        })),
+        done: `Squashed ${String(commits.length)} commits into one`,
+      });
+    } catch (error) {
+      report('error', error instanceof Error ? error.message : String(error));
+    }
   };
 
   /**
@@ -361,6 +406,9 @@ export function useHistoryActions(path: string): HistoryActions {
     },
     squash: (commit, label) => {
       void rewrite(commit, label, { kind: 'squash' });
+    },
+    squashMany: (commits) => {
+      void squashRange(commits);
     },
     fixup: (commit, label) => {
       void rewrite(commit, label, { kind: 'fixup' });

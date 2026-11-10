@@ -289,6 +289,9 @@ mod tests {
         fn cherry_pick(&self, _: &Path, _: &CommitId) -> Result<(), RepositoryError> {
             unreachable!()
         }
+        fn cherry_pick_many(&self, _: &Path, _: &[CommitId]) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
         fn revert(&self, _: &Path, _: &CommitId) -> Result<(), RepositoryError> {
             unreachable!()
         }
