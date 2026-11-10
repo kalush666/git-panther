@@ -118,6 +118,28 @@ impl WorkingCopy {
         self.tree.ignore(repository, pattern)
     }
 
+    /// Ignores `path` from now on and stops tracking it, keeping it on disk.
+    ///
+    /// # Errors
+    /// Propagates [`WorkingTree::ignore`] and [`WorkingTree::stop_tracking`] errors.
+    pub fn ignore_and_untrack(&self, repository: &Path, path: &str) -> Result<(), RepositoryError> {
+        self.tree.stop_tracking(repository, path)?;
+        self.ignore(repository, &format!("/{}", path.trim_start_matches('/')))
+    }
+
+    /// Brings back `path` as it was in `commit`, staged.
+    ///
+    /// # Errors
+    /// Propagates [`WorkingTree::restore_from`] errors.
+    pub fn restore_from(
+        &self,
+        repository: &Path,
+        commit: &CommitId,
+        path: &str,
+    ) -> Result<(), RepositoryError> {
+        self.tree.restore_from(repository, commit, path)
+    }
+
     /// Commits the staged changes, or amends the last commit.
     ///
     /// # Errors
@@ -229,6 +251,16 @@ mod tests {
 
         fn ignore(&self, _: &Path, pattern: &str) -> Result<(), RepositoryError> {
             self.record(format!("ignore {pattern}"));
+            Ok(())
+        }
+
+        fn stop_tracking(&self, _: &Path, path: &str) -> Result<(), RepositoryError> {
+            self.record(format!("untrack {path}"));
+            Ok(())
+        }
+
+        fn restore_from(&self, _: &Path, _: &CommitId, path: &str) -> Result<(), RepositoryError> {
+            self.record(format!("restore {path}"));
             Ok(())
         }
     }

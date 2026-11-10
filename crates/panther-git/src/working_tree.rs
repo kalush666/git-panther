@@ -63,6 +63,32 @@ impl WorkingTree for GitWorkingTree {
         apply_patch(&self.executable, repository, patch, PatchTarget::ThreeWay)
     }
 
+    fn stop_tracking(&self, repository: &Path, path: &str) -> Result<(), RepositoryError> {
+        run_git(
+            &self.executable,
+            repository,
+            &["rm", "-r", "--cached", "--quiet", "--", path],
+        )
+        .map(drop)
+        .map_err(|details| RepositoryError::Git { details })
+    }
+
+    fn restore_from(
+        &self,
+        repository: &Path,
+        commit: &CommitId,
+        path: &str,
+    ) -> Result<(), RepositoryError> {
+        let source = format!("--source={commit}");
+        run_git(
+            &self.executable,
+            repository,
+            &["restore", &source, "--staged", "--worktree", "--", path],
+        )
+        .map(drop)
+        .map_err(|details| RepositoryError::Git { details })
+    }
+
     fn ignore(&self, repository: &Path, pattern: &str) -> Result<(), RepositoryError> {
         let file = repository.join(".gitignore");
         let existing = match std::fs::read_to_string(&file) {

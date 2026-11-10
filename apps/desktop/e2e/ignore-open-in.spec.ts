@@ -21,10 +21,16 @@ test.describe('ignore and open in', () => {
     await expect(panel(page).getByRole('heading', { name: 'Unstaged files (2)' })).toBeVisible();
   });
 
-  test('tracked files offer no ignore', async ({ page }) => {
+  test('tracked files offer to stop tracking, not plain ignore', async ({ page }) => {
     await fileRow(page, 'M README.md').click({ button: 'right' });
-    await expect(page.getByRole('menuitem', { name: 'Copy path' })).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: /^Ignore/ })).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: 'Ignore and stop tracking' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Ignore this file' })).toHaveCount(0);
+  });
+
+  test('ignores the folder an untracked file is in', async ({ page }) => {
+    await fileRow(page, 'U notes/todo.md').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Ignore the folder notes/' }).click();
+    await expect(fileRow(page, 'U notes/todo.md')).toHaveCount(0);
   });
 
   test('opens the repository in another tool, and explains a missing editor', async ({ page }) => {

@@ -592,6 +592,35 @@ pub async fn ignore_path(
     run_blocking(move || Ok(copy.ignore(&PathBuf::from(path), &pattern)?)).await
 }
 
+/// Ignores `file` and stops tracking it, keeping it on disk.
+#[tauri::command]
+#[specta::specta]
+pub async fn ignore_and_untrack(
+    services: State<'_, AppServices>,
+    path: String,
+    file: String,
+) -> Result<(), AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || Ok(copy.ignore_and_untrack(&PathBuf::from(path), &file)?)).await
+}
+
+/// Brings back `file` as it was in commit `id`, staged.
+#[tauri::command]
+#[specta::specta]
+pub async fn restore_file_from(
+    services: State<'_, AppServices>,
+    path: String,
+    id: String,
+    file: String,
+) -> Result<(), AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || {
+        let id = commit_id(&id)?;
+        Ok(copy.restore_from(&PathBuf::from(path), &id, &file)?)
+    })
+    .await
+}
+
 /// Opens the repository in the file manager, a terminal or `editor`.
 #[tauri::command]
 #[specta::specta]

@@ -12,7 +12,12 @@ import { useRepository } from '../api/useRepository';
 import { usePatches, type PatchActions } from '../api/usePatches';
 import { useBisect } from '../api/useBisect';
 import { useSync } from '../api/useSync';
-import { useStageFiles, useWorkingTreeStatus, type DiffSource } from '../api/useWorkingTree';
+import {
+  useRestoreFileFrom,
+  useStageFiles,
+  useWorkingTreeStatus,
+  type DiffSource,
+} from '../api/useWorkingTree';
 import { describeHead } from '../model/describeHead';
 import { usePanelWidths } from '../model/workspace';
 import { BranchSidebar } from './BranchSidebar';
@@ -61,6 +66,7 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
   const history = useHistoryActions(path);
   const sync = useSync(path);
   const patches = usePatches(path, history.report);
+  const restoreFile = useRestoreFileFrom(path);
   const bisect = useBisect(path);
   const [review, setReview] = useState<ReviewTarget | null>(null);
   const [recovering, setRecovering] = useState(false);
@@ -506,6 +512,22 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
               if (selectedCommitId) {
                 setDiff({ kind: 'commit', file, commitId: selectedCommitId });
               }
+            }}
+            onRestoreFile={(commit, file) => {
+              restoreFile.mutate(
+                { commit, file },
+                {
+                  onSuccess: () => {
+                    history.report('done', `Restored ${file} from ${commit.slice(0, 7)}, staged`);
+                  },
+                  onError: (error) => {
+                    history.report('error', error.message);
+                  },
+                },
+              );
+            }}
+            onShowHistory={(file) => {
+              setFileView({ kind: 'history', file });
             }}
           />
         )}

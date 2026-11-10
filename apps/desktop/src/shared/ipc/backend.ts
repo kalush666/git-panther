@@ -355,6 +355,10 @@ export interface Backend {
   bisectStatus(path: string): Promise<Result<BisectStatus>>;
   /** Ends the bisect and returns to where it started. */
   bisectReset(path: string): Promise<Result<null>>;
+  /** Ignores `file` and stops tracking it, keeping it on disk. */
+  ignoreAndUntrack(path: string, file: string): Promise<Result<null>>;
+  /** Brings back `file` as it was in commit `id`, staged. */
+  restoreFileFrom(path: string, id: string, file: string): Promise<Result<null>>;
   /** Adds `pattern` as a line of the repository's `.gitignore`. */
   ignorePath(path: string, pattern: string): Promise<Result<null>>;
   /** Opens the repository in the file manager, a terminal or `editor` (e.g. `code`). */

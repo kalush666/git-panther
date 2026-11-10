@@ -225,6 +225,10 @@ export const commands = {
 	commitTemplate: (path: string) => typedError<string | null, AppError>(__TAURI_INVOKE("commit_template", { path })),
 	/**  Ignores files matching `pattern` by adding it to `.gitignore`. */
 	ignorePath: (path: string, pattern: string) => typedError<null, AppError>(__TAURI_INVOKE("ignore_path", { path, pattern })),
+	/**  Ignores `file` and stops tracking it, keeping it on disk. */
+	ignoreAndUntrack: (path: string, file: string) => typedError<null, AppError>(__TAURI_INVOKE("ignore_and_untrack", { path, file })),
+	/**  Brings back `file` as it was in commit `id`, staged. */
+	restoreFileFrom: (path: string, id: string, file: string) => typedError<null, AppError>(__TAURI_INVOKE("restore_file_from", { path, id, file })),
 	/**  Starts a bisect between a `bad` and a `good` revision. */
 	bisectStart: (path: string, bad: string, good: string) => typedError<BisectStatusDto_Serialize, AppError>(__TAURI_INVOKE("bisect_start", { path, bad, good })),
 	/**  Marks the checked-out commit and moves to the next one to test. */

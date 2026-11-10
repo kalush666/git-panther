@@ -9,6 +9,7 @@ import {
   loadHeadMessage,
   useCommitChanges,
   useDiscardFiles,
+  useIgnoreAndUntrack,
   useIgnorePath,
   useCommitTemplate,
   useRecentAuthors,
@@ -53,8 +54,14 @@ export function StagingPanel({
   const discard = useDiscardFiles(path);
   const ignore = useIgnorePath(path);
   const stashFile = useSaveStash(path);
+  const untrack = useIgnoreAndUntrack(path);
   const actionError =
-    stage.error ?? unstage.error ?? discard.error ?? ignore.error ?? stashFile.error;
+    stage.error ??
+    unstage.error ??
+    discard.error ??
+    ignore.error ??
+    stashFile.error ??
+    untrack.error;
   const stashOne = (file: string) => {
     stashFile.mutate({ message: file, includeUntracked: true, files: [file] });
   };
@@ -87,6 +94,7 @@ export function StagingPanel({
           onShowHistory={onShowHistory}
           onIgnore={ignore.mutate}
           onStashFile={stashOne}
+          onUntrack={untrack.mutate}
           bulkAction={
             <span className={styles.bulk}>
               <ConfirmButton
@@ -146,6 +154,7 @@ export function StagingPanel({
           onShowHistory={onShowHistory}
           onIgnore={ignore.mutate}
           onStashFile={stashOne}
+          onUntrack={untrack.mutate}
           bulkAction={
             <Button
               size="sm"
@@ -201,6 +210,8 @@ interface FileSectionProps {
   onIgnore: (pattern: string) => void;
   /** Stashes just this file. */
   onStashFile: (file: string) => void;
+  /** Ignores a tracked file and stops tracking it, keeping it on disk. */
+  onUntrack: (file: string) => void;
   bulkAction: ReactNode;
   rowActions: (file: ChangedFile) => ReactNode;
 }
@@ -215,6 +226,7 @@ function FileSection({
   onShowHistory,
   onIgnore,
   onStashFile,
+  onUntrack,
   bulkAction,
   rowActions,
 }: FileSectionProps) {
@@ -292,6 +304,16 @@ function FileSection({
                       >
                         Copy path
                       </ContextMenu.Item>
+                      {file.kind !== 'untracked' && file.kind !== 'deleted' && (
+                        <ContextMenu.Item
+                          className={menu.item}
+                          onSelect={() => {
+                            onUntrack(file.path);
+                          }}
+                        >
+                          Ignore and stop tracking
+                        </ContextMenu.Item>
+                      )}
                       {file.kind === 'untracked' &&
                         ignorePatterns(file.path).map(({ pattern, label }) => (
                           <ContextMenu.Item
@@ -515,9 +537,16 @@ function ignorePatterns(path: string): { pattern: string; label: string }[] {
   const name = path.split('/').pop() ?? path;
   const dot = name.lastIndexOf('.');
   const extension = dot > 0 ? name.slice(dot) : null;
+  // Every folder the file sits in, nearest first: notes/drafts/, notes/.
+  const folders = path
+    .split('/')
+    .slice(0, -1)
+    .map((_, depth, parts) => parts.slice(0, depth + 1).join('/'))
+    .reverse();
   return [
     { pattern: `/${path}`, label: 'Ignore this file' },
     ...(extension ? [{ pattern: `*${extension}`, label: `Ignore all ${extension} files` }] : []),
+    ...folders.map((folder) => ({ pattern: `/${folder}/`, label: `Ignore the folder ${folder}/` })),
   ];
 }
 

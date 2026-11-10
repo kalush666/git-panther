@@ -72,6 +72,16 @@ export function useIgnorePath(path: string) {
   return useRepositoryMutation(path, (pattern: string) => ipc.ignorePath(path, pattern));
 }
 
+export function useIgnoreAndUntrack(path: string) {
+  return useRepositoryMutation(path, (file: string) => ipc.ignoreAndUntrack(path, file));
+}
+
+export function useRestoreFileFrom(path: string) {
+  return useRepositoryMutation(path, ({ commit, file }: { commit: string; file: string }) =>
+    ipc.restoreFileFrom(path, commit, file),
+  );
+}
+
 export function useDiscardFiles(path: string) {
   return useRepositoryMutation(path, (files: string[]) => ipc.discardFiles(path, files));
 }
