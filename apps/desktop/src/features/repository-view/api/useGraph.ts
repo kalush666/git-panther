@@ -82,6 +82,15 @@ export function useFileHistory(path: string, file: string) {
   });
 }
 
+/** Files that would conflict merging `target` into `branch`; refreshed with the repository. */
+export function useMergeConflicts(path: string, branch: string | null, target: string | null) {
+  return useQuery({
+    queryKey: [...repositoryQueryKey(path), 'mergeConflicts', branch, target],
+    queryFn: async () => unwrap(await ipc.mergeConflicts(path, branch ?? '', target ?? '')),
+    enabled: branch !== null && target !== null,
+  });
+}
+
 /** Where HEAD pointed recently, for recovering lost commits. */
 export function useReflog(path: string) {
   return useQuery({

@@ -1311,6 +1311,19 @@ pub async fn gitflow_finish(
     run_blocking(move || Ok(gitflow.finish(&PathBuf::from(path), &branch)?.into())).await
 }
 
+/// Files that would conflict merging `theirs` into `ours`, found without merging.
+#[tauri::command]
+#[specta::specta]
+pub async fn merge_conflicts(
+    services: State<'_, AppServices>,
+    path: String,
+    ours: String,
+    theirs: String,
+) -> Result<Vec<String>, AppError> {
+    let graph = services.commit_graph.clone();
+    run_blocking(move || Ok(graph.merge_conflicts(&PathBuf::from(path), &ours, &theirs)?)).await
+}
+
 /// Where HEAD pointed recently, for recovering lost commits.
 #[tauri::command]
 #[specta::specta]

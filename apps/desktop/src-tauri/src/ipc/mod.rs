@@ -109,6 +109,7 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::compare_refs,
             commands::compare_file_diff,
             commands::reflog,
+            commands::merge_conflicts,
             commands::filter_commits,
             commands::apply_patch,
             commands::apply_patch_file,

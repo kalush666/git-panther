@@ -252,6 +252,8 @@ export interface Backend {
   approvePullRequest(path: string, number: number): Promise<Result<null>>;
   /** Merges the request on the server. */
   mergePullRequest(path: string, number: number): Promise<Result<null>>;
+  /** Files that would conflict merging `theirs` into `ours`, found without merging. */
+  mergeConflicts(path: string, ours: string, theirs: string): Promise<Result<string[]>>;
   /** Where HEAD pointed recently; commits no branch or tag contains are `lost`. */
   reflog(path: string): Promise<Result<ReflogEntry[]>>;
   /** What `head` changes since it forked from `base` (branches, tags or ids). */

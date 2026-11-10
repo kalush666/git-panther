@@ -604,6 +604,19 @@ pub trait CommitLog: Send + Sync {
         filter: &CommitFilter,
     ) -> Result<Vec<CommitId>, RepositoryError>;
 
+    /// The files that would conflict if revision `theirs` were merged into
+    /// revision `ours`, worked out without touching the work tree; empty
+    /// when the merge would go cleanly.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] for an unknown revision.
+    fn merge_conflicts(
+        &self,
+        repository: &Path,
+        ours: &str,
+        theirs: &str,
+    ) -> Result<Vec<String>, RepositoryError>;
+
     /// Where HEAD pointed recently, newest first, at most
     /// [`ReflogEntry::LIMIT`], each marked when no ref contains it any more.
     ///

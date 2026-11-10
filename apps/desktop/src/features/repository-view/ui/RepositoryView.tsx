@@ -19,9 +19,11 @@ import {
   type DiffSource,
 } from '../api/useWorkingTree';
 import { describeHead } from '../model/describeHead';
+import { mergeTarget } from '../model/mergeTarget';
 import { usePanelWidths } from '../model/workspace';
 import { BranchSidebar } from './BranchSidebar';
 import { BisectBar } from './BisectBar';
+import { ConflictWarning } from './ConflictWarning';
 import { CommitDetailsPanel } from './CommitDetailsPanel';
 import { CommitGraph } from './CommitGraph';
 import { ConflictEditor } from './ConflictEditor';
@@ -100,6 +102,14 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
   const branches = useBranches(path);
   const stage = useStageFiles(path);
   const headBranch = branches.data?.find((branch) => branch.kind === 'local' && branch.isHead);
+  const conflictTarget = headBranch
+    ? mergeTarget(
+        headBranch.name,
+        (branches.data ?? [])
+          .filter((branch) => branch.kind === 'local')
+          .map((branch) => branch.name),
+      )
+    : null;
   useCommands(`repository:${path}`, [
     {
       id: 'repository.undo',
@@ -299,6 +309,22 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
             {describeHead(head)}
           </p>
         </div>
+        {headBranch && conflictTarget && (
+          <ConflictWarning
+            path={path}
+            branch={headBranch.name}
+            target={conflictTarget}
+            onRebase={() => {
+              history.run({ action: 'rebase', onto: conflictTarget });
+            }}
+            onMergeIn={() => {
+              history.run({ action: 'merge', branch: conflictTarget });
+            }}
+            onCompare={() => {
+              branchActions.compare(conflictTarget, headBranch.name);
+            }}
+          />
+        )}
         <Button
           size="sm"
           variant="ghost"

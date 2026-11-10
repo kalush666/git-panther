@@ -210,6 +210,8 @@ export const commands = {
 	compareFileDiff: (path: string, from: string, to: string, file: string, ignoreWhitespace: boolean) => typedError<FileDiffDto_Serialize, AppError>(__TAURI_INVOKE("compare_file_diff", { path, from, to, file, ignoreWhitespace })),
 	/**  Where HEAD pointed recently, for recovering lost commits. */
 	reflog: (path: string) => typedError<ReflogEntryDto[], AppError>(__TAURI_INVOKE("reflog", { path })),
+	/**  Files that would conflict merging `theirs` into `ours`, found without merging. */
+	mergeConflicts: (path: string, ours: string, theirs: string) => typedError<string[], AppError>(__TAURI_INVOKE("merge_conflicts", { path, ours, theirs })),
 	/**
 	 *  Rows of the graph by `author` (name or email, any case) and/or `since`
 	 *  (Unix seconds), top to bottom.

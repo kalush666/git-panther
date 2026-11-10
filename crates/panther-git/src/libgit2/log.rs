@@ -238,6 +238,33 @@ impl CommitLog for Git2CommitLog {
         Ok(matches)
     }
 
+    fn merge_conflicts(
+        &self,
+        repository: &Path,
+        ours: &str,
+        theirs: &str,
+    ) -> Result<Vec<String>, RepositoryError> {
+        let repository = open(repository)?;
+        let ours = resolve(&repository, ours)?;
+        let theirs = resolve(&repository, theirs)?;
+        let index = repository
+            .merge_commits(&ours, &theirs, None)
+            .map_err(|error| git_error(&error))?;
+        if !index.has_conflicts() {
+            return Ok(Vec::new());
+        }
+        let mut files: Vec<String> = index
+            .conflicts()
+            .map_err(|error| git_error(&error))?
+            .filter_map(Result::ok)
+            .filter_map(|conflict| conflict.our.or(conflict.their).or(conflict.ancestor))
+            .map(|entry| String::from_utf8_lossy(&entry.path).replace('\\', "/"))
+            .collect();
+        files.sort();
+        files.dedup();
+        Ok(files)
+    }
+
     fn reflog(&self, repository: &Path) -> Result<Vec<ReflogEntry>, RepositoryError> {
         let repository = open(repository)?;
         let reflog = repository
