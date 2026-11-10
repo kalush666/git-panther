@@ -40,8 +40,11 @@ interface CommitGraphProps {
   onSelectedCommitChange: (commitId: string | null) => void;
   /** Shown above the first commit, e.g. the working-copy row. */
   leadingRow?: ReactNode;
-  /** Context-menu items for a commit row (right-click). */
-  rowMenu?: (entry: GraphEntryDto) => ReactNode;
+  /**
+   * Context-menu items for a commit row (right-click). `selected` holds every
+   * Ctrl/Shift-selected commit, newest first, when the row is one of several.
+   */
+  rowMenu?: (entry: GraphEntryDto, selected: GraphEntryDto[]) => ReactNode;
   /** Double-clicking a branch label checks the branch out. */
   onCheckoutRef?: (name: string) => void;
   /** CI results by commit id, when the server is connected. */
@@ -93,6 +96,8 @@ export function CommitGraph({
   const widestGraph = useRef(1);
   const [total, setTotal] = useState(0);
   const [matches, setMatches] = useState<ReadonlySet<number>>(new Set());
+  /** Rows picked with Ctrl or Shift besides the selected one. */
+  const [selectedRows, setSelectedRows] = useState<ReadonlySet<number>>(new Set());
   /** Rows the author / date filter lets through; `null` without a filter. */
   const [passing, setPassing] = useState<ReadonlySet<number> | null>(null);
   const keepMatches = useCallback((rows: ReadonlySet<number>) => {
@@ -153,10 +158,33 @@ export function CommitGraph({
     }
   }, [selectedIndex, selectedCommitId, onSelectedCommitChange]);
 
-  const select = (index: number) => {
+  /**
+   * A plain click selects one commit; Ctrl adds or removes one, Shift takes
+   * the range from the last selected commit.
+   */
+  const select = (index: number, how: 'one' | 'toggle' | 'range' = 'one') => {
+    if (how === 'toggle') {
+      const next = new Set(selectedRows.size > 0 ? selectedRows : [selectedIndex ?? index]);
+      if (next.has(index) && next.size > 1) next.delete(index);
+      else next.add(index);
+      setSelectedRows(next);
+    } else if (how === 'range' && selectedIndex !== null) {
+      const [from, to] = [Math.min(selectedIndex, index), Math.max(selectedIndex, index)];
+      setSelectedRows(new Set(Array.from({ length: to - from + 1 }, (_, offset) => from + offset)));
+    } else {
+      setSelectedRows(new Set());
+    }
     onSelectIndex(index);
     virtualizer.scrollToIndex(index, { align: 'auto' });
   };
+  /** The selected commits, newest first, when `index` is one of several. */
+  const selectionFor = (index: number): GraphEntryDto[] =>
+    selectedRows.size > 1 && selectedRows.has(index)
+      ? [...selectedRows]
+          .sort((a, b) => a - b)
+          .map((row) => graph.entryAt(row))
+          .filter((entry): entry is GraphEntryDto => entry !== undefined)
+      : [];
 
   const onKeyDown = (event: KeyboardEvent) => {
     const pageRows = Math.max(1, Math.floor(viewportHeight / ROW_HEIGHT) - 1);
@@ -245,7 +273,8 @@ export function CommitGraph({
               menu={rowMenu}
               onCheckoutRef={onCheckoutRef}
               onDropBranch={onDropBranch}
-              isSelected={item.index === selectedIndex}
+              isSelected={item.index === selectedIndex || selectedRows.has(item.index)}
+              selectionFor={selectionFor}
               isMatch={matches.has(item.index)}
               isDimmed={passing !== null && !passing.has(item.index)}
               pipeline={pipelines?.get(graph.entryAt(item.index)?.id ?? '')}
@@ -275,7 +304,8 @@ interface CommitRowProps {
   /** Left out by the author / date filter. */
   isDimmed: boolean;
   pipeline: Pipeline | undefined;
-  onSelect: (index: number) => void;
+  selectionFor: (index: number) => GraphEntryDto[];
+  onSelect: (index: number, how: 'one' | 'toggle' | 'range') => void;
 }
 
 function CommitRow({
@@ -291,6 +321,7 @@ function CommitRow({
   isMatch,
   isDimmed,
   pipeline,
+  selectionFor,
   onSelect,
 }: CommitRowProps) {
   const row = (
@@ -303,8 +334,11 @@ function CommitRow({
       data-match={isMatch}
       data-dimmed={isDimmed}
       style={{ transform: `translateY(${start}px)`, gridTemplateColumns }}
-      onClick={() => {
-        onSelect(index);
+      onClick={(event) => {
+        onSelect(
+          index,
+          event.ctrlKey || event.metaKey ? 'toggle' : event.shiftKey ? 'range' : 'one',
+        );
       }}
     >
       {entry ? (
@@ -351,7 +385,7 @@ function CommitRow({
             event.preventDefault();
           }}
         >
-          {menu(entry)}
+          {menu(entry, selectionFor(index))}
         </ContextMenu.Content>
       </ContextMenu.Portal>
     </ContextMenu.Root>

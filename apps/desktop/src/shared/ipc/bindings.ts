@@ -118,6 +118,8 @@ export const commands = {
 	rebaseOnto: (path: string, onto: string) => typedError<null, AppError>(__TAURI_INVOKE("rebase_onto", { path, onto })),
 	/**  Applies the changes of `commit` on the current branch. */
 	cherryPick: (path: string, commit: string) => typedError<null, AppError>(__TAURI_INVOKE("cherry_pick", { path, commit })),
+	/**  Cherry-picks several commits, oldest first, as one sequence. */
+	cherryPickMany: (path: string, commits: string[]) => typedError<null, AppError>(__TAURI_INVOKE("cherry_pick_many", { path, commits })),
 	/**  Adds a commit undoing `commit`. */
 	revertCommit: (path: string, commit: string) => typedError<null, AppError>(__TAURI_INVOKE("revert_commit", { path, commit })),
 	/**  Moves the current branch to `commit`. */

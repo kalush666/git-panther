@@ -73,6 +73,7 @@ export const tauriBackend: Backend = {
   deleteTag: commands.deleteTag,
   pushTag: commands.pushTag,
   rebasePlan: commands.rebasePlan,
+  cherryPickMany: commands.cherryPickMany,
   rebaseInteractive: commands.rebaseInteractive,
   conflictChunks: commands.conflictChunks,
   resolveConflictWith: commands.resolveConflictWith,

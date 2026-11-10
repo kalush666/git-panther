@@ -604,6 +604,7 @@ function createMockBackend(): Backend {
     mergeBranch: (_path, branch) => Promise.resolve(history.merge(branch)),
     rebaseOnto: (_path, onto) => Promise.resolve(history.rebase(onto)),
     cherryPick: (_path, commit) => Promise.resolve(history.cherryPick(commit)),
+    cherryPickMany: (_path, commits) => Promise.resolve(history.cherryPickMany(commits)),
     revertCommit: (_path, commit) => Promise.resolve(history.revert(commit)),
     resetToCommit: (_path, commit) => Promise.resolve(history.reset(commit)),
     checkoutCommit: (_path, commit) => Promise.resolve(history.checkoutCommit(commit)),

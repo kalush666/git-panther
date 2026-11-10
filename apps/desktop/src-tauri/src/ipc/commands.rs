@@ -1490,6 +1490,18 @@ pub async fn cherry_pick(
     run_blocking(move || Ok(history.cherry_pick(&PathBuf::from(path), &commit)?)).await
 }
 
+/// Cherry-picks several commits, oldest first, as one sequence.
+#[tauri::command]
+#[specta::specta]
+pub async fn cherry_pick_many(
+    services: State<'_, AppServices>,
+    path: String,
+    commits: Vec<String>,
+) -> Result<(), AppError> {
+    let history = services.history.clone();
+    run_blocking(move || Ok(history.cherry_pick_many(&PathBuf::from(path), &commits)?)).await
+}
+
 /// Adds a commit undoing `commit`.
 #[tauri::command]
 #[specta::specta]

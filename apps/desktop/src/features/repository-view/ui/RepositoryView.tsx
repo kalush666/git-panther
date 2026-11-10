@@ -434,24 +434,34 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
               onCheckoutRef={branchActions.checkout}
               onDropBranch={history.openCombine}
               pipelines={pipelines.data}
-              rowMenu={(entry) => (
-                <CommitMenu
-                  entry={entry}
-                  actions={branchActions}
-                  history={history}
-                  patches={patches}
-                  onBisect={(good) => {
-                    bisect.step.mutate(
-                      { kind: 'start', bad: 'HEAD', good },
-                      {
-                        onError: (error) => {
-                          history.report('error', error.message);
+              rowMenu={(entry, selected) =>
+                selected.length > 1 ? (
+                  <SelectedCommitsMenu
+                    commits={selected}
+                    history={history}
+                    onCompare={(older, newer) => {
+                      showReview({ base: older, head: newer, request: null });
+                    }}
+                  />
+                ) : (
+                  <CommitMenu
+                    entry={entry}
+                    actions={branchActions}
+                    history={history}
+                    patches={patches}
+                    onBisect={(good) => {
+                      bisect.step.mutate(
+                        { kind: 'start', bad: 'HEAD', good },
+                        {
+                          onError: (error) => {
+                            history.report('error', error.message);
+                          },
                         },
-                      },
-                    );
-                  }}
-                />
-              )}
+                      );
+                    }}
+                  />
+                )
+              }
               leadingRow={
                 changeCount > 0 ? (
                   <WorkingCopyRow
@@ -708,6 +718,58 @@ function CommitMenu({
         }}
       >
         Copy commit SHA
+      </ContextMenu.Item>
+    </>
+  );
+}
+
+/** What several Ctrl/Shift-selected commits (newest first) can do together. */
+function SelectedCommitsMenu({
+  commits,
+  history,
+  onCompare,
+}: {
+  commits: GraphEntryDto[];
+  history: HistoryActions;
+  onCompare: (older: string, newer: string) => void;
+}) {
+  const ids = commits.map((commit) => commit.id);
+  const [newest, oldest] = [commits[0], commits.at(-1)];
+  return (
+    <>
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          history.squashMany(ids);
+        }}
+      >
+        Squash {commits.length} commits
+      </ContextMenu.Item>
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          history.run({ action: 'cherryPickMany', commits: [...ids].reverse() });
+        }}
+      >
+        Cherry-pick {commits.length} commits
+      </ContextMenu.Item>
+      {commits.length === 2 && newest && oldest && (
+        <ContextMenu.Item
+          className={menu.item}
+          onSelect={() => {
+            onCompare(oldest.id, newest.id);
+          }}
+        >
+          Compare these two commits
+        </ContextMenu.Item>
+      )}
+      <ContextMenu.Item
+        className={menu.item}
+        onSelect={() => {
+          void navigator.clipboard.writeText(ids.join('\n'));
+        }}
+      >
+        Copy {commits.length} commit ids
       </ContextMenu.Item>
     </>
   );

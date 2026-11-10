@@ -73,6 +73,8 @@ export function createMockHistory(
         ? failure('invalidRebasePlan', 'There are no commits to rebase.')
         : remember(`Interactive rebase onto ${short(base)}`),
     cherryPick: (commit: string) => remember(`Cherry-pick ${short(commit)}`),
+    cherryPickMany: (commits: readonly string[]) =>
+      remember(`Cherry-pick ${String(commits.length)} commits`),
     revert: (commit: string) => remember(`Revert ${short(commit)}`),
     reset: (commit: string) => remember(`Reset to ${short(commit)}`),
     checkoutCommit: (commit: string) => remember(`Check out ${short(commit)}`),
