@@ -13,6 +13,10 @@ interface TabsState {
   openTab: (tab: RepositoryTab) => void;
   closeTab: (path: string) => void;
   activate: (path: string | null) => void;
+  /** Moves the tab at `from` to position `to`. */
+  move: (from: number, to: number) => void;
+  /** Shows the tab under `name`; an empty name keeps the old one. */
+  rename: (path: string, name: string) => void;
 }
 
 /** After closing the active tab, focus its left neighbour, else its right one. */
@@ -48,6 +52,21 @@ export const useTabsStore = create<TabsState>()(
       },
       activate: (path) => {
         set({ activePath: path });
+      },
+      move: (from, to) => {
+        set((state) => {
+          const tabs = [...state.tabs];
+          const [moved] = tabs.splice(from, 1);
+          if (!moved) return state;
+          tabs.splice(Math.max(0, Math.min(to, tabs.length)), 0, moved);
+          return { tabs };
+        });
+      },
+      rename: (path, name) => {
+        if (name.trim() === '') return;
+        set((state) => ({
+          tabs: state.tabs.map((tab) => (tab.path === path ? { ...tab, name: name.trim() } : tab)),
+        }));
       },
     }),
     { name: 'git-panther.tabs' },

@@ -192,6 +192,8 @@ export function CommitGraph({
     const targets: Record<string, number> = {
       ArrowDown: current + 1,
       ArrowUp: current - 1,
+      j: current + 1,
+      k: current - 1,
       PageDown: current + pageRows,
       PageUp: current - pageRows,
       Home: 0,

@@ -1,5 +1,5 @@
 import { LayoutGrid, ScrollText, Settings } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { ActivityPanel } from '../features/activity-log';
 import { CommandPalette, useShortcutDispatcher } from '../features/command-palette';
@@ -12,6 +12,7 @@ import { WelcomeScreen } from '../features/welcome';
 import { WorkspacesView } from '../features/workspaces';
 import { useCommands } from '../shared/commands';
 import { ipc } from '../shared/ipc';
+import { useFavoritesStore } from '../shared/preferences/favorites';
 import { useThemeStore } from '../shared/preferences/theme';
 import { Button } from '../shared/ui/Button/Button';
 import styles from './AppShell.module.css';
@@ -29,6 +30,16 @@ export function AppShell() {
     setPage('settings');
   };
   useShortcutDispatcher();
+  useNumberKeys((path, name) => {
+    void ipc.openRepository(path).then((result) => {
+      if (result.status === 'ok') {
+        openTab({ path: result.data.path, name: result.data.name });
+        setPage(null);
+      } else {
+        openTab({ path, name });
+      }
+    });
+  });
   useAppCommands(openSettings, () => {
     setPage('workspaces');
   });
@@ -239,4 +250,37 @@ function MainContent({ onOpenSettings }: { onOpenSettings: () => void }) {
       }}
     />
   );
+}
+
+/**
+ * Ctrl+1–9 jumps to that tab, Ctrl+Alt+1–9 opens that favorite repository
+ * (the order the start page lists them in).
+ */
+function useNumberKeys(openFavorite: (path: string, name: string) => void) {
+  const tabs = useTabsStore((state) => state.tabs);
+  const activate = useTabsStore((state) => state.activate);
+  const favorites = useFavoritesStore((state) => state.favorites);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.shiftKey) return;
+      const digit = /^Digit([1-9])$/.exec(event.code)?.[1];
+      if (digit === undefined) return;
+      const index = Number(digit) - 1;
+      if (event.altKey) {
+        const favorite = favorites[index];
+        if (!favorite) return;
+        event.preventDefault();
+        openFavorite(favorite.path, favorite.name);
+      } else {
+        const tab = tabs[index];
+        if (!tab) return;
+        event.preventDefault();
+        activate(tab.path);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [tabs, activate, favorites, openFavorite]);
 }

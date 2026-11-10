@@ -84,3 +84,38 @@
   background: var(--gp-bg-overlay);
   color: var(--gp-text-primary);
 }
+
+.renameInput {
+  width: calc(var(--gp-menu-min-width) * 0.8);
+  height: calc(100% - var(--gp-space-2));
+  margin: 0 var(--gp-space-1);
+  padding: 0 var(--gp-space-2);
+  border: 1px solid var(--gp-accent);
+  border-radius: var(--gp-radius-sm);
+  background: var(--gp-bg-surface);
+  color: var(--gp-text-primary);
+  font: inherit;
+}
+
+.menu {
+  z-index: 50;
+  min-width: var(--gp-menu-min-width);
+  padding: var(--gp-space-1);
+  border: 1px solid var(--gp-border-strong);
+  border-radius: var(--gp-radius-md);
+  background: var(--gp-bg-overlay, var(--gp-bg-raised));
+  box-shadow: var(--gp-shadow-overlay, 0 8px 24px rgb(0 0 0 / 25%));
+}
+
+.menuItem {
+  padding: var(--gp-space-1) var(--gp-space-2);
+  border-radius: var(--gp-radius-sm);
+  font-size: var(--gp-text-sm);
+  cursor: pointer;
+  outline: none;
+}
+
+.menuItem[data-highlighted] {
+  background: var(--gp-accent-subtle);
+  color: var(--gp-accent-text);
+}
