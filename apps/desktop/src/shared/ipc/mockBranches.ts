@@ -147,12 +147,13 @@ export function createMockBranches() {
       return ok();
     },
 
-    push: (): Result<null> => {
+    /** `force`: push with lease, replacing what the remote has (after a rebase). */
+    push: (force = false): Result<null> => {
       const unreachable = offline();
       if (unreachable) return unreachable;
       const head = branches.find((branch) => branch.isHead);
       if (!head) return failure('gitFailed', 'Check out a branch first: HEAD is detached.');
-      if (head.behind > 0) {
+      if (head.behind > 0 && !force) {
         return failure(
           'pushRejected',
           'The remote has commits you do not have yet. Pull first, then push again.',
@@ -169,6 +170,7 @@ export function createMockBranches() {
         });
       }
       head.ahead = 0;
+      if (force) head.behind = 0;
       return ok();
     },
 

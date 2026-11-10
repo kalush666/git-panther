@@ -6,12 +6,14 @@ import { InlinePrompt } from '../../../shared/ui/InlinePrompt/InlinePrompt';
 import { useBranches } from '../api/useBranches';
 import {
   describeDone,
+  describeRunning,
   useHistoryAction,
   usePendingUndo,
   useUndo,
   type HistoryRequest,
 } from '../api/useHistory';
 import menu from './menu.module.css';
+import type { Outcome } from './OutcomeBanner';
 import type { Report } from './useBranchActions';
 
 /** How long a success message stays; errors stay until dismissed. */
@@ -68,7 +70,9 @@ export interface HistoryActions {
   undo: () => void;
   report: Report;
   /** The last result to show under the header. */
-  outcome: { tone: 'done' | 'error'; message: string } | null;
+  outcome: Outcome | null;
+  /** What is running now, for the banner, e.g. "Rebasing onto develop…". */
+  running: string | null;
   dismiss: () => void;
   /** The bar asking for a tag name or a confirmation, when open. */
   prompt: ReactNode;
@@ -90,8 +94,8 @@ export function useHistoryActions(path: string): HistoryActions {
     branches.data?.find((branch) => branch.kind === 'local' && branch.isHead)?.name ?? null;
   const current = currentBranch ?? 'HEAD';
 
-  const report: Report = (tone, message) => {
-    setOutcome({ tone, message });
+  const report: Report = (tone, message, next) => {
+    setOutcome({ tone, message, action: next });
   };
 
   /**
@@ -142,7 +146,8 @@ export function useHistoryActions(path: string): HistoryActions {
     }
   };
   useEffect(() => {
-    if (outcome?.tone !== 'done') return;
+    // A result with a next step waits for it; errors wait to be read.
+    if (outcome?.tone !== 'done' || outcome.action) return;
     const timer = setTimeout(() => {
       setOutcome((current) => (current === outcome ? null : current));
     }, OUTCOME_MS);
@@ -240,12 +245,33 @@ export function useHistoryActions(path: string): HistoryActions {
     }
   })();
 
-  /** Checks out `branch` first when it is not the current one, then runs `request`. */
-  const runOn = async (branch: string, request: HistoryRequest) => {
+  /**
+   * Checks out `branch` first when it is not the current one, then runs
+   * `request`; uncommitted changes in the way can be stashed with one click.
+   */
+  const runOn = async (branch: string, request: HistoryRequest, stashFirst = false) => {
     if (branch !== currentBranch) {
+      if (stashFirst) {
+        const stashed = await ipc.saveStash(path, `Before switching to ${branch}`, true);
+        if (stashed.status === 'error') {
+          report('error', stashed.error.message);
+          return;
+        }
+      }
       const switched = await ipc.checkoutBranch(path, branch);
       if (switched.status === 'error') {
-        report('error', switched.error.message);
+        report(
+          'error',
+          switched.error.message,
+          switched.error.kind === 'checkoutConflict'
+            ? {
+                label: 'Stash changes and continue',
+                run: () => {
+                  void runOn(branch, request, true);
+                },
+              }
+            : undefined,
+        );
         return;
       }
     }
@@ -336,6 +362,7 @@ export function useHistoryActions(path: string): HistoryActions {
       setRebaseTarget(null);
     },
     isRunning: action.isPending,
+    running: action.isPending ? describeRunning(action.variables) : null,
     undoLabel: pendingUndo.data ?? null,
     undo: () => {
       if (undoAction.isPending) return;

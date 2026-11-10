@@ -50,6 +50,32 @@ function send(path: string, request: HistoryRequest) {
 }
 
 /** What a finished request did, in words for the status line. */
+/** What the banner says while `request` runs. */
+export function describeRunning(request: HistoryRequest): string {
+  switch (request.action) {
+    case 'merge':
+      return `Merging ${request.branch}…`;
+    case 'rebase':
+      return `Rebasing onto ${request.onto}…`;
+    case 'rebaseInteractive':
+      return `Rewriting the commits after ${request.label}…`;
+    case 'cherryPick':
+      return `Cherry-picking ${request.label}…`;
+    case 'revert':
+      return `Reverting ${request.label}…`;
+    case 'reset':
+      return `Resetting to ${request.label}…`;
+    case 'checkoutCommit':
+      return `Checking out ${request.label}…`;
+    case 'createTag':
+      return `Creating tag ${request.name}…`;
+    case 'deleteTag':
+      return `Deleting tag ${request.name}…`;
+    case 'pushTag':
+      return `Pushing tag ${request.name}…`;
+  }
+}
+
 export function describeDone(request: HistoryRequest): string {
   switch (request.action) {
     case 'merge':

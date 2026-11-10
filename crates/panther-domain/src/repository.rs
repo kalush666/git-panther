@@ -141,14 +141,16 @@ pub enum RepositoryError {
     BranchNotMerged { name: String },
     #[error("\"{name}\" is checked out. Switch to another branch before deleting it.")]
     CannotDeleteCurrentBranch { name: String },
-    #[error("Your uncommitted changes would be overwritten. Commit or stash them first. {details}")]
+    #[error(
+        "Your uncommitted changes would be overwritten. Commit or stash them first.\n{details}"
+    )]
     CheckoutConflict { details: String },
     #[error("Authentication failed. {hint} ({details})", hint = crate::remote::AUTHENTICATION_HINT)]
     AuthenticationFailed { details: String },
     #[error("The remote could not be reached: {details}")]
     NetworkFailed { details: String },
     #[error(
-        "The push was rejected because the remote has commits you do not have. Pull first, then push again."
+        "The push was rejected because the remote has commits you do not have. Pull first, then push again. If you rebased or amended commits you had already pushed, force push instead."
     )]
     PushRejected { details: String },
     #[error("\"{branch}\" has no upstream branch to pull from.")]

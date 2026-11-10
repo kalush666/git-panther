@@ -69,7 +69,15 @@
 .changes {
   margin: 0;
   padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--gp-border-subtle);
+  border-radius: var(--gp-radius-md);
   list-style: none;
+}
+
+/* A line between files, so each reads as its own row. */
+.changes > li + li {
+  border-top: 1px solid var(--gp-border-subtle);
 }
 
 .change {
@@ -78,9 +86,9 @@
   gap: var(--gp-space-2);
   width: 100%;
   min-height: var(--gp-row-height);
-  padding: 0 var(--gp-space-1);
+  padding: var(--gp-space-1) var(--gp-space-2);
   border: none;
-  border-radius: var(--gp-radius-sm);
+  border-radius: 0;
   background: transparent;
   color: var(--gp-text-primary);
   font: inherit;

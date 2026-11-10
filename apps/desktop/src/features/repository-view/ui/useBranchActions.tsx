@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 
+import { ipc, isIpcError } from '../../../shared/ipc';
 import { InlinePrompt } from '../../../shared/ui/InlinePrompt/InlinePrompt';
 import {
   useCheckoutBranch,
@@ -7,6 +8,7 @@ import {
   useDeleteBranch,
   useRenameBranch,
 } from '../api/useBranches';
+import type { OutcomeAction } from './OutcomeBanner';
 import styles from './useBranchActions.module.css';
 
 type Prompt =
@@ -14,8 +16,8 @@ type Prompt =
   | { kind: 'rename'; from: string }
   | { kind: 'compare'; base: string; head: string };
 
-/** Reports a finished action in the banner under the header. */
-export type Report = (tone: 'done' | 'error', message: string) => void;
+/** Reports a finished action in the banner under the header, with an optional next step. */
+export type Report = (tone: 'done' | 'error', message: string, action?: OutcomeAction) => void;
 
 export interface BranchActions {
   checkout: (name: string) => void;
@@ -29,8 +31,8 @@ export interface BranchActions {
   openCompare: (base: string, head: string) => void;
   /** Asks to finish a git flow branch (feature/, release/, hotfix/). */
   finishFlow: (branch: string) => void;
-  /** The last checkout error, shown next to the branch list. */
-  checkoutError: string | null;
+  /** What is running now, for the banner, e.g. "Switching to develop…". */
+  running: string | null;
   /** The name bar, when one is open. */
   prompt: ReactNode;
 }
@@ -48,6 +50,45 @@ export function useBranchActions(
   const checkout = useCheckoutBranch(path);
   const rename = useRenameBranch(path);
   const remove = useDeleteBranch(path);
+
+  /** Switches branch; when uncommitted changes are in the way, offers to stash them first. */
+  const checkoutBranch = (name: string) => {
+    checkout.mutate(name, {
+      onSuccess: () => {
+        report('done', `Switched to ${name}`);
+      },
+      onError: (error) => {
+        report(
+          'error',
+          error.message,
+          isIpcError(error, 'checkoutConflict')
+            ? {
+                label: 'Stash changes and switch',
+                run: () => {
+                  void stashThenSwitch(name);
+                },
+              }
+            : undefined,
+        );
+      },
+    });
+  };
+
+  const stashThenSwitch = async (name: string) => {
+    const stashed = await ipc.saveStash(path, `Before switching to ${name}`, true);
+    if (stashed.status === 'error') {
+      report('error', stashed.error.message);
+      return;
+    }
+    checkout.mutate(name, {
+      onSuccess: () => {
+        report('done', `Stashed your changes and switched to ${name}`);
+      },
+      onError: (error) => {
+        report('error', error.message);
+      },
+    });
+  };
 
   const close = () => {
     setPrompt(null);
@@ -140,9 +181,7 @@ export function useBranchActions(
   })();
 
   return {
-    checkout: (name) => {
-      checkout.mutate(name);
-    },
+    checkout: checkoutBranch,
     openCreate: (start, startLabel) => {
       create.reset();
       setPrompt({ kind: 'create', start, startLabel });
@@ -169,7 +208,7 @@ export function useBranchActions(
         },
       );
     },
-    checkoutError: checkout.error?.message ?? null,
+    running: checkout.isPending ? `Switching to ${checkout.variables}…` : null,
     prompt: bar,
   };
 }
