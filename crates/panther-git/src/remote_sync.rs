@@ -100,25 +100,32 @@ impl RemoteSync for GitRemoteSync {
         on_progress: &mut dyn FnMut(CloneProgress),
         cancel: &CancellationToken,
     ) -> Result<(), RepositoryError> {
-        let branch = current_branch(repository)?;
+        let branch = match &options.source {
+            Some(source) => source.clone(),
+            None => current_branch(repository)?,
+        };
         let has_upstream = upstream_of(repository, &branch)?.is_some();
-        let mut args = vec!["push", "--progress"];
+        let mut args = vec!["push".to_owned(), "--progress".to_owned()];
         if options.force_with_lease {
-            args.push("--force-with-lease");
+            args.push("--force-with-lease".to_owned());
         }
-        // Without a chosen remote, a branch with an upstream pushes there;
+        // A branch with an upstream pushes there when nothing else is asked;
         // otherwise name the remote and branch, and remember it as upstream.
-        let remote = match (&options.remote, has_upstream) {
+        let named =
+            options.remote.is_some() || options.source.is_some() || options.target.is_some();
+        let remote = match (&options.remote, has_upstream && !named) {
             (None, true) => None,
             (Some(remote), _) => Some(remote.to_string()),
             (None, false) => Some(default_remote(self.remotes(repository)?)?),
         };
-        if let Some(remote) = &remote {
+        if let Some(remote) = remote {
             if !has_upstream {
-                args.push("--set-upstream");
+                args.push("--set-upstream".to_owned());
             }
-            args.extend([remote.as_str(), branch.as_str()]);
+            let target = options.target.as_deref().unwrap_or(&branch);
+            args.extend([remote, format!("{branch}:refs/heads/{target}")]);
         }
+        let args: Vec<&str> = args.iter().map(String::as_str).collect();
         run_sync(&self.executable, repository, &args, on_progress, cancel)
     }
 }

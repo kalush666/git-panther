@@ -100,6 +100,10 @@ export interface PushOptions {
   remote?: string;
   /** Overwrite the remote branch if it is still where it was last fetched. */
   forceWithLease?: boolean;
+  /** The local branch to push; the checked-out one when left out. */
+  source?: string;
+  /** The branch name on the remote; the source's own name when left out. */
+  target?: string;
 }
 
 /** Receives progress of a long-running network job. */
@@ -307,6 +311,10 @@ export interface Backend {
   pushTag(path: string, name: string): Promise<Result<null>>;
   /** The commits an interactive rebase onto `base` would rewrite, oldest first. */
   rebasePlan(path: string, base: string): Promise<Result<CommitSummary[]>>;
+  /** Moves local branch `target` forward to `source` without a merge commit. */
+  fastForwardBranch(path: string, target: string, source: string): Promise<Result<null>>;
+  /** Makes `branch` track `upstream` (e.g. `origin/main`), or nothing when `null`. */
+  setUpstream(path: string, branch: string, upstream: string | null): Promise<Result<null>>;
   /** Cherry-picks `commits` (oldest first) as one sequence. */
   cherryPickMany(path: string, commits: string[]): Promise<Result<null>>;
   /** Rewrites the commits after `base` as `steps` says, oldest first. */

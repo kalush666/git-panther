@@ -115,14 +115,18 @@ export const tauriBackend: Backend = {
     commands.fetchRemotes(path, jobId, progressChannel(onProgress)),
   pullBranch: (path, strategy, jobId, onProgress) =>
     commands.pullBranch(path, strategy, jobId, progressChannel(onProgress)),
-  pushBranch: (path, { remote, forceWithLease }, jobId, onProgress) =>
+  pushBranch: (path, { remote, forceWithLease, source, target }, jobId, onProgress) =>
     commands.pushBranch(
       path,
       remote ?? null,
       forceWithLease ?? false,
+      source ?? null,
+      target ?? null,
       jobId,
       progressChannel(onProgress),
     ),
+  fastForwardBranch: commands.fastForwardBranch,
+  setUpstream: commands.setUpstream,
   addRemote: commands.addRemote,
   setRemoteUrl: commands.setRemoteUrl,
   removeRemote: commands.removeRemote,

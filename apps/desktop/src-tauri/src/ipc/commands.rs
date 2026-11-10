@@ -807,6 +807,8 @@ pub async fn push_branch(
     path: String,
     remote: Option<String>,
     force_with_lease: bool,
+    source: Option<String>,
+    target: Option<String>,
     job_id: String,
     on_progress: Channel<CloneProgressDto>,
 ) -> Result<(), AppError> {
@@ -818,9 +820,40 @@ pub async fn push_branch(
             .transpose()
             .map_err(RepositoryError::from)?,
         force_with_lease,
+        source,
+        target,
     };
     run_job(&jobs, &job_id, on_progress, move |report, cancel| {
         Ok(sync.push(&PathBuf::from(path), &options, report, cancel)?)
+    })
+    .await
+}
+
+/// Moves local branch `target` forward to `source`, without a merge commit.
+#[tauri::command]
+#[specta::specta]
+pub async fn fast_forward_branch(
+    services: State<'_, AppServices>,
+    path: String,
+    target: String,
+    source: String,
+) -> Result<(), AppError> {
+    let branches = services.branches.clone();
+    run_blocking(move || Ok(branches.fast_forward(&PathBuf::from(path), &target, &source)?)).await
+}
+
+/// Makes `branch` track `upstream` (e.g. `origin/main`), or nothing when `None`.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_upstream(
+    services: State<'_, AppServices>,
+    path: String,
+    branch: String,
+    upstream: Option<String>,
+) -> Result<(), AppError> {
+    let branches = services.branches.clone();
+    run_blocking(move || {
+        Ok(branches.set_upstream(&PathBuf::from(path), &branch, upstream.as_deref())?)
     })
     .await
 }

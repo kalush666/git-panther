@@ -71,7 +71,11 @@ export const commands = {
 	/**  Pulls the current branch's upstream with `strategy`. */
 	pullBranch: (path: string, strategy: PullStrategyDto, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<null, AppError>(__TAURI_INVOKE("pull_branch", { path, strategy, jobId, onProgress })),
 	/**  Pushes the current branch, setting its upstream on the first push. */
-	pushBranch: (path: string, remote: string | null, forceWithLease: boolean, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<null, AppError>(__TAURI_INVOKE("push_branch", { path, remote, forceWithLease, jobId, onProgress })),
+	pushBranch: (path: string, remote: string | null, forceWithLease: boolean, source: string | null, target: string | null, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<null, AppError>(__TAURI_INVOKE("push_branch", { path, remote, forceWithLease, source, target, jobId, onProgress })),
+	/**  Moves local branch `target` forward to `source`, without a merge commit. */
+	fastForwardBranch: (path: string, target: string, source: string) => typedError<null, AppError>(__TAURI_INVOKE("fast_forward_branch", { path, target, source })),
+	/**  Makes `branch` track `upstream` (e.g. `origin/main`), or nothing when `None`. */
+	setUpstream: (path: string, branch: string, upstream: string | null) => typedError<null, AppError>(__TAURI_INVOKE("set_upstream", { path, branch, upstream })),
 	/**  Stash entries, newest first. */
 	listStashes: (path: string) => typedError<StashDto[], AppError>(__TAURI_INVOKE("list_stashes", { path })),
 	/**  Stashes uncommitted changes, and untracked files if asked. */

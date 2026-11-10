@@ -101,6 +101,39 @@ impl Branches {
             _ => self.store.delete(repository, &name, force),
         }
     }
+
+    /// Moves `target` forward to `source`, as a step Undo can revert when
+    /// it is checked out.
+    ///
+    /// # Errors
+    /// [`RepositoryError::InvalidBranchName`], [`RepositoryError::NotFastForward`]
+    /// or a git error.
+    pub fn fast_forward(
+        &self,
+        repository: &Path,
+        target: &str,
+        source: &str,
+    ) -> Result<(), RepositoryError> {
+        let target = BranchName::parse(target)?;
+        tracked(
+            self.undo.as_deref(),
+            repository,
+            || format!("Fast-forward {target} to {source}"),
+            || self.store.fast_forward(repository, &target, source),
+        )
+    }
+
+    /// # Errors
+    /// [`RepositoryError::InvalidBranchName`] or [`BranchStore::set_upstream`] errors.
+    pub fn set_upstream(
+        &self,
+        repository: &Path,
+        branch: &str,
+        upstream: Option<&str>,
+    ) -> Result<(), RepositoryError> {
+        let branch = BranchName::parse(branch)?;
+        self.store.set_upstream(repository, &branch, upstream)
+    }
 }
 
 #[cfg(test)]
@@ -159,6 +192,19 @@ mod tests {
         fn delete(&self, _: &Path, name: &BranchName, force: bool) -> Result<(), RepositoryError> {
             self.record(format!("delete {name} force={force}"));
             Ok(())
+        }
+
+        fn fast_forward(&self, _: &Path, _: &BranchName, _: &str) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
+
+        fn set_upstream(
+            &self,
+            _: &Path,
+            _: &BranchName,
+            _: Option<&str>,
+        ) -> Result<(), RepositoryError> {
+            unreachable!()
         }
     }
 

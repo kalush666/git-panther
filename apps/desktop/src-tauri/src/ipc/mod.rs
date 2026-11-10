@@ -43,6 +43,8 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::fetch_remotes,
             commands::pull_branch,
             commands::push_branch,
+            commands::fast_forward_branch,
+            commands::set_upstream,
             commands::list_stashes,
             commands::save_stash,
             commands::apply_stash,

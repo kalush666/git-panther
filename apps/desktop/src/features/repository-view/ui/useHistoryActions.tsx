@@ -352,6 +352,8 @@ export function useHistoryActions(path: string): HistoryActions {
               onSelect={() => {
                 if (choice.kind === 'interactive') {
                   openInteractive(choice.base, choice.on);
+                } else if (choice.on === null) {
+                  run(choice.request);
                 } else {
                   void runOn(choice.on, choice.request);
                 }
@@ -461,22 +463,22 @@ function replaceSummary(message: string, summary: string): string {
 }
 
 type DropChoice =
-  | { kind: 'run'; label: string; on: string; request: HistoryRequest }
+  | { kind: 'run'; label: string; on: string | null; request: HistoryRequest }
   | { kind: 'interactive'; label: string; on: string; base: string };
 
 /**
  * What dropping `source` on `target` can do, the target's view first: merge
- * the dragged branch into the one it landed on, or replay one onto the other.
- * Remote branches can be merged or rebased onto, never changed themselves.
+ * the dragged branch into the one it landed on, fast-forward it, or replay
+ * one onto the other; a local branch dropped on a remote one pushes there.
+ * `on` is the branch to check out first, `null` for none.
  */
 export function dropChoices(
   { source, target }: { source: string; target: string },
   branches: readonly { name: string; kind: string }[],
 ): DropChoice[] {
-  const isLocal = (name: string) =>
-    branches.some((branch) => branch.name === name && branch.kind === 'local');
+  const kindOf = (name: string) => branches.find((branch) => branch.name === name)?.kind;
   const choices: DropChoice[] = [];
-  if (isLocal(target)) {
+  if (kindOf(target) === 'local') {
     choices.push({
       kind: 'run',
       label: `Merge ${source} into ${target}`,
@@ -485,12 +487,18 @@ export function dropChoices(
     });
     choices.push({
       kind: 'run',
+      label: `Fast-forward ${target} to ${source}`,
+      on: null,
+      request: { action: 'fastForward', target, source },
+    });
+    choices.push({
+      kind: 'run',
       label: `Rebase ${target} onto ${source}`,
       on: target,
       request: { action: 'rebase', onto: source },
     });
   }
-  if (isLocal(source)) {
+  if (kindOf(source) === 'local') {
     choices.push({
       kind: 'run',
       label: `Rebase ${source} onto ${target}`,
@@ -503,6 +511,20 @@ export function dropChoices(
       on: source,
       base: target,
     });
+    if (kindOf(target) === 'remote') {
+      const slash = target.indexOf('/');
+      choices.push({
+        kind: 'run',
+        label: `Push ${source} to ${target}`,
+        on: null,
+        request: {
+          action: 'pushTo',
+          source,
+          remote: target.slice(0, slash),
+          target: target.slice(slash + 1),
+        },
+      });
+    }
   }
   return choices;
 }
