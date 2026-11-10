@@ -229,6 +229,8 @@ export const commands = {
 	ignoreAndUntrack: (path: string, file: string) => typedError<null, AppError>(__TAURI_INVOKE("ignore_and_untrack", { path, file })),
 	/**  Brings back `file` as it was in commit `id`, staged. */
 	restoreFileFrom: (path: string, id: string, file: string) => typedError<null, AppError>(__TAURI_INVOKE("restore_file_from", { path, id, file })),
+	/**  The git commands Git Panther ran, newest first; only in `path` when given. */
+	activityLog: (path: string | null) => __TAURI_INVOKE<GitActivityDto[]>("activity_log", { path }),
 	/**  Starts a bisect between a `bad` and a `good` revision. */
 	bisectStart: (path: string, bad: string, good: string) => typedError<BisectStatusDto_Serialize, AppError>(__TAURI_INVOKE("bisect_start", { path, bad, good })),
 	/**  Marks the checked-out commit and moves to the next one to test. */
@@ -477,6 +479,18 @@ export type FlowFinishedDto_Serialize = {
 
 /**  A git flow branch kind, as the UI sends it. */
 export type FlowKindDto = "feature" | "release" | "hotfix";
+
+/**  One git command Git Panther ran, for the activity log. */
+export type GitActivityDto = {
+	/**  When it started, in seconds since the Unix epoch. */
+	started: number,
+	repository: string,
+	command: string,
+	durationMs: number,
+	succeeded: boolean,
+	output: string,
+	changes: boolean,
+};
 
 /**  The system git status, as shown by the UI. */
 export type GitInstallationDto = { status: "supported"; version: string } | { status: "unsupported"; found: string; minimum: string } | { status: "missing"; minimum: string };

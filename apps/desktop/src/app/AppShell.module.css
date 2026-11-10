@@ -32,6 +32,13 @@
 }
 
 .content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.page {
+  flex: 1;
   min-height: 0;
   overflow: auto;
 }
@@ -39,10 +46,37 @@
 .statusBar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   padding: 0 var(--gp-space-3);
   background: var(--gp-bg-surface);
   border-top: 1px solid var(--gp-border-subtle);
   color: var(--gp-text-muted);
   font-size: var(--gp-text-xs);
+}
+
+.statusSpacer {
+  flex: 1;
+}
+
+.statusButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gp-space-1);
+  height: 100%;
+  padding: 0 var(--gp-space-2);
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.statusButton:hover,
+.statusButton[aria-pressed='true'] {
+  background: var(--gp-bg-raised);
+  color: var(--gp-text-primary);
+}
+
+.statusButton:focus-visible {
+  outline: 2px solid var(--gp-focus-ring);
+  outline-offset: -2px;
 }

@@ -25,6 +25,7 @@ import type {
   FlowKindDto,
   OpenTargetDto,
   BisectStatusDto,
+  GitActivityDto,
   BisectVerdictDto,
   FlowFinishedDto,
   PipelineDto,
@@ -87,6 +88,7 @@ export type ReflogEntry = ReflogEntryDto;
 export type FlowKind = FlowKindDto;
 export type OpenTarget = OpenTargetDto;
 export type BisectStatus = BisectStatusDto;
+export type GitActivity = GitActivityDto;
 export type BisectVerdict = BisectVerdictDto;
 export type FlowFinished = FlowFinishedDto;
 export type Pipeline = PipelineDto;
@@ -365,6 +367,8 @@ export interface Backend {
   gitflowStart(path: string, kind: FlowKind, name: string): Promise<Result<string>>;
   /** Merges a flow branch where git flow says, tags releases and hotfixes, deletes it. */
   gitflowFinish(path: string, branch: string): Promise<Result<FlowFinished>>;
+  /** The git commands Git Panther ran, newest first; only in `path` when given. */
+  activityLog(path: string | null): Promise<Result<GitActivity[]>>;
   /** Starts a bisect between a bad and a good revision; checks out the first to test. */
   bisectStart(path: string, bad: string, good: string): Promise<Result<BisectStatus>>;
   /** Records a verdict on the checked-out commit and checks out the next. */

@@ -4,12 +4,14 @@
 use std::io::Write;
 use std::path::Path;
 use std::process::Stdio;
+use std::time::Instant;
 
 use panther_domain::commit::CommitId;
 use panther_domain::repository::RepositoryError;
 use panther_domain::working_tree::{CommitMessage, CommitOptions};
 
 use super::background_command;
+use crate::activity;
 
 /// # Errors
 /// [`RepositoryError::NothingToCommit`], [`RepositoryError::IdentityMissing`]
@@ -20,6 +22,7 @@ pub fn commit(
     message: &CommitMessage,
     options: CommitOptions,
 ) -> Result<CommitId, RepositoryError> {
+    let started = Instant::now();
     let mut command = background_command(executable);
     command
         .arg("-C")
@@ -46,12 +49,21 @@ pub fn commit(
     let output = child
         .wait_with_output()
         .map_err(|error| commit_failed(error.to_string()))?;
+    let text = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    // Hooks print here, so the activity log shows what they said.
+    let mut args = vec!["commit"];
+    if options.amend {
+        args.push("--amend");
+    }
+    if options.skip_hooks {
+        args.push("--no-verify");
+    }
+    activity::record(repository, &args, started, output.status.success(), &text);
     if !output.status.success() {
-        let text = format!(
-            "{}\n{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
         return Err(classify_failure(text.trim()));
     }
     head(executable, repository)

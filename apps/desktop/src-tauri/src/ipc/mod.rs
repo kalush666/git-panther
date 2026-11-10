@@ -117,6 +117,7 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::ignore_path,
             commands::ignore_and_untrack,
             commands::restore_file_from,
+            commands::activity_log,
             commands::bisect_start,
             commands::bisect_mark,
             commands::bisect_status,

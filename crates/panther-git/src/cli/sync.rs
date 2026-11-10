@@ -5,8 +5,11 @@ use std::path::Path;
 use panther_domain::remote::PullStrategy;
 use panther_domain::repository::{CancellationToken, CloneProgress, RepositoryError};
 
+use std::time::Instant;
+
 use super::background_command;
 use super::transfer::{TransferError, failure_details, run_transfer};
+use crate::activity;
 
 /// Runs `git -C <repository> <args>` as a cancellable transfer.
 ///
@@ -21,7 +24,21 @@ pub fn run_sync(
 ) -> Result<(), RepositoryError> {
     let mut command = background_command(executable);
     command.arg("-C").arg(repository).args(args);
-    match run_transfer(&mut command, on_progress, cancel) {
+    let started = Instant::now();
+    let result = run_transfer(&mut command, on_progress, cancel);
+    let (succeeded, said) = match &result {
+        Ok(output) => (
+            output.succeeded,
+            output.messages.join(
+                "
+",
+            ),
+        ),
+        Err(TransferError::Cancelled) => (false, "cancelled".to_owned()),
+        Err(TransferError::Io(error)) => (false, error.to_string()),
+    };
+    activity::record(repository, args, started, succeeded, &said);
+    match result {
         Ok(output) if output.succeeded => Ok(()),
         Ok(output) => Err(classify(&output.messages)),
         Err(TransferError::Cancelled) => Err(RepositoryError::Cancelled),

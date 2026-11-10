@@ -31,6 +31,7 @@ export type {
   FileDiff,
   HunkAction,
   FlowKind,
+  GitActivity,
   OpenTarget,
   Pipeline,
   RebaseAction,
