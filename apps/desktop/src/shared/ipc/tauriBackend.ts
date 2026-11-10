@@ -38,6 +38,7 @@ export const tauriBackend: Backend = {
   applyHunk: (path, { file, index, header, lines }, action) =>
     commands.applyHunk(path, file, index, header, lines ?? null, action),
   commitChanges: commands.commitChanges,
+  commitTemplate: commands.commitTemplate,
   headMessage: commands.headMessage,
   listBranches: commands.listBranches,
   createBranch: commands.createBranch,

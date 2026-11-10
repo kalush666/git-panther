@@ -464,6 +464,9 @@ export function RepositoryView({ path, onClose, onOpenRepository }: RepositoryVi
               setDiff({ kind: 'workingTree', file, side });
             }}
             onResolveFile={setConflictFile}
+            onCommitted={() => {
+              sync.run({ action: 'push' });
+            }}
             onShowHistory={(file) => {
               setFileView({ kind: 'history', file });
             }}

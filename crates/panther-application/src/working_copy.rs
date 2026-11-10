@@ -6,7 +6,9 @@ use std::sync::Arc;
 use panther_domain::commit::CommitId;
 use panther_domain::ports::{CommitWriter, HunkAction, WorkingTree};
 use panther_domain::repository::RepositoryError;
-use panther_domain::working_tree::{CommitMessage, DiffSide, FileDiff, HunkRef, WorkingTreeStatus};
+use panther_domain::working_tree::{
+    CommitMessage, CommitOptions, DiffSide, FileDiff, HunkRef, WorkingTreeStatus,
+};
 
 use crate::undo::{UndoLog, tracked};
 
@@ -125,16 +127,31 @@ impl WorkingCopy {
         &self,
         repository: &Path,
         message: &str,
-        amend: bool,
+        options: CommitOptions,
     ) -> Result<CommitId, RepositoryError> {
         let message =
             CommitMessage::parse(message).map_err(|error| RepositoryError::CommitFailed {
                 details: error.to_string(),
             })?;
-        let label = || if amend { "Amend commit" } else { "Commit" }.to_owned();
+        let label = || {
+            if options.amend {
+                "Amend commit"
+            } else {
+                "Commit"
+            }
+            .to_owned()
+        };
         tracked(self.undo.as_deref(), repository, label, || {
-            self.writer.commit(repository, &message, amend)
+            self.writer.commit(repository, &message, options)
         })
+    }
+
+    /// The repository's commit message template, to start a message from.
+    ///
+    /// # Errors
+    /// Propagates [`CommitWriter::template`] errors.
+    pub fn template(&self, repository: &Path) -> Result<Option<String>, RepositoryError> {
+        self.writer.template(repository)
     }
 
     /// # Errors
@@ -221,10 +238,18 @@ mod tests {
             &self,
             _: &Path,
             message: &CommitMessage,
-            amend: bool,
+            options: CommitOptions,
         ) -> Result<CommitId, RepositoryError> {
-            self.record(format!("commit amend={amend} {:?}", message.as_str()));
+            self.record(format!(
+                "commit amend={} {:?}",
+                options.amend,
+                message.as_str()
+            ));
             Ok(CommitId::parse(&"a".repeat(40)).unwrap())
+        }
+
+        fn template(&self, _: &Path) -> Result<Option<String>, RepositoryError> {
+            Ok(None)
         }
 
         fn head_message(&self, _: &Path) -> Result<Option<String>, RepositoryError> {
@@ -270,8 +295,15 @@ mod tests {
     #[test]
     fn normalizes_the_message_before_committing() {
         let (copy, recorder) = working_copy();
-        copy.commit(Path::new(REPO), "  Fix bug \r\n", true)
-            .unwrap();
+        copy.commit(
+            Path::new(REPO),
+            "  Fix bug \r\n",
+            CommitOptions {
+                amend: true,
+                skip_hooks: false,
+            },
+        )
+        .unwrap();
         assert_eq!(recorder.calls(), [r#"commit amend=true "Fix bug\n""#]);
     }
 
@@ -279,7 +311,7 @@ mod tests {
     fn refuses_an_empty_message() {
         let (copy, recorder) = working_copy();
         assert!(matches!(
-            copy.commit(Path::new(REPO), "   ", false),
+            copy.commit(Path::new(REPO), "   ", CommitOptions::default()),
             Err(RepositoryError::CommitFailed { .. })
         ));
         assert_eq!(recorder.calls(), Vec::<String>::new());

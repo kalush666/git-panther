@@ -42,6 +42,25 @@ export function useCommitDraft(path: string): CommitDraft {
   return useCommitDrafts((state) => state.drafts[path] ?? EMPTY_DRAFT);
 }
 
+/** Remembered choices of the commit box. */
+interface CommitPreferenceState {
+  /** Push right after each commit. */
+  pushAfterCommit: boolean;
+  setPushAfterCommit: (on: boolean) => void;
+}
+
+export const useCommitPreferences = create<CommitPreferenceState>()(
+  persist(
+    (set) => ({
+      pushAfterCommit: false,
+      setPushAfterCommit: (pushAfterCommit) => {
+        set({ pushAfterCommit });
+      },
+    }),
+    { name: 'git-panther.commit-preferences' },
+  ),
+);
+
 /** Panel widths in CSS pixels; `null` keeps the design default. */
 interface PanelState {
   sidebar: number | null;

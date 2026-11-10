@@ -52,7 +52,7 @@ export const commands = {
 	 */
 	applyHunk: (path: string, file: string, index: number, header: string, lines: number[] | null, action: HunkActionDto) => typedError<null, AppError>(__TAURI_INVOKE("apply_hunk", { path, file, index, header, lines, action })),
 	/**  Commits staged changes (or amends HEAD) and returns the new commit id. */
-	commitChanges: (path: string, message: string, amend: boolean) => typedError<string, AppError>(__TAURI_INVOKE("commit_changes", { path, message, amend })),
+	commitChanges: (path: string, message: string, amend: boolean, skipHooks: boolean) => typedError<string, AppError>(__TAURI_INVOKE("commit_changes", { path, message, amend, skipHooks })),
 	/**  The message of the HEAD commit, to prefill an amend. */
 	headMessage: (path: string) => typedError<string | null, AppError>(__TAURI_INVOKE("head_message", { path })),
 	/**  Local and remote branches. */
@@ -205,6 +205,8 @@ export const commands = {
 	applyPatchFile: (path: string, file: string) => typedError<null, AppError>(__TAURI_INVOKE("apply_patch_file", { path, file })),
 	/**  Commit `id` as a mail-style patch. */
 	commitPatch: (path: string, id: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_patch", { path, id })),
+	/**  The repository's commit message template, if one is configured. */
+	commitTemplate: (path: string) => typedError<string | null, AppError>(__TAURI_INVOKE("commit_template", { path })),
 	/**  Ignores files matching `pattern` by adding it to `.gitignore`. */
 	ignorePath: (path: string, pattern: string) => typedError<null, AppError>(__TAURI_INVOKE("ignore_path", { path, pattern })),
 	/**  Starts a bisect between a `bad` and a `good` revision. */

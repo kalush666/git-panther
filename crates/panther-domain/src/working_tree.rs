@@ -110,6 +110,15 @@ pub const MAX_DIFF_LINES: usize = 20_000;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommitMessage(String);
 
+/// How to commit, besides the message.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct CommitOptions {
+    /// Replace the last commit instead of adding one.
+    pub amend: bool,
+    /// Run none of the repository's commit hooks (`--no-verify`).
+    pub skip_hooks: bool,
+}
+
 /// Text that cannot be used as a commit message.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("A commit needs a summary line.")]

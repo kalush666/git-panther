@@ -82,11 +82,46 @@ export function useApplyHunk(path: string) {
   );
 }
 
+export interface CommitRequest {
+  message: string;
+  amend: boolean;
+  /** Commit past the repository's hooks (`--no-verify`). */
+  skipHooks: boolean;
+}
+
 export function useCommitChanges(path: string) {
-  return useRepositoryMutation(path, ({ message, amend }: { message: string; amend: boolean }) =>
-    ipc.commitChanges(path, message, amend),
+  return useRepositoryMutation(path, ({ message, amend, skipHooks }: CommitRequest) =>
+    ipc.commitChanges(path, message, amend, skipHooks),
   );
 }
+
+/** The commit message template, which a new message starts from. */
+export function useCommitTemplate(path: string) {
+  return useQuery({
+    queryKey: [...repositoryQueryKey(path), 'commitTemplate'],
+    queryFn: async () => unwrap(await ipc.commitTemplate(path)),
+    staleTime: Infinity,
+  });
+}
+
+/** People who committed recently, to credit as co-authors. */
+export function useRecentAuthors(path: string) {
+  return useQuery({
+    queryKey: [...repositoryQueryKey(path), 'recentAuthors'],
+    queryFn: async () => {
+      const page = unwrap(await ipc.loadGraphPage(path, 0, RECENT_AUTHOR_COMMITS, []));
+      const seen = new Map<string, { name: string; email: string }>();
+      for (const { author } of page.entries) {
+        if (!seen.has(author.email)) seen.set(author.email, author);
+      }
+      return [...seen.values()];
+    },
+    staleTime: 60_000,
+  });
+}
+
+/** How far back co-author suggestions look. */
+const RECENT_AUTHOR_COMMITS = 300;
 
 export async function loadHeadMessage(path: string): Promise<string> {
   return unwrap(await ipc.headMessage(path)) ?? '';

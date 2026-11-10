@@ -233,3 +233,12 @@
   display: flex;
   gap: var(--gp-space-1);
 }
+
+.coAuthor {
+  align-self: flex-start;
+}
+
+.coAuthorRow {
+  display: flex;
+  gap: var(--gp-space-2);
+}

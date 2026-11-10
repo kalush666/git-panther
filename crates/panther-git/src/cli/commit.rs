@@ -7,7 +7,7 @@ use std::process::Stdio;
 
 use panther_domain::commit::CommitId;
 use panther_domain::repository::RepositoryError;
-use panther_domain::working_tree::CommitMessage;
+use panther_domain::working_tree::{CommitMessage, CommitOptions};
 
 use super::background_command;
 
@@ -18,15 +18,18 @@ pub fn commit(
     executable: &Path,
     repository: &Path,
     message: &CommitMessage,
-    amend: bool,
+    options: CommitOptions,
 ) -> Result<CommitId, RepositoryError> {
     let mut command = background_command(executable);
     command
         .arg("-C")
         .arg(repository)
         .args(["commit", "--file=-", "--cleanup=strip"]);
-    if amend {
+    if options.amend {
         command.arg("--amend");
+    }
+    if options.skip_hooks {
+        command.arg("--no-verify");
     }
     let mut child = command
         .stdin(Stdio::piped())
