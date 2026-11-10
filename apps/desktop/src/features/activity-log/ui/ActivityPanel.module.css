@@ -1,0 +1,115 @@
+.panel {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  height: 38vh;
+  min-height: calc(var(--gp-row-height) * 6);
+  border-top: 1px solid var(--gp-border-strong);
+  background: var(--gp-bg-surface);
+}
+
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--gp-space-3);
+  padding: var(--gp-space-1) var(--gp-space-3);
+  border-bottom: 1px solid var(--gp-border-subtle);
+  font-size: var(--gp-text-sm);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--gp-text-sm);
+  font-weight: var(--gp-weight-semibold);
+}
+
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gp-space-1);
+  color: var(--gp-text-secondary);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.list {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.entry + .entry {
+  border-top: 1px solid var(--gp-border-subtle);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  gap: var(--gp-space-3);
+  align-items: center;
+  width: 100%;
+  min-height: var(--gp-row-height);
+  padding: 0 var(--gp-space-3);
+  border: none;
+  background: transparent;
+  color: var(--gp-text-primary);
+  font: inherit;
+  font-size: var(--gp-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--gp-bg-raised);
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--gp-focus-ring);
+  outline-offset: -2px;
+}
+
+.status[data-ok='true'] {
+  color: var(--gp-success);
+}
+
+.status[data-ok='false'] {
+  color: var(--gp-danger);
+}
+
+.time,
+.duration {
+  color: var(--gp-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.command {
+  overflow: hidden;
+  font-family: var(--gp-font-mono);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.output {
+  margin: 0 var(--gp-space-3) var(--gp-space-2);
+  padding: var(--gp-space-2);
+  overflow: auto;
+  border: 1px solid var(--gp-border-subtle);
+  border-radius: var(--gp-radius-sm);
+  background: var(--gp-bg-canvas);
+  color: var(--gp-text-secondary);
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-xs);
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.empty {
+  margin: var(--gp-space-3);
+  color: var(--gp-text-muted);
+  font-size: var(--gp-text-sm);
+}

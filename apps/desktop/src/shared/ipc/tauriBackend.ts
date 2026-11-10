@@ -100,6 +100,7 @@ export const tauriBackend: Backend = {
   ignorePath: commands.ignorePath,
   ignoreAndUntrack: commands.ignoreAndUntrack,
   restoreFileFrom: commands.restoreFileFrom,
+  activityLog: async (path) => ({ status: 'ok', data: await commands.activityLog(path) }),
   bisectStart: commands.bisectStart,
   bisectMark: commands.bisectMark,
   bisectStatus: commands.bisectStatus,

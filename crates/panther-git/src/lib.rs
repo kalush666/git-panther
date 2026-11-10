@@ -3,6 +3,7 @@
 //! Implements domain ports with libgit2 for fast local access and with the
 //! system git CLI for network operations and the history walk.
 
+pub mod activity;
 mod bisector;
 mod branch_store;
 mod cli;

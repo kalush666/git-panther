@@ -39,10 +39,14 @@ test.describe('commit box', () => {
     await open(page);
     const skip = form(page).getByLabel('Skip hooks');
     await skip.check();
-    await form(page).getByLabel('Commit summary').fill('Quick fix');
-    await form(page)
-      .getByRole('button', { name: /^Stage all and commit/ })
+    // Commit one file, so the working copy (and its commit box) stays.
+    await page
+      .getByRole('complementary', { name: 'Working copy' })
+      .getByRole('button', { name: 'Stage README.md' })
       .click();
+    await form(page).getByLabel('Commit summary').fill('Quick fix');
+    await form(page).getByRole('button', { name: 'Commit 1 file' }).click();
+    await expect(form(page).getByLabel('Commit summary')).toHaveValue('');
     await expect(skip).not.toBeChecked();
   });
 });

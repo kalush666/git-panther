@@ -643,6 +643,50 @@ function createMockBackend(): Backend {
     ignorePath: (_path, pattern) => Promise.resolve(workingTree.ignore(pattern)),
     ignoreAndUntrack: () => Promise.resolve(ok(null)),
     restoreFileFrom: () => Promise.resolve(ok(null)),
+    activityLog: (path) => {
+      const now = Math.floor(Date.now() / 1000);
+      const entries = [
+        {
+          started: now - 5,
+          repository: 'C:\\repos\\demo',
+          command: 'git push --progress',
+          durationMs: 1840,
+          succeeded: false,
+          output: 'pre-push hook: tests failed\nerror: failed to push some refs',
+          changes: true,
+        },
+        {
+          started: now - 30,
+          repository: 'C:\\repos\\demo',
+          command: 'git log --all --format=%H',
+          durationMs: 12,
+          succeeded: true,
+          output: '',
+          changes: false,
+        },
+        {
+          started: now - 60,
+          repository: 'C:\\repos\\demo',
+          command: 'git commit --file=-',
+          durationMs: 220,
+          succeeded: true,
+          output: 'lint: 0 problems\n[main 1a2b3c4] Fix the login form',
+          changes: true,
+        },
+        {
+          started: now - 90,
+          repository: 'C:\\repos\\other',
+          command: 'git fetch --progress',
+          durationMs: 900,
+          succeeded: true,
+          output: '',
+          changes: true,
+        },
+      ];
+      return Promise.resolve(
+        ok(path === null ? entries : entries.filter((entry) => entry.repository === path)),
+      );
+    },
     bisectStart: (_path, bad, good) => {
       const started = bisect.start(bad, good);
       return Promise.resolve(

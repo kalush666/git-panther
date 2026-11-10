@@ -29,6 +29,7 @@ use panther_domain::stash::{ConflictSide, Operation, Stash};
 use panther_domain::working_tree::{
     ChangedFile, DiffLine, DiffSide, FileDiff, FileState, Hunk, LineKind, WorkingTreeStatus,
 };
+use panther_git::activity::GitActivity;
 use panther_graph::{GraphRow, Segment};
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -1116,6 +1117,34 @@ impl From<PullRequestReview> for PullRequestReviewDto {
                 .map(ReviewCommentDto::from)
                 .collect(),
             mergeable: review.mergeable,
+        }
+    }
+}
+
+/// One git command Git Panther ran, for the activity log.
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GitActivityDto {
+    /// When it started, in seconds since the Unix epoch.
+    pub started: u32,
+    pub repository: String,
+    pub command: String,
+    pub duration_ms: u32,
+    pub succeeded: bool,
+    pub output: String,
+    pub changes: bool,
+}
+
+impl From<GitActivity> for GitActivityDto {
+    fn from(entry: GitActivity) -> Self {
+        Self {
+            started: u32::try_from(entry.started_ms / 1000).unwrap_or(u32::MAX),
+            repository: entry.repository.to_string_lossy().into_owned(),
+            command: entry.command,
+            duration_ms: u32::try_from(entry.duration_ms).unwrap_or(u32::MAX),
+            succeeded: entry.succeeded,
+            output: entry.output,
+            changes: entry.changes,
         }
     }
 }

@@ -31,8 +31,8 @@ use panther_application::accounts::SignIn;
 use panther_domain::hosting::NewPullRequest;
 
 use super::dto::{
-    BisectStatusDto, BisectVerdictDto, ComparisonDto, FlowFinishedDto, FlowKindDto, OpenTargetDto,
-    PipelineDto, PullRequestReviewDto, ReflogEntryDto,
+    BisectStatusDto, BisectVerdictDto, ComparisonDto, FlowFinishedDto, FlowKindDto, GitActivityDto,
+    OpenTargetDto, PipelineDto, PullRequestReviewDto, ReflogEntryDto,
 };
 use panther_domain::remote::{PushOptions, RemoteName};
 
@@ -541,6 +541,20 @@ pub async fn apply_patch_file(
         Ok(copy.apply_patch(&PathBuf::from(path), &contents)?)
     })
     .await
+}
+
+/// The git commands Git Panther ran, newest first; only in `path` when given.
+#[tauri::command]
+#[specta::specta]
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Tauri injects command arguments by value"
+)]
+pub fn activity_log(path: Option<String>) -> Vec<GitActivityDto> {
+    panther_git::activity::recent(path.as_deref().map(std::path::Path::new))
+        .into_iter()
+        .map(GitActivityDto::from)
+        .collect()
 }
 
 /// Starts a bisect between a `bad` and a `good` revision.

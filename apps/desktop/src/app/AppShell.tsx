@@ -1,6 +1,7 @@
-import { LayoutGrid, Settings } from 'lucide-react';
+import { LayoutGrid, ScrollText, Settings } from 'lucide-react';
 import { useState } from 'react';
 
+import { ActivityPanel } from '../features/activity-log';
 import { CommandPalette, useShortcutDispatcher } from '../features/command-palette';
 import { GitRequiredScreen, GitVersionBadge, useGitInstallation } from '../features/git-check';
 import { TabBar, useTabsStore } from '../features/repository-tabs';
@@ -20,6 +21,8 @@ type Page = 'settings' | 'workspaces' | null;
 
 export function AppShell() {
   const [page, setPage] = useState<Page>(null);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const activePath = useTabsStore((state) => state.activePath);
   const tabs = useTabsStore((state) => state.tabs);
   const openTab = useTabsStore((state) => state.openTab);
   const openSettings = () => {
@@ -65,33 +68,55 @@ export function AppShell() {
         </div>
       </header>
       <main className={styles.content}>
-        {page === 'settings' ? (
-          <SettingsView
+        <div className={styles.page}>
+          {page === 'settings' ? (
+            <SettingsView
+              onClose={() => {
+                setPage(null);
+              }}
+            />
+          ) : page === 'workspaces' ? (
+            <WorkspacesView
+              openPaths={tabs.map((tab) => tab.path)}
+              onOpenRepository={(path) => {
+                void ipc.openRepository(path).then((result) => {
+                  if (result.status === 'ok') {
+                    openTab({ path: result.data.path, name: result.data.name });
+                    setPage(null);
+                  }
+                });
+              }}
+              onClose={() => {
+                setPage(null);
+              }}
+            />
+          ) : (
+            <MainContent onOpenSettings={openSettings} />
+          )}
+        </div>
+        {activityOpen && (
+          <ActivityPanel
+            activePath={activePath}
             onClose={() => {
-              setPage(null);
+              setActivityOpen(false);
             }}
           />
-        ) : page === 'workspaces' ? (
-          <WorkspacesView
-            openPaths={tabs.map((tab) => tab.path)}
-            onOpenRepository={(path) => {
-              void ipc.openRepository(path).then((result) => {
-                if (result.status === 'ok') {
-                  openTab({ path: result.data.path, name: result.data.name });
-                  setPage(null);
-                }
-              });
-            }}
-            onClose={() => {
-              setPage(null);
-            }}
-          />
-        ) : (
-          <MainContent onOpenSettings={openSettings} />
         )}
       </main>
       <CommandPalette />
       <footer className={styles.statusBar}>
+        <button
+          type="button"
+          className={styles.statusButton}
+          aria-pressed={activityOpen}
+          onClick={() => {
+            setActivityOpen(!activityOpen);
+          }}
+        >
+          <ScrollText size={12} aria-hidden />
+          Activity
+        </button>
+        <span className={styles.statusSpacer} />
         <GitVersionBadge />
       </footer>
     </div>
