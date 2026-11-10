@@ -23,14 +23,14 @@ function diffVersion(source: DiffSource): string {
   }
 }
 
-function loadDiff(path: string, source: DiffSource) {
+function loadDiff(path: string, source: DiffSource, ignoreWhitespace: boolean) {
   switch (source.kind) {
     case 'workingTree':
-      return ipc.fileDiff(path, source.file, source.side);
+      return ipc.fileDiff(path, source.file, source.side, ignoreWhitespace);
     case 'commit':
-      return ipc.commitFileDiff(path, source.commitId, source.file);
+      return ipc.commitFileDiff(path, source.commitId, source.file, ignoreWhitespace);
     case 'compare':
-      return ipc.compareFileDiff(path, source.from, source.to, source.file);
+      return ipc.compareFileDiff(path, source.from, source.to, source.file, ignoreWhitespace);
   }
 }
 
@@ -46,14 +46,16 @@ export function useWorkingTreeStatus(path: string) {
   });
 }
 
-export function useFileDiff(path: string, source: DiffSource | null) {
+export function useFileDiff(path: string, source: DiffSource | null, ignoreWhitespace = false) {
   return useQuery({
-    queryKey: source ? diffKey(path, source) : [...repositoryQueryKey(path), 'diff', 'none'],
+    queryKey: source
+      ? [...diffKey(path, source), ignoreWhitespace]
+      : [...repositoryQueryKey(path), 'diff', 'none'],
     queryFn: async () => {
       if (!source) {
         throw new Error('useFileDiff runs only with a source');
       }
-      return unwrap(await loadDiff(path, source));
+      return unwrap(await loadDiff(path, source, ignoreWhitespace));
     },
     enabled: source !== null,
   });

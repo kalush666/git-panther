@@ -110,9 +110,13 @@ fn single_file_diff<'repo>(
     repository: &'repo Repository,
     path: &str,
     side: DiffSide,
+    ignore_whitespace: bool,
 ) -> Result<Diff<'repo>, RepositoryError> {
     let mut options = DiffOptions::new();
-    options.pathspec(path).disable_pathspec_match(true);
+    options
+        .pathspec(path)
+        .disable_pathspec_match(true)
+        .ignore_whitespace(ignore_whitespace);
     let diff = match side {
         DiffSide::Staged => {
             let head_tree = head_tree(repository)?;
@@ -141,9 +145,17 @@ fn head_tree(repository: &Repository) -> Result<Option<git2::Tree<'_>>, Reposito
     }
 }
 
-pub fn diff(repository: &Path, path: &str, side: DiffSide) -> Result<FileDiff, RepositoryError> {
+pub fn diff(
+    repository: &Path,
+    path: &str,
+    side: DiffSide,
+    ignore_whitespace: bool,
+) -> Result<FileDiff, RepositoryError> {
     let repository = open(repository)?;
-    file_diff(&single_file_diff(&repository, path, side)?, path)
+    file_diff(
+        &single_file_diff(&repository, path, side, ignore_whitespace)?,
+        path,
+    )
 }
 
 /// The patch for one hunk, or `None` if it no longer matches what the UI showed.
@@ -157,7 +169,8 @@ pub fn patch_for_hunk(
 ) -> Result<Option<String>, RepositoryError> {
     let repository = open(repository)?;
     hunk_patch(
-        &single_file_diff(&repository, path, side)?,
+        // Hunks are applied exactly as git sees them, spacing included.
+        &single_file_diff(&repository, path, side, false)?,
         index,
         header,
         selection,

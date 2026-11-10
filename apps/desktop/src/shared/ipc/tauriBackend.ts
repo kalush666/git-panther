@@ -29,9 +29,11 @@ export const tauriBackend: Backend = {
   fileHistory: commands.fileHistory,
   blameFile: commands.blameFile,
   commitDetails: commands.commitDetails,
-  commitFileDiff: commands.commitFileDiff,
+  commitFileDiff: (path, id, file, ignoreWhitespace) =>
+    commands.commitFileDiff(path, id, file, ignoreWhitespace ?? false),
   workingTreeStatus: commands.workingTreeStatus,
-  fileDiff: commands.fileDiff,
+  fileDiff: (path, file, side, ignoreWhitespace) =>
+    commands.fileDiff(path, file, side, ignoreWhitespace ?? false),
   stageFiles: commands.stageFiles,
   unstageFiles: commands.unstageFiles,
   discardFiles: commands.discardFiles,
@@ -157,7 +159,8 @@ export const tauriBackend: Backend = {
   compareRefs: commands.compareRefs,
   reflog: commands.reflog,
   filterCommits: commands.filterCommits,
-  compareFileDiff: commands.compareFileDiff,
+  compareFileDiff: (path, from, to, file, ignoreWhitespace) =>
+    commands.compareFileDiff(path, from, to, file, ignoreWhitespace ?? false),
   listPullRequests: commands.listPullRequests,
   listIssues: commands.listIssues,
   createPullRequest: commands.createPullRequest,

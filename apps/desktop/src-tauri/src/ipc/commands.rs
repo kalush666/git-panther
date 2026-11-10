@@ -420,9 +420,15 @@ pub async fn file_diff(
     path: String,
     file: String,
     side: DiffSideDto,
+    ignore_whitespace: bool,
 ) -> Result<FileDiffDto, AppError> {
     let copy = services.working_copy.clone();
-    run_blocking(move || Ok(copy.diff(&PathBuf::from(path), &file, side.into())?.into())).await
+    run_blocking(move || {
+        Ok(copy
+            .diff(&PathBuf::from(path), &file, side.into(), ignore_whitespace)?
+            .into())
+    })
+    .await
 }
 
 /// How `file` changed in commit `id`.
@@ -433,12 +439,13 @@ pub async fn commit_file_diff(
     path: String,
     id: String,
     file: String,
+    ignore_whitespace: bool,
 ) -> Result<FileDiffDto, AppError> {
     let graph = services.commit_graph.clone();
     run_blocking(move || {
         let id = commit_id(&id)?;
         Ok(graph
-            .commit_file_diff(&PathBuf::from(path), &id, &file)?
+            .commit_file_diff(&PathBuf::from(path), &id, &file, ignore_whitespace)?
             .into())
     })
     .await
@@ -1317,12 +1324,13 @@ pub async fn compare_file_diff(
     from: String,
     to: String,
     file: String,
+    ignore_whitespace: bool,
 ) -> Result<FileDiffDto, AppError> {
     let graph = services.commit_graph.clone();
     run_blocking(move || {
         let (from, to) = (commit_id(&from)?, commit_id(&to)?);
         Ok(graph
-            .compare_file_diff(&PathBuf::from(path), &from, &to, &file)?
+            .compare_file_diff(&PathBuf::from(path), &from, &to, &file, ignore_whitespace)?
             .into())
     })
     .await

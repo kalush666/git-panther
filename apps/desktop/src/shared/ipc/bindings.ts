@@ -37,9 +37,9 @@ export const commands = {
 	/**  Staged, unstaged and conflicted files. */
 	workingTreeStatus: (path: string) => typedError<WorkingTreeStatusDto_Serialize, AppError>(__TAURI_INVOKE("working_tree_status", { path })),
 	/**  The staged or unstaged diff of `file`. */
-	fileDiff: (path: string, file: string, side: DiffSideDto) => typedError<FileDiffDto_Serialize, AppError>(__TAURI_INVOKE("file_diff", { path, file, side })),
+	fileDiff: (path: string, file: string, side: DiffSideDto, ignoreWhitespace: boolean) => typedError<FileDiffDto_Serialize, AppError>(__TAURI_INVOKE("file_diff", { path, file, side, ignoreWhitespace })),
 	/**  How `file` changed in commit `id`. */
-	commitFileDiff: (path: string, id: string, file: string) => typedError<FileDiffDto_Serialize, AppError>(__TAURI_INVOKE("commit_file_diff", { path, id, file })),
+	commitFileDiff: (path: string, id: string, file: string, ignoreWhitespace: boolean) => typedError<FileDiffDto_Serialize, AppError>(__TAURI_INVOKE("commit_file_diff", { path, id, file, ignoreWhitespace })),
 	/**  Stages whole files. */
 	stageFiles: (path: string, files: string[]) => typedError<null, AppError>(__TAURI_INVOKE("stage_files", { path, files })),
 	/**  Unstages whole files. */
@@ -207,7 +207,7 @@ export const commands = {
 	/**  What `head` changes since it forked from `base` (branches, tags or ids). */
 	compareRefs: (path: string, base: string, head: string) => typedError<ComparisonDto, AppError>(__TAURI_INVOKE("compare_refs", { path, base, head })),
 	/**  How `file` differs between commits `from` and `to`. */
-	compareFileDiff: (path: string, from: string, to: string, file: string) => typedError<FileDiffDto_Serialize, AppError>(__TAURI_INVOKE("compare_file_diff", { path, from, to, file })),
+	compareFileDiff: (path: string, from: string, to: string, file: string, ignoreWhitespace: boolean) => typedError<FileDiffDto_Serialize, AppError>(__TAURI_INVOKE("compare_file_diff", { path, from, to, file, ignoreWhitespace })),
 	/**  Where HEAD pointed recently, for recovering lost commits. */
 	reflog: (path: string) => typedError<ReflogEntryDto[], AppError>(__TAURI_INVOKE("reflog", { path })),
 	/**

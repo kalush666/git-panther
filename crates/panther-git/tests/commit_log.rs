@@ -289,6 +289,7 @@ fn compares_a_branch_with_where_it_forked() {
                 &comparison.fork,
                 &comparison.head,
                 "b.txt",
+                false,
             )
             .unwrap();
         assert_eq!(diff.hunks.len(), 1, "{name}");
@@ -379,5 +380,43 @@ fn formats_a_commit_as_a_mail_patch() {
             "{name}: {patch}"
         );
         assert!(patch.contains("+main"), "{name}: {patch}");
+    }
+}
+
+#[test]
+fn ignoring_whitespace_hides_spacing_only_changes() {
+    let dir = TempDir::new().unwrap();
+    let repository = support::empty_repository(dir.path());
+    let first = support::commit(
+        &repository,
+        Some("HEAD"),
+        "First",
+        &[(
+            "a.txt",
+            "fn main() {}
+",
+        )],
+        &[],
+    );
+    let second = support::commit(
+        &repository,
+        Some("HEAD"),
+        "Reindent",
+        &[(
+            "a.txt",
+            "fn  main()  {}
+",
+        )],
+        &[first],
+    );
+    for (name, log) in implementations() {
+        let spaced = log
+            .commit_file_diff(dir.path(), &id(second), "a.txt", false)
+            .unwrap();
+        assert_eq!(spaced.hunks.len(), 1, "{name}");
+        let ignored = log
+            .commit_file_diff(dir.path(), &id(second), "a.txt", true)
+            .unwrap();
+        assert!(ignored.hunks.is_empty(), "{name}: {ignored:?}");
     }
 }

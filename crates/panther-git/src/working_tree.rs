@@ -43,8 +43,9 @@ impl WorkingTree for GitWorkingTree {
         repository: &Path,
         path: &str,
         side: DiffSide,
+        ignore_whitespace: bool,
     ) -> Result<FileDiff, RepositoryError> {
-        git2_tree::diff(repository, path, side)
+        git2_tree::diff(repository, path, side, ignore_whitespace)
     }
 
     fn stage(&self, repository: &Path, paths: &[String]) -> Result<(), RepositoryError> {

@@ -158,6 +158,7 @@ impl CommitLog for Git2CommitLog {
         repository: &Path,
         id: &CommitId,
         path: &str,
+        ignore_whitespace: bool,
     ) -> Result<FileDiff, RepositoryError> {
         let repository = open(repository)?;
         let commit = find_commit(&repository, id)?;
@@ -166,7 +167,13 @@ impl CommitLog for Git2CommitLog {
             Ok(parent) => Some(parent.tree().map_err(|error| git_error(&error))?),
             Err(_) => None,
         };
-        tree_file_diff(&repository, parent_tree.as_ref(), &tree, path)
+        tree_file_diff(
+            &repository,
+            parent_tree.as_ref(),
+            &tree,
+            path,
+            ignore_whitespace,
+        )
     }
 
     fn compare(
@@ -280,6 +287,7 @@ impl CommitLog for Git2CommitLog {
         from: &CommitId,
         to: &CommitId,
         path: &str,
+        ignore_whitespace: bool,
     ) -> Result<FileDiff, RepositoryError> {
         let repository = open(repository)?;
         let tree_of = |id: &CommitId| {
@@ -289,7 +297,13 @@ impl CommitLog for Git2CommitLog {
         };
         let from_tree = tree_of(from)?;
         let to_tree = tree_of(to)?;
-        tree_file_diff(&repository, Some(&from_tree), &to_tree, path)
+        tree_file_diff(
+            &repository,
+            Some(&from_tree),
+            &to_tree,
+            path,
+            ignore_whitespace,
+        )
     }
 
     fn search(&self, repository: &Path, query: &str) -> Result<Vec<CommitId>, RepositoryError> {
@@ -526,10 +540,14 @@ fn tree_file_diff(
     old: Option<&git2::Tree<'_>>,
     new: &git2::Tree<'_>,
     path: &str,
+    ignore_whitespace: bool,
 ) -> Result<FileDiff, RepositoryError> {
     // Limited to one path, so a rename shows as the file being added.
     let mut options = DiffOptions::new();
-    options.pathspec(path).disable_pathspec_match(true);
+    options
+        .pathspec(path)
+        .disable_pathspec_match(true)
+        .ignore_whitespace(ignore_whitespace);
     let diff = repository
         .diff_tree_to_tree(old, Some(new), Some(&mut options))
         .map_err(|error| git_error(&error))?;
