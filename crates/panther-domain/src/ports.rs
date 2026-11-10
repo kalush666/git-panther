@@ -103,6 +103,25 @@ pub trait WorkingTree: Send + Sync {
     /// # Errors
     /// [`RepositoryError::Storage`] when `.gitignore` cannot be written.
     fn ignore(&self, repository: &Path, pattern: &str) -> Result<(), RepositoryError>;
+
+    /// Stops tracking `path` (a file or folder) while keeping it on disk;
+    /// the removal is staged for the next commit.
+    ///
+    /// # Errors
+    /// [`RepositoryError::Git`] e.g. for a path git does not track.
+    fn stop_tracking(&self, repository: &Path, path: &str) -> Result<(), RepositoryError>;
+
+    /// Puts `path` as it was in commit `commit` in the work tree and index,
+    /// ready to commit.
+    ///
+    /// # Errors
+    /// [`RepositoryError::Git`] e.g. for a path the commit lacks.
+    fn restore_from(
+        &self,
+        repository: &Path,
+        commit: &CommitId,
+        path: &str,
+    ) -> Result<(), RepositoryError>;
 }
 
 /// Lists and changes branches.

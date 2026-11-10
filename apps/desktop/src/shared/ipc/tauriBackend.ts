@@ -96,6 +96,8 @@ export const tauriBackend: Backend = {
   },
   commitPatch: commands.commitPatch,
   ignorePath: commands.ignorePath,
+  ignoreAndUntrack: commands.ignoreAndUntrack,
+  restoreFileFrom: commands.restoreFileFrom,
   bisectStart: commands.bisectStart,
   bisectMark: commands.bisectMark,
   bisectStatus: commands.bisectStatus,

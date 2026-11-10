@@ -641,6 +641,8 @@ function createMockBackend(): Backend {
     pickFolder: () => Promise.resolve(MOCK_PICKED_FOLDER),
     pickPatchFile: () => Promise.resolve(MOCK_PICKED_PATCH),
     ignorePath: (_path, pattern) => Promise.resolve(workingTree.ignore(pattern)),
+    ignoreAndUntrack: () => Promise.resolve(ok(null)),
+    restoreFileFrom: () => Promise.resolve(ok(null)),
     bisectStart: (_path, bad, good) => {
       const started = bisect.start(bad, good);
       return Promise.resolve(

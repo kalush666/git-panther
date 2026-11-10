@@ -571,3 +571,57 @@ Why:"
         )
     );
 }
+
+#[test]
+fn stops_tracking_a_file_but_keeps_it_on_disk() {
+    let dir = repository();
+    let tree = GitWorkingTree::default();
+    tree.stop_tracking(dir.path(), "notes.txt").unwrap();
+
+    assert!(dir.path().join("notes.txt").exists());
+    let status = tree.status(dir.path()).unwrap();
+    assert!(
+        status
+            .staged
+            .iter()
+            .any(|file| file.path == "notes.txt" && file.state == FileState::Deleted),
+        "{status:?}"
+    );
+}
+
+#[test]
+fn restores_a_file_as_it_was_in_an_older_commit() {
+    let dir = repository();
+    let tree = GitWorkingTree::default();
+    let writer = GitCommitWriter::default();
+    let before = read_lf(&dir.path().join("notes.txt"));
+    let first = CommitId::parse(
+        git2::Repository::open(dir.path())
+            .unwrap()
+            .head()
+            .unwrap()
+            .target()
+            .unwrap()
+            .to_string()
+            .as_str(),
+    )
+    .unwrap();
+    edit_two_places(&dir);
+    tree.stage(dir.path(), &["notes.txt".into()]).unwrap();
+    writer
+        .commit(
+            dir.path(),
+            &CommitMessage::parse("Edit").unwrap(),
+            CommitOptions::default(),
+        )
+        .unwrap();
+
+    tree.restore_from(dir.path(), &first, "notes.txt").unwrap();
+    assert_eq!(read_lf(&dir.path().join("notes.txt")), before);
+    let status = tree.status(dir.path()).unwrap();
+    assert_eq!(
+        status.staged.len(),
+        1,
+        "staged, ready to commit: {status:?}"
+    );
+}

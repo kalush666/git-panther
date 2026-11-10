@@ -115,6 +115,8 @@ pub fn ipc_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::commit_patch,
             commands::commit_template,
             commands::ignore_path,
+            commands::ignore_and_untrack,
+            commands::restore_file_from,
             commands::bisect_start,
             commands::bisect_mark,
             commands::bisect_status,

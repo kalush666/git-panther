@@ -56,10 +56,12 @@ export function InlinePrompt({
       fields.findIndex((field) => field.initial === ''),
     ),
   );
-  // Opened from a menu, the bar must win focus back from it once it closes.
+  // Opened from a menu, the bar must win focus back from it once it closes,
+  // but never from a field of its own the user already moved to.
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      focusRef.current?.focus();
+      const field = focusRef.current;
+      if (field && !field.form?.contains(document.activeElement)) field.focus();
     });
     return () => {
       cancelAnimationFrame(frame);
