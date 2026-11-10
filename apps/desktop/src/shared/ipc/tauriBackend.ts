@@ -159,6 +159,7 @@ export const tauriBackend: Backend = {
   mergePullRequest: commands.mergePullRequest,
   compareRefs: commands.compareRefs,
   reflog: commands.reflog,
+  mergeConflicts: commands.mergeConflicts,
   filterCommits: commands.filterCommits,
   compareFileDiff: (path, from, to, file, ignoreWhitespace) =>
     commands.compareFileDiff(path, from, to, file, ignoreWhitespace ?? false),

@@ -183,6 +183,15 @@ impl CommitLog for GitCommitLog {
             .collect())
     }
 
+    fn merge_conflicts(
+        &self,
+        repository: &Path,
+        ours: &str,
+        theirs: &str,
+    ) -> Result<Vec<String>, RepositoryError> {
+        self.libgit2.merge_conflicts(repository, ours, theirs)
+    }
+
     fn reflog(&self, repository: &Path) -> Result<Vec<ReflogEntry>, RepositoryError> {
         self.libgit2.reflog(repository)
     }

@@ -420,3 +420,54 @@ fn ignoring_whitespace_hides_spacing_only_changes() {
         assert!(ignored.hunks.is_empty(), "{name}: {ignored:?}");
     }
 }
+
+#[test]
+fn finds_merge_conflicts_without_merging() {
+    let dir = TempDir::new().unwrap();
+    let repository = support::empty_repository(dir.path());
+    let base = support::commit(
+        &repository,
+        Some("HEAD"),
+        "Base",
+        &[("shared.txt", "one\n"), ("other.txt", "x\n")],
+        &[],
+    );
+    support::commit(
+        &repository,
+        Some("refs/heads/ours"),
+        "Ours",
+        &[("shared.txt", "ours\n"), ("other.txt", "x\n")],
+        &[base],
+    );
+    support::commit(
+        &repository,
+        Some("refs/heads/theirs"),
+        "Theirs",
+        &[("shared.txt", "theirs\n"), ("other.txt", "x\n")],
+        &[base],
+    );
+    support::commit(
+        &repository,
+        Some("refs/heads/elsewhere"),
+        "Elsewhere",
+        &[("shared.txt", "one\n"), ("other.txt", "y\n")],
+        &[base],
+    );
+    for (name, log) in implementations() {
+        assert_eq!(
+            log.merge_conflicts(dir.path(), "ours", "theirs").unwrap(),
+            ["shared.txt"],
+            "{name}"
+        );
+        assert_eq!(
+            log.merge_conflicts(dir.path(), "ours", "elsewhere")
+                .unwrap(),
+            Vec::<String>::new(),
+            "{name}"
+        );
+    }
+    assert!(
+        !dir.path().join("shared.txt").exists(),
+        "the work tree was not touched"
+    );
+}

@@ -1,0 +1,39 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gp-space-1);
+  height: var(--gp-control-height-sm);
+  padding: 0 var(--gp-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--gp-radius-sm);
+  background: transparent;
+  color: var(--gp-text-muted);
+  font: inherit;
+  font-size: var(--gp-text-xs);
+  white-space: nowrap;
+}
+
+.chip[data-conflicts='true'] {
+  border-color: var(--gp-warning);
+  background: color-mix(in srgb, var(--gp-warning) 14%, transparent);
+  color: var(--gp-text-primary);
+  cursor: pointer;
+}
+
+.chip[data-conflicts='true'] svg {
+  color: var(--gp-warning);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--gp-focus-ring);
+  outline-offset: 1px;
+}
+
+.files {
+  margin: 0;
+  padding: var(--gp-space-1) var(--gp-space-2);
+  color: var(--gp-text-secondary);
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-xs);
+  list-style: none;
+}

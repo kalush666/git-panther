@@ -505,6 +505,15 @@ function createMockBackend(): Backend {
       pullRequests = pullRequests.filter((request) => request.number !== number);
       return Promise.resolve(ok(null));
     },
+    // `?mockConflictWarning=1`: the current branch would conflict with its target.
+    mergeConflicts: () =>
+      Promise.resolve(
+        ok(
+          new URLSearchParams(window.location.search).get('mockConflictWarning')
+            ? ['src/app.ts', 'src/login.ts']
+            : [],
+        ),
+      ),
     reflog: () => {
       const [newest, previous] = mockGraphPage(0, 2).entries;
       const now = Math.floor(Date.now() / 1000);

@@ -164,6 +164,19 @@ impl CommitGraph {
         self.log.compare(repository, base, head)
     }
 
+    /// Files that would conflict merging `theirs` into `ours`, without merging.
+    ///
+    /// # Errors
+    /// [`RepositoryError::CommitNotFound`] for an unknown revision.
+    pub fn merge_conflicts(
+        &self,
+        repository: &Path,
+        ours: &str,
+        theirs: &str,
+    ) -> Result<Vec<String>, RepositoryError> {
+        self.log.merge_conflicts(repository, ours, theirs)
+    }
+
     /// Where HEAD pointed recently, with commits no ref contains marked lost.
     ///
     /// # Errors
@@ -468,6 +481,15 @@ mod tests {
         }
 
         fn reflog(&self, _: &Path) -> Result<Vec<ReflogEntry>, RepositoryError> {
+            Ok(Vec::new())
+        }
+
+        fn merge_conflicts(
+            &self,
+            _: &Path,
+            _: &str,
+            _: &str,
+        ) -> Result<Vec<String>, RepositoryError> {
             Ok(Vec::new())
         }
 
