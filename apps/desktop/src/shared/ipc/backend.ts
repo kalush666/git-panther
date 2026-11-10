@@ -173,7 +173,14 @@ export interface Backend {
   discardFiles(path: string, files: string[]): Promise<Result<null>>;
   applyHunk(path: string, hunk: HunkTarget, action: HunkAction): Promise<Result<null>>;
   /** Resolves to the new commit id. */
-  commitChanges(path: string, message: string, amend: boolean): Promise<Result<string>>;
+  commitChanges(
+    path: string,
+    message: string,
+    amend: boolean,
+    skipHooks: boolean,
+  ): Promise<Result<string>>;
+  /** The repository's commit message template (`commit.template`), without `#` lines. */
+  commitTemplate(path: string): Promise<Result<string | null>>;
   headMessage(path: string): Promise<Result<string | null>>;
   listBranches(path: string): Promise<Result<Branch[]>>;
   createBranch(path: string, name: string, start: string, checkout: boolean): Promise<Result<null>>;

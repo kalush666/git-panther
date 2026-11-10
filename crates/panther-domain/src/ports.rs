@@ -27,7 +27,9 @@ use crate::repository::{
 };
 use crate::settings::Settings;
 use crate::stash::{ConflictSide, Operation, Stash};
-use crate::working_tree::{CommitMessage, DiffSide, FileDiff, HunkRef, WorkingTreeStatus};
+use crate::working_tree::{
+    CommitMessage, CommitOptions, DiffSide, FileDiff, HunkRef, WorkingTreeStatus,
+};
 
 /// What to do with a single hunk.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -397,7 +399,7 @@ pub trait RemoteSync: Send + Sync {
 
 /// Creates commits.
 pub trait CommitWriter: Send + Sync {
-    /// Commits the index, or replaces the last commit when `amend` is set.
+    /// Commits the index, or replaces the last commit when `options.amend` is set.
     ///
     /// # Errors
     /// [`RepositoryError::NothingToCommit`], [`RepositoryError::IdentityMissing`]
@@ -406,8 +408,15 @@ pub trait CommitWriter: Send + Sync {
         &self,
         repository: &Path,
         message: &CommitMessage,
-        amend: bool,
+        options: CommitOptions,
     ) -> Result<CommitId, RepositoryError>;
+
+    /// The repository's commit message template (`commit.template`), with
+    /// its `#` comment lines left out; `None` when none is set.
+    ///
+    /// # Errors
+    /// [`RepositoryError::Storage`] when the configured file cannot be read.
+    fn template(&self, repository: &Path) -> Result<Option<String>, RepositoryError>;
 
     /// The message of the HEAD commit, used to prefill an amend.
     ///

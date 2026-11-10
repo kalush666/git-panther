@@ -7,7 +7,7 @@ use panther_domain::repository::{
     CancellationToken, CloneProgress, CloneRequest, RemoteUrl, RepositoryError,
 };
 use panther_domain::settings::DEFAULT_GIT_EXECUTABLE;
-use panther_domain::working_tree::HunkRef;
+use panther_domain::working_tree::{CommitOptions, HunkRef};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
 use tauri_specta::Event;
@@ -638,14 +638,27 @@ pub async fn commit_changes(
     path: String,
     message: String,
     amend: bool,
+    skip_hooks: bool,
 ) -> Result<String, AppError> {
     let copy = services.working_copy.clone();
     run_blocking(move || {
+        let options = CommitOptions { amend, skip_hooks };
         Ok(copy
-            .commit(&PathBuf::from(path), &message, amend)?
+            .commit(&PathBuf::from(path), &message, options)?
             .to_string())
     })
     .await
+}
+
+/// The repository's commit message template, if one is configured.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_template(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<Option<String>, AppError> {
+    let copy = services.working_copy.clone();
+    run_blocking(move || Ok(copy.template(&PathBuf::from(path))?)).await
 }
 
 /// The message of the HEAD commit, to prefill an amend.

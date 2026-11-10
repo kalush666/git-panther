@@ -1,6 +1,6 @@
 import * as ContextMenu from '@radix-ui/react-context-menu';
-import { Minus, Plus, Trash2 } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { Minus, Plus, Trash2, UserPlus } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import type { ChangedFile, DiffSide } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
@@ -10,12 +10,14 @@ import {
   useCommitChanges,
   useDiscardFiles,
   useIgnorePath,
+  useCommitTemplate,
+  useRecentAuthors,
   useStageFiles,
   useUnstageFiles,
   useWorkingTreeStatus,
 } from '../api/useWorkingTree';
 import { CHANGE_LETTERS } from '../model/changeLetters';
-import { useCommitDraft, useCommitDrafts } from '../model/workspace';
+import { useCommitDraft, useCommitDrafts, useCommitPreferences } from '../model/workspace';
 import { ConflictSection } from './ConflictSection';
 import { IdentityControl } from './IdentityControl';
 import menu from './menu.module.css';
@@ -32,6 +34,8 @@ interface StagingPanelProps {
   onOpenFile: (file: string, side: DiffSide) => void;
   /** Opens the conflict editor for a conflicted file. */
   onResolveFile: (file: string) => void;
+  /** Called after each commit when "Push after committing" is on. */
+  onCommitted: () => void;
 }
 
 export function StagingPanel({
@@ -40,6 +44,7 @@ export function StagingPanel({
   onOpenFile,
   onResolveFile,
   onShowHistory,
+  onCommitted,
 }: StagingPanelProps) {
   const status = useWorkingTreeStatus(path);
   const stage = useStageFiles(path);
@@ -165,7 +170,12 @@ export function StagingPanel({
       <div className={styles.identity}>
         <IdentityControl path={path} />
       </div>
-      <CommitBox path={path} stagedCount={staged.length} unstaged={paths(unstaged)} />
+      <CommitBox
+        path={path}
+        stagedCount={staged.length}
+        unstaged={paths(unstaged)}
+        onCommitted={onCommitted}
+      />
     </aside>
   );
 }
@@ -315,9 +325,11 @@ interface CommitBoxProps {
   stagedCount: number;
   /** Committed all at once when nothing is staged. */
   unstaged: string[];
+  /** After a commit, when "Push after committing" is on. */
+  onCommitted: () => void;
 }
 
-function CommitBox({ path, stagedCount, unstaged }: CommitBoxProps) {
+function CommitBox({ path, stagedCount, unstaged, onCommitted }: CommitBoxProps) {
   const commit = useCommitChanges(path);
   const stageAll = useStageFiles(path);
   const { summary, description } = useCommitDraft(path);
@@ -330,6 +342,16 @@ function CommitBox({ path, stagedCount, unstaged }: CommitBoxProps) {
     updateDraft(path, { description: value });
   };
   const [amend, setAmend] = useState(false);
+  const [skipHooks, setSkipHooks] = useState(false);
+  const pushAfterCommit = useCommitPreferences((state) => state.pushAfterCommit);
+  const setPushAfterCommit = useCommitPreferences((state) => state.setPushAfterCommit);
+  const template = useCommitTemplate(path).data ?? null;
+  // An empty message starts from the repository's template.
+  useEffect(() => {
+    if (template === null || amend || summary !== '' || description !== '') return;
+    const [first = '', ...rest] = template.split('\n');
+    updateDraft(path, { summary: first, description: rest.join('\n').trim() });
+  }, [template, amend, summary, description, path, updateDraft]);
   // With nothing staged, one click stages everything and commits it.
   const commitsAll = stagedCount === 0 && !amend && unstaged.length > 0;
   const busy = commit.isPending || stageAll.isPending;
@@ -344,15 +366,17 @@ function CommitBox({ path, stagedCount, unstaged }: CommitBoxProps) {
     }
   };
 
-  const submit = async () => {
+  const submit = async (stageEverything = commitsAll) => {
     const message = description.trim() ? `${summary.trim()}\n\n${description.trim()}` : summary;
-    if (commitsAll) await stageAll.mutateAsync(unstaged);
+    if (stageEverything && unstaged.length > 0) await stageAll.mutateAsync(unstaged);
     commit.mutate(
-      { message, amend },
+      { message, amend, skipHooks },
       {
         onSuccess: () => {
           clearDraft(path);
           setAmend(false);
+          setSkipHooks(false);
+          if (pushAfterCommit) onCommitted();
         },
       },
     );
@@ -369,11 +393,13 @@ function CommitBox({ path, stagedCount, unstaged }: CommitBoxProps) {
         }
       }}
       onKeyDown={(event) => {
-        // Ctrl+Enter commits from the summary or the description.
+        // Ctrl+Enter commits from the summary or the description;
+        // Ctrl+Shift+Enter stages everything first.
         if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
           event.preventDefault();
           event.stopPropagation();
-          if (canCommit) void submit();
+          const all = commitsAll || (event.shiftKey && unstaged.length > 0);
+          if (canCommit || (all && summary.trim() !== '' && !busy)) void submit(all);
         }
       }}
     >
@@ -386,6 +412,26 @@ function CommitBox({ path, stagedCount, unstaged }: CommitBoxProps) {
           }}
         />
         Amend previous commit
+      </label>
+      <label className={styles.amend} title="Commit without running the repository's git hooks">
+        <input
+          type="checkbox"
+          checked={skipHooks}
+          onChange={(event) => {
+            setSkipHooks(event.target.checked);
+          }}
+        />
+        Skip hooks
+      </label>
+      <label className={styles.amend}>
+        <input
+          type="checkbox"
+          checked={pushAfterCommit}
+          onChange={(event) => {
+            setPushAfterCommit(event.target.checked);
+          }}
+        />
+        Push after committing
       </label>
       <div className={styles.summaryRow}>
         <input
@@ -416,6 +462,17 @@ function CommitBox({ path, stagedCount, unstaged }: CommitBoxProps) {
           setDescription(event.target.value);
         }}
       />
+      <CoAuthorPicker
+        path={path}
+        onAdd={(trailer) => {
+          const body = description.trimEnd();
+          setDescription(
+            body.includes('Co-authored-by:')
+              ? `${body}\n${trailer}`
+              : `${body}${body ? '\n\n' : ''}${trailer}`,
+          );
+        }}
+      />
       {commit.error && (
         <p className={styles.error} role="alert">
           {commit.error.message}
@@ -443,4 +500,69 @@ function ignorePatterns(path: string): { pattern: string; label: string }[] {
     { pattern: `/${path}`, label: 'Ignore this file' },
     ...(extension ? [{ pattern: `*${extension}`, label: `Ignore all ${extension} files` }] : []),
   ];
+}
+
+/** Credits someone else on the commit with a `Co-authored-by:` line. */
+function CoAuthorPicker({ path, onAdd }: { path: string; onAdd: (trailer: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState('');
+  const authors = useRecentAuthors(path).data ?? [];
+  const listId = `co-authors-${path}`;
+  if (!open) {
+    return (
+      <Button
+        size="sm"
+        variant="ghost"
+        className={styles.coAuthor}
+        onClick={() => {
+          setOpen(true);
+        }}
+      >
+        <UserPlus size={14} aria-hidden />
+        Add co-author
+      </Button>
+    );
+  }
+  const add = () => {
+    const typed = value.trim();
+    const known = authors.find((author) => `${author.name} <${author.email}>` === typed);
+    const trailer = known ? `${known.name} <${known.email}>` : typed;
+    if (/^.+ <[^<>\s]+@[^<>\s]+>$/.test(trailer)) {
+      onAdd(`Co-authored-by: ${trailer}`);
+      setValue('');
+      setOpen(false);
+    }
+  };
+  return (
+    <div className={styles.coAuthorRow}>
+      <input
+        className={styles.summary}
+        aria-label="Co-author"
+        placeholder="Name <email>"
+        list={listId}
+        value={value}
+        autoFocus
+        onChange={(event) => {
+          setValue(event.target.value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            event.stopPropagation();
+            add();
+          } else if (event.key === 'Escape') {
+            setOpen(false);
+          }
+        }}
+      />
+      <datalist id={listId}>
+        {authors.map((author) => (
+          <option key={author.email} value={`${author.name} <${author.email}>`} />
+        ))}
+      </datalist>
+      <Button size="sm" onClick={add}>
+        Add
+      </Button>
+    </div>
+  );
 }

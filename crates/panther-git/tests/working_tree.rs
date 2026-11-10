@@ -10,7 +10,7 @@ use panther_domain::commit::CommitId;
 use panther_domain::ports::{CommitLog, CommitWriter, HunkAction, WorkingTree};
 use panther_domain::repository::RepositoryError;
 use panther_domain::working_tree::{
-    ChangedFile, CommitMessage, DiffSide, FileState, HunkRef, LineKind,
+    ChangedFile, CommitMessage, CommitOptions, DiffSide, FileState, HunkRef, LineKind,
 };
 use panther_git::{GitCommitLog, GitCommitWriter, GitWorkingTree};
 use tempfile::TempDir;
@@ -240,7 +240,7 @@ fn commits_staged_changes_and_amends_the_message() {
         .commit(
             dir.path(),
             &CommitMessage::parse("Edit notes").unwrap(),
-            false,
+            CommitOptions::default(),
         )
         .unwrap();
     assert!(tree().status(dir.path()).unwrap().is_clean());
@@ -253,7 +253,10 @@ fn commits_staged_changes_and_amends_the_message() {
         .commit(
             dir.path(),
             &CommitMessage::parse("Edit two notes").unwrap(),
-            true,
+            CommitOptions {
+                amend: true,
+                skip_hooks: false,
+            },
         )
         .unwrap();
     assert_ne!(amended, id);
@@ -270,7 +273,7 @@ fn reports_when_nothing_is_staged() {
     let result = GitCommitWriter::default().commit(
         dir.path(),
         &CommitMessage::parse("Empty").unwrap(),
-        false,
+        CommitOptions::default(),
     );
 
     assert!(matches!(result, Err(RepositoryError::NothingToCommit)));
@@ -296,7 +299,11 @@ fn stages_unstages_and_commits_before_the_first_commit() {
 
     tree().stage(dir.path(), &["first.txt".into()]).unwrap();
     GitCommitWriter::default()
-        .commit(dir.path(), &CommitMessage::parse("First").unwrap(), false)
+        .commit(
+            dir.path(),
+            &CommitMessage::parse("First").unwrap(),
+            CommitOptions::default(),
+        )
         .unwrap();
     assert!(tree().status(dir.path()).unwrap().is_clean());
 }
@@ -307,7 +314,11 @@ fn commit_file_diff_shows_a_committed_change() {
     edit_two_places(&dir);
     tree().stage(dir.path(), &["notes.txt".into()]).unwrap();
     let id: CommitId = GitCommitWriter::default()
-        .commit(dir.path(), &CommitMessage::parse("Edit").unwrap(), false)
+        .commit(
+            dir.path(),
+            &CommitMessage::parse("Edit").unwrap(),
+            CommitOptions::default(),
+        )
         .unwrap();
 
     let diff = GitCommitLog::default()
@@ -487,5 +498,76 @@ fn ignoring_adds_one_line_to_gitignore_and_hides_the_file() {
     assert!(
         !untracked.contains(&"debug.log".to_owned()),
         "{untracked:?}"
+    );
+}
+
+#[test]
+fn skipping_hooks_commits_past_a_rejecting_pre_commit_hook() {
+    let dir = repository();
+    edit_two_places(&dir);
+    tree().stage(dir.path(), &["notes.txt".into()]).unwrap();
+    let hooks = dir.path().join(".git").join("hooks");
+    fs::create_dir_all(&hooks).unwrap();
+    fs::write(
+        hooks.join("pre-commit"),
+        "#!/bin/sh
+echo blocked by hook >&2
+exit 1
+",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(hooks.join("pre-commit"), fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let writer = GitCommitWriter::default();
+    let message = CommitMessage::parse("Past the hook").unwrap();
+
+    assert!(matches!(
+        writer.commit(dir.path(), &message, CommitOptions::default()),
+        Err(RepositoryError::CommitFailed { details }) if details.contains("blocked by hook")
+    ));
+    writer
+        .commit(
+            dir.path(),
+            &message,
+            CommitOptions {
+                amend: false,
+                skip_hooks: true,
+            },
+        )
+        .unwrap();
+    assert!(tree().status(dir.path()).unwrap().is_clean());
+}
+
+#[test]
+fn reads_the_commit_template_without_comment_lines() {
+    let dir = repository();
+    let writer = GitCommitWriter::default();
+    assert_eq!(writer.template(dir.path()).unwrap(), None);
+
+    fs::write(
+        dir.path().join(".gitmessage"),
+        "# What and why?
+[TICKET-] 
+
+Why:
+",
+    )
+    .unwrap();
+    let repository = git2::Repository::open(dir.path()).unwrap();
+    repository
+        .config()
+        .unwrap()
+        .set_str("commit.template", ".gitmessage")
+        .unwrap();
+    assert_eq!(
+        writer.template(dir.path()).unwrap().as_deref(),
+        Some(
+            "[TICKET-] 
+
+Why:"
+        )
     );
 }

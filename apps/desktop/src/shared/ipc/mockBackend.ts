@@ -294,6 +294,15 @@ function createMockBackend(): Backend {
     discardFiles: (_path, files) => Promise.resolve(workingTree.discard(files)),
     applyHunk: (_path, hunk, action) => Promise.resolve(workingTree.applyHunk(hunk, action)),
     commitChanges: (_path, message, amend) => Promise.resolve(workingTree.commit(message, amend)),
+    // `?mockTemplate=1`: the repository has a commit template.
+    commitTemplate: () =>
+      Promise.resolve(
+        ok(
+          new URLSearchParams(window.location.search).get('mockTemplate')
+            ? '[TICKET-] \n\nWhy:'
+            : null,
+        ),
+      ),
     headMessage: () => Promise.resolve(workingTree.headMessage()),
     listBranches: () => Promise.resolve(branchStore.list()),
     createBranch: (_path, name, start, checkout) =>

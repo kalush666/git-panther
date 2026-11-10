@@ -6,9 +6,11 @@ use std::path::{Path, PathBuf};
 use panther_domain::commit::CommitId;
 use panther_domain::ports::{CommitWriter, HunkAction, WorkingTree};
 use panther_domain::repository::RepositoryError;
-use panther_domain::working_tree::{CommitMessage, DiffSide, FileDiff, HunkRef, WorkingTreeStatus};
+use panther_domain::working_tree::{
+    CommitMessage, CommitOptions, DiffSide, FileDiff, HunkRef, WorkingTreeStatus,
+};
 
-use crate::cli::{PatchTarget, apply_patch, commit};
+use crate::cli::{PatchTarget, apply_patch, commit, run_git};
 use crate::libgit2::LineSelection;
 use crate::libgit2::working_tree as git2_tree;
 
@@ -151,9 +153,32 @@ impl CommitWriter for GitCommitWriter {
         &self,
         repository: &Path,
         message: &CommitMessage,
-        amend: bool,
+        options: CommitOptions,
     ) -> Result<CommitId, RepositoryError> {
-        commit(&self.executable, repository, message, amend)
+        commit(&self.executable, repository, message, options)
+    }
+
+    fn template(&self, repository: &Path) -> Result<Option<String>, RepositoryError> {
+        // `--path` expands `~`; a relative path is relative to the repository.
+        let Ok(configured) = run_git(
+            &self.executable,
+            repository,
+            &["config", "--path", "--get", "commit.template"],
+        ) else {
+            return Ok(None);
+        };
+        let configured = configured.trim();
+        if configured.is_empty() {
+            return Ok(None);
+        }
+        let file = repository.join(configured);
+        let text = std::fs::read_to_string(&file).map_err(|error| storage_failed(&file, &error))?;
+        let kept: Vec<&str> = text
+            .lines()
+            .filter(|line| !line.trim_start().starts_with('#'))
+            .collect();
+        let template = kept.join("\n").trim().to_owned();
+        Ok((!template.is_empty()).then_some(template))
     }
 
     fn head_message(&self, repository: &Path) -> Result<Option<String>, RepositoryError> {
