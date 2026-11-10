@@ -757,12 +757,28 @@ function CommitMenu({
             Push tag {tag.name}
           </ContextMenu.Item>
           <ContextMenu.Item
+            className={menu.item}
+            onSelect={() => {
+              actions.openCreate(entry.id, `tag ${tag.name}`);
+            }}
+          >
+            Create branch from {tag.name}…
+          </ContextMenu.Item>
+          <ContextMenu.Item
+            className={`${menu.item} ${menu.danger}`}
+            onSelect={() => {
+              history.run({ action: 'deleteRemoteTag', name: tag.name });
+            }}
+          >
+            Delete tag {tag.name} from the remote
+          </ContextMenu.Item>
+          <ContextMenu.Item
             className={`${menu.item} ${menu.danger}`}
             onSelect={() => {
               history.run({ action: 'deleteTag', name: tag.name });
             }}
           >
-            Delete tag {tag.name}
+            Delete tag {tag.name} locally
           </ContextMenu.Item>
         </ContextMenu.Group>
       ))}

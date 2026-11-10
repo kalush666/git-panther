@@ -128,3 +128,25 @@ fn pushes_any_branch_to_a_named_remote_branch_and_tracks_it() {
         "origin/review/ahead"
     );
 }
+
+#[test]
+fn deletes_a_tag_on_the_remote_but_keeps_it_here() {
+    use panther_domain::history::TagName;
+    use panther_domain::ports::TagStore;
+    use panther_git::GitTagStore;
+
+    let dir = repository();
+    let remote = TempDir::new().unwrap();
+    git(remote.path(), &["init", "-q", "--bare"]);
+    let url = remote.path().to_string_lossy().replace('\\', "/");
+    git(dir.path(), &["remote", "add", "origin", &url]);
+    git(dir.path(), &["tag", "v1.0"]);
+    let tags = GitTagStore::default();
+    let name = TagName::parse("v1.0").unwrap();
+    tags.push(dir.path(), &name).unwrap();
+    assert_eq!(git(remote.path(), &["tag", "--list"]).trim(), "v1.0");
+
+    tags.delete_remote(dir.path(), &name).unwrap();
+    assert_eq!(git(remote.path(), &["tag", "--list"]).trim(), "");
+    assert_eq!(git(dir.path(), &["tag", "--list"]).trim(), "v1.0");
+}

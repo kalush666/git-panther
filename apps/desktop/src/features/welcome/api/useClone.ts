@@ -7,6 +7,8 @@ import { useOpenedHandler, type OnRepositoryOpened } from './useRepositoryAction
 interface CloneInput {
   url: string;
   destination: string;
+  /** Only this many recent commits; all of history when left out. */
+  depth?: number;
 }
 
 /** Runs one clone at a time with live progress and cancellation. */
@@ -15,12 +17,17 @@ export function useClone(onCloned: OnRepositoryOpened) {
   const [progress, setProgress] = useState<CloneProgress | null>(null);
 
   const mutation = useMutation({
-    mutationFn: async ({ url, destination }: CloneInput) => {
+    mutationFn: async ({ url, destination, depth }: CloneInput) => {
       const jobId = crypto.randomUUID();
       runningJob.current = jobId;
       setProgress(null);
       try {
-        return unwrap(await ipc.cloneRepository({ url, destination, jobId }, setProgress));
+        return unwrap(
+          await ipc.cloneRepository(
+            { url, destination, jobId, ...(depth ? { depth } : {}) },
+            setProgress,
+          ),
+        );
       } finally {
         runningJob.current = null;
       }

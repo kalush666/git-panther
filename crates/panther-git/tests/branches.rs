@@ -40,6 +40,7 @@ fn fixture() -> Fixture {
             &CloneRequest {
                 url: RemoteUrl::parse(origin.to_str().unwrap()).unwrap(),
                 destination: clone.clone(),
+                depth: None,
             },
             &mut |_| {},
             &CancellationToken::default(),

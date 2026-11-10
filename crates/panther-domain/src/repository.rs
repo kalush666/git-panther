@@ -74,6 +74,8 @@ impl RemoteUrl {
 pub struct CloneRequest {
     pub url: RemoteUrl,
     pub destination: PathBuf,
+    /// Only this many recent commits (a shallow clone); everything when `None`.
+    pub depth: Option<u32>,
 }
 
 /// One progress update reported while cloning.

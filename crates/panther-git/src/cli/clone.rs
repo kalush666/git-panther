@@ -30,8 +30,12 @@ impl GitCliCloner {
         cancel: &CancellationToken,
     ) -> Result<(), RepositoryError> {
         let mut command = background_command(&self.executable);
+        command.args(["clone", "--progress"]);
+        if let Some(depth) = request.depth {
+            command.arg(format!("--depth={depth}"));
+        }
         command
-            .args(["clone", "--progress", "--"])
+            .arg("--")
             .arg(request.url.as_str())
             .arg(&request.destination);
         match run_transfer(&mut command, on_progress, cancel) {

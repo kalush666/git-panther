@@ -19,7 +19,7 @@ export const commands = {
 	 *  Clones `url` into `destination`, streaming progress to `on_progress`.
 	 *  The UI picks `job_id` so it can cancel with [`cancel_job`].
 	 */
-	cloneRepository: (url: string, destination: string, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<RepositorySummaryDto, AppError>(__TAURI_INVOKE("clone_repository", { url, destination, jobId, onProgress })),
+	cloneRepository: (url: string, destination: string, depth: number | null, jobId: string, onProgress: Channel<CloneProgressDto_Deserialize>) => typedError<RepositorySummaryDto, AppError>(__TAURI_INVOKE("clone_repository", { url, destination, depth, jobId, onProgress })),
 	/**  Asks a running job to stop. Unknown or finished jobs are ignored. */
 	cancelJob: (jobId: string) => typedError<null, AppError>(__TAURI_INVOKE("cancel_job", { jobId })),
 	/**  Recently opened repositories, most recent first. */
@@ -142,6 +142,8 @@ export const commands = {
 	deleteTag: (path: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_tag", { path, name })),
 	/**  Pushes a tag to the default remote. */
 	pushTag: (path: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("push_tag", { path, name })),
+	/**  Deletes a tag on the default remote; the local tag stays. */
+	deleteRemoteTag: (path: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_remote_tag", { path, name })),
 	/**  What Undo would revert, e.g. "Merge topic". */
 	pendingUndo: (path: string) => typedError<string | null, AppError>(__TAURI_INVOKE("pending_undo", { path })),
 	/**  Reverts the last undoable action and returns what it was. */

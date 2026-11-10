@@ -73,6 +73,22 @@ impl TagStore for GitTagStore {
         })
     }
 
+    fn delete_remote(&self, repository: &Path, name: &TagName) -> Result<(), RepositoryError> {
+        let remotes = GitRemoteSync::new(self.executable.clone()).remotes(repository)?;
+        let remote = default_remote(remotes)?;
+        let reference = format!("refs/tags/{name}");
+        run_git(
+            &self.executable,
+            repository,
+            &["push", &remote, "--delete", &reference],
+        )
+        .map(drop)
+        .map_err(|message| {
+            let lines: Vec<String> = message.lines().map(str::to_owned).collect();
+            classify_sync_failure(&lines)
+        })
+    }
+
     fn push(&self, repository: &Path, name: &TagName) -> Result<(), RepositoryError> {
         let remotes = GitRemoteSync::new(self.executable.clone()).remotes(repository)?;
         let remote = default_remote(remotes)?;

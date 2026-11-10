@@ -17,8 +17,8 @@ export const tauriBackend: Backend = {
   openRepository: commands.openRepository,
   initRepository: commands.initRepository,
   refreshRepository: commands.refreshRepository,
-  cloneRepository: ({ url, destination, jobId }, onProgress) =>
-    commands.cloneRepository(url, destination, jobId, progressChannel(onProgress)),
+  cloneRepository: ({ url, destination, depth, jobId }, onProgress) =>
+    commands.cloneRepository(url, destination, depth ?? null, jobId, progressChannel(onProgress)),
   cancelJob: commands.cancelJob,
   listRecentRepositories: commands.listRecentRepositories,
   removeRecentRepository: commands.removeRecentRepository,
@@ -78,6 +78,7 @@ export const tauriBackend: Backend = {
   createTag: commands.createTag,
   deleteTag: commands.deleteTag,
   pushTag: commands.pushTag,
+  deleteRemoteTag: commands.deleteRemoteTag,
   rebasePlan: commands.rebasePlan,
   cherryPickMany: commands.cherryPickMany,
   rebaseInteractive: commands.rebaseInteractive,

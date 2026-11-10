@@ -269,7 +269,15 @@ export function useHistoryActions(path: string): HistoryActions {
           <InlinePrompt
             key={`tag:${prompt.target}`}
             title={`New tag at ${prompt.label}`}
-            fields={[{ label: 'Tag name', initial: '', placeholder: 'v1.2.0' }]}
+            fields={[
+              { label: 'Tag name', initial: '', placeholder: 'v1.2.0' },
+              {
+                label: 'Message',
+                initial: '',
+                placeholder: 'Message, for an annotated tag (optional)',
+                optional: true,
+              },
+            ]}
             submitLabel="Create tag"
             error={
               action.isError && action.variables.action === 'createTag'
@@ -278,12 +286,12 @@ export function useHistoryActions(path: string): HistoryActions {
             }
             isPending={action.isPending}
             onCancel={closePrompt}
-            onSubmit={([name = '']) => {
+            onSubmit={([name = '', message = '']) => {
               const request: HistoryRequest = {
                 action: 'createTag',
                 name,
                 target: prompt.target,
-                message: null,
+                message: message || null,
               };
               action.mutate(request, {
                 onSuccess: () => {
