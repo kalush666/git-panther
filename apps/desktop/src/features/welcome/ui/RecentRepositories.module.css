@@ -76,3 +76,32 @@
   background: var(--gp-bg-overlay);
   color: var(--gp-text-primary);
 }
+
+.star {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: var(--gp-space-1);
+  border: none;
+  border-radius: var(--gp-radius-sm);
+  background: transparent;
+  color: var(--gp-text-muted);
+  cursor: pointer;
+}
+
+.star:hover {
+  color: var(--gp-text-primary);
+}
+
+.star[aria-pressed='true'] {
+  color: var(--gp-warning);
+}
+
+.star[aria-pressed='true'] svg {
+  fill: currentColor;
+}
+
+.star:focus-visible {
+  outline: 2px solid var(--gp-focus-ring);
+  outline-offset: 1px;
+}
