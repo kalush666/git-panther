@@ -16,6 +16,7 @@ import {
   useUnstageFiles,
   useWorkingTreeStatus,
 } from '../api/useWorkingTree';
+import { useSaveStash } from '../api/useStashes';
 import { CHANGE_LETTERS } from '../model/changeLetters';
 import { useCommitDraft, useCommitDrafts, useCommitPreferences } from '../model/workspace';
 import { ConflictSection } from './ConflictSection';
@@ -51,7 +52,12 @@ export function StagingPanel({
   const unstage = useUnstageFiles(path);
   const discard = useDiscardFiles(path);
   const ignore = useIgnorePath(path);
-  const actionError = stage.error ?? unstage.error ?? discard.error ?? ignore.error;
+  const stashFile = useSaveStash(path);
+  const actionError =
+    stage.error ?? unstage.error ?? discard.error ?? ignore.error ?? stashFile.error;
+  const stashOne = (file: string) => {
+    stashFile.mutate({ message: file, includeUntracked: true, files: [file] });
+  };
 
   if (status.isError) {
     return (
@@ -80,6 +86,7 @@ export function StagingPanel({
           }}
           onShowHistory={onShowHistory}
           onIgnore={ignore.mutate}
+          onStashFile={stashOne}
           bulkAction={
             <span className={styles.bulk}>
               <ConfirmButton
@@ -138,6 +145,7 @@ export function StagingPanel({
           }}
           onShowHistory={onShowHistory}
           onIgnore={ignore.mutate}
+          onStashFile={stashOne}
           bulkAction={
             <Button
               size="sm"
@@ -191,6 +199,8 @@ interface FileSectionProps {
   onShowHistory: (file: string) => void;
   /** Adds a `.gitignore` line, e.g. `/notes/todo.md` or `*.log`. */
   onIgnore: (pattern: string) => void;
+  /** Stashes just this file. */
+  onStashFile: (file: string) => void;
   bulkAction: ReactNode;
   rowActions: (file: ChangedFile) => ReactNode;
 }
@@ -204,6 +214,7 @@ function FileSection({
   onToggle,
   onShowHistory,
   onIgnore,
+  onStashFile,
   bulkAction,
   rowActions,
 }: FileSectionProps) {
@@ -264,6 +275,14 @@ function FileSection({
                         }}
                       >
                         File history
+                      </ContextMenu.Item>
+                      <ContextMenu.Item
+                        className={menu.item}
+                        onSelect={() => {
+                          onStashFile(file.path);
+                        }}
+                      >
+                        Stash this file
                       </ContextMenu.Item>
                       <ContextMenu.Item
                         className={menu.item}

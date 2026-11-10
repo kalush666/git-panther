@@ -210,3 +210,32 @@
   outline: 2px solid var(--gp-focus-ring);
   outline-offset: 1px;
 }
+
+.renameInput {
+  width: calc(100% - var(--gp-space-4));
+  height: var(--gp-row-height);
+  margin: 0 var(--gp-space-2);
+  padding: 0 var(--gp-space-2);
+  border: 1px solid var(--gp-accent);
+  border-radius: var(--gp-radius-sm);
+  background: var(--gp-bg-surface);
+  color: var(--gp-text-primary);
+  font: inherit;
+}
+
+.stashFiles {
+  margin: 0 var(--gp-space-2) var(--gp-space-1) var(--gp-space-6);
+  padding: 0;
+  border-left: 1px solid var(--gp-border-subtle);
+  list-style: none;
+}
+
+.stashFile {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-space-1);
+  min-height: var(--gp-row-height);
+  padding-left: var(--gp-space-2);
+  font-family: var(--gp-font-mono);
+  font-size: var(--gp-text-sm);
+}

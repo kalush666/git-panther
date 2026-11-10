@@ -79,7 +79,13 @@ export const commands = {
 	/**  Stash entries, newest first. */
 	listStashes: (path: string) => typedError<StashDto[], AppError>(__TAURI_INVOKE("list_stashes", { path })),
 	/**  Stashes uncommitted changes, and untracked files if asked. */
-	saveStash: (path: string, message: string | null, includeUntracked: boolean) => typedError<null, AppError>(__TAURI_INVOKE("save_stash", { path, message, includeUntracked })),
+	saveStash: (path: string, message: string | null, includeUntracked: boolean, files: string[]) => typedError<null, AppError>(__TAURI_INVOKE("save_stash", { path, message, includeUntracked, files })),
+	/**  The files a stash entry changes. */
+	stashFiles: (path: string, index: number) => typedError<string[], AppError>(__TAURI_INVOKE("stash_files", { path, index })),
+	/**  Puts one file's stashed version in the work tree; the stash stays. */
+	applyStashFile: (path: string, index: number, file: string) => typedError<null, AppError>(__TAURI_INVOKE("apply_stash_file", { path, index, file })),
+	/**  Gives a stash entry a new name. */
+	renameStash: (path: string, index: number, message: string) => typedError<null, AppError>(__TAURI_INVOKE("rename_stash", { path, index, message })),
 	/**  Applies a stash entry; with `pop`, removes it once it applied cleanly. */
 	applyStash: (path: string, index: number, pop: boolean) => typedError<null, AppError>(__TAURI_INVOKE("apply_stash", { path, index, pop })),
 	/**  Deletes a stash entry. */

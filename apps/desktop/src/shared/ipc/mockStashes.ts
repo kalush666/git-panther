@@ -34,8 +34,13 @@ export function createMockStashes(workingTree: ReturnType<typeof createMockWorki
       })),
     }),
 
-    save: (message: string | null, includeUntracked: boolean, branch: string): Result<null> => {
-      const files = workingTree.takeChanges(includeUntracked);
+    save: (
+      message: string | null,
+      includeUntracked: boolean,
+      branch: string,
+      only?: readonly string[],
+    ): Result<null> => {
+      const files = workingTree.takeChanges(includeUntracked || (only?.length ?? 0) > 0, only);
       if (!files) return failure('nothingToStash', 'There are no local changes to stash.');
       const text = message?.trim() ? message.trim() : 'WIP';
       entries = [{ message: `On ${branch}: ${text}`, files }, ...entries];
@@ -50,6 +55,25 @@ export function createMockStashes(workingTree: ReturnType<typeof createMockWorki
         entries = entries.filter((candidate) => candidate !== entry);
       }
       return restored;
+    },
+
+    files: (index: number): Result<string[]> => {
+      const entry = find(index);
+      return entry ? { status: 'ok', data: entry.files.map((file) => file.path) } : notFound(index);
+    },
+
+    /** Puts one file back; the entry keeps it too. */
+    applyFile: (index: number, path: string): Result<null> => {
+      const file = find(index)?.files.find((candidate) => candidate.path === path);
+      if (!file) return notFound(index);
+      return workingTree.restoreChanges([structuredClone(file)]);
+    },
+
+    rename: (index: number, message: string): Result<null> => {
+      const entry = find(index);
+      if (!entry) return notFound(index);
+      entries = [{ ...entry, message: message.trim() }, ...entries.filter((e) => e !== entry)];
+      return { status: 'ok', data: null };
     },
 
     /** Drops entry `index`; `onDropped` receives a way to put it back, for Undo. */

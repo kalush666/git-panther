@@ -188,10 +188,11 @@ export function createMockWorkingTree() {
     headMessage: (): Result<string | null> => ok(`${headMessage}\n`),
 
     /** Removes and returns the changes a stash would take, or `null` if there are none. */
-    takeChanges: (includeUntracked: boolean): MockFile[] | null => {
+    takeChanges: (includeUntracked: boolean, only?: readonly string[]): MockFile[] | null => {
       const taken = files.filter(
         (file) =>
           (includeUntracked || file.kind !== 'untracked') &&
+          (only === undefined || only.length === 0 || only.includes(file.path)) &&
           (file.staged.length > 0 || file.unstaged.length > 0),
       );
       if (taken.length === 0) return null;

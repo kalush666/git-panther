@@ -47,7 +47,11 @@ export const tauriBackend: Backend = {
   deleteBranch: commands.deleteBranch,
   listRemotes: commands.listRemotes,
   listStashes: commands.listStashes,
-  saveStash: commands.saveStash,
+  saveStash: (path, message, includeUntracked, files) =>
+    commands.saveStash(path, message, includeUntracked, files ?? []),
+  stashFiles: commands.stashFiles,
+  applyStashFile: commands.applyStashFile,
+  renameStash: commands.renameStash,
   applyStash: commands.applyStash,
   dropStash: commands.dropStash,
   repositoryOperation: commands.repositoryOperation,

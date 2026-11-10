@@ -71,6 +71,7 @@ impl StashStore for GitStashStore {
         repository: &Path,
         message: Option<&str>,
         include_untracked: bool,
+        paths: &[String],
     ) -> Result<(), RepositoryError> {
         // `git stash` succeeds without doing anything on a clean tree, so check first.
         let changes = status(repository)?;
@@ -89,6 +90,10 @@ impl StashStore for GitStashStore {
         }
         if let Some(message) = message.map(str::trim).filter(|text| !text.is_empty()) {
             args.extend(["--message", message]);
+        }
+        if !paths.is_empty() {
+            args.push("--");
+            args.extend(paths.iter().map(String::as_str));
         }
         self.git(repository, &args)
     }
@@ -123,6 +128,75 @@ impl StashStore for GitStashStore {
         self.git(
             repository,
             &["stash", "drop", &format!("stash@{{{index}}}")],
+        )
+    }
+
+    fn files(&self, repository: &Path, index: usize) -> Result<Vec<String>, RepositoryError> {
+        self.ensure_exists(repository, index)?;
+        let entry = format!("stash@{{{index}}}");
+        let listed = run_git(
+            &self.executable,
+            repository,
+            &[
+                "stash",
+                "show",
+                "--name-only",
+                "--include-untracked",
+                &entry,
+            ],
+        )
+        .map_err(|message| classify(&message))?;
+        Ok(listed
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .map(str::to_owned)
+            .collect())
+    }
+
+    fn apply_file(
+        &self,
+        repository: &Path,
+        index: usize,
+        file: &str,
+    ) -> Result<(), RepositoryError> {
+        self.ensure_exists(repository, index)?;
+        let tracked = format!("--source=stash@{{{index}}}");
+        // Untracked files live in the stash's third parent.
+        let untracked = format!("--source=stash@{{{index}}}^3");
+        self.git(repository, &["restore", &tracked, "--worktree", "--", file])
+            .or_else(|_| {
+                self.git(
+                    repository,
+                    &["restore", &untracked, "--worktree", "--", file],
+                )
+            })
+    }
+
+    fn rename(
+        &self,
+        repository: &Path,
+        index: usize,
+        message: &str,
+    ) -> Result<(), RepositoryError> {
+        let stash = self
+            .stashes(repository)?
+            .into_iter()
+            .find(|stash| stash.index == index)
+            .ok_or(RepositoryError::StashNotFound { index })?;
+        self.git(
+            repository,
+            &["stash", "drop", &format!("stash@{{{index}}}")],
+        )?;
+        self.git(
+            repository,
+            &[
+                "stash",
+                "store",
+                "--message",
+                message.trim(),
+                stash.id.as_str(),
+            ],
         )
     }
 }
