@@ -258,7 +258,18 @@ export interface Backend {
   setIdentity(path: string, identity: Identity): Promise<Result<null>>;
   /** Newest first. */
   listStashes(path: string): Promise<Result<Stash[]>>;
-  saveStash(path: string, message: string | null, includeUntracked: boolean): Promise<Result<null>>;
+  /** Stashes changes; only `files` when given. */
+  saveStash(
+    path: string,
+    message: string | null,
+    includeUntracked: boolean,
+    files?: string[],
+  ): Promise<Result<null>>;
+  /** The files a stash entry changes. */
+  stashFiles(path: string, index: number): Promise<Result<string[]>>;
+  /** Puts one file's stashed version in the work tree; the stash stays. */
+  applyStashFile(path: string, index: number, file: string): Promise<Result<null>>;
+  renameStash(path: string, index: number, message: string): Promise<Result<null>>;
   /** With `pop`, the entry is removed once it applied cleanly. */
   applyStash(path: string, index: number, pop: boolean): Promise<Result<null>>;
   dropStash(path: string, index: number): Promise<Result<null>>;

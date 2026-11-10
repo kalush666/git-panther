@@ -1336,12 +1336,56 @@ pub async fn save_stash(
     path: String,
     message: Option<String>,
     include_untracked: bool,
+    files: Vec<String>,
 ) -> Result<(), AppError> {
     let stashes = services.stashes.clone();
     run_blocking(move || {
-        Ok(stashes.save(&PathBuf::from(path), message.as_deref(), include_untracked)?)
+        Ok(stashes.save(
+            &PathBuf::from(path),
+            message.as_deref(),
+            include_untracked,
+            &files,
+        )?)
     })
     .await
+}
+
+/// The files a stash entry changes.
+#[tauri::command]
+#[specta::specta]
+pub async fn stash_files(
+    services: State<'_, AppServices>,
+    path: String,
+    index: u32,
+) -> Result<Vec<String>, AppError> {
+    let stashes = services.stashes.clone();
+    run_blocking(move || Ok(stashes.files(&PathBuf::from(path), widen(index))?)).await
+}
+
+/// Puts one file's stashed version in the work tree; the stash stays.
+#[tauri::command]
+#[specta::specta]
+pub async fn apply_stash_file(
+    services: State<'_, AppServices>,
+    path: String,
+    index: u32,
+    file: String,
+) -> Result<(), AppError> {
+    let stashes = services.stashes.clone();
+    run_blocking(move || Ok(stashes.apply_file(&PathBuf::from(path), widen(index), &file)?)).await
+}
+
+/// Gives a stash entry a new name.
+#[tauri::command]
+#[specta::specta]
+pub async fn rename_stash(
+    services: State<'_, AppServices>,
+    path: String,
+    index: u32,
+    message: String,
+) -> Result<(), AppError> {
+    let stashes = services.stashes.clone();
+    run_blocking(move || Ok(stashes.rename(&PathBuf::from(path), widen(index), &message)?)).await
 }
 
 /// Applies a stash entry; with `pop`, removes it once it applied cleanly.

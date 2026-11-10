@@ -14,8 +14,36 @@ export function useStashes(path: string) {
 export function useSaveStash(path: string) {
   return useRepositoryMutation(
     path,
-    ({ message, includeUntracked }: { message: string | null; includeUntracked: boolean }) =>
-      ipc.saveStash(path, message, includeUntracked),
+    ({
+      message,
+      includeUntracked,
+      files,
+    }: {
+      message: string | null;
+      includeUntracked: boolean;
+      /** Only these files; every change when left out. */
+      files?: string[];
+    }) => ipc.saveStash(path, message, includeUntracked, files),
+  );
+}
+
+export function useStashFiles(path: string, index: number | null) {
+  return useQuery({
+    queryKey: [...repositoryQueryKey(path), 'stashFiles', index],
+    queryFn: async () => unwrap(await ipc.stashFiles(path, index ?? 0)),
+    enabled: index !== null,
+  });
+}
+
+export function useApplyStashFile(path: string) {
+  return useRepositoryMutation(path, ({ index, file }: { index: number; file: string }) =>
+    ipc.applyStashFile(path, index, file),
+  );
+}
+
+export function useRenameStash(path: string) {
+  return useRepositoryMutation(path, ({ index, message }: { index: number; message: string }) =>
+    ipc.renameStash(path, index, message),
   );
 }
 

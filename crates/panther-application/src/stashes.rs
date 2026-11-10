@@ -39,8 +39,10 @@ impl Stashes {
         repository: &Path,
         message: Option<&str>,
         include_untracked: bool,
+        paths: &[String],
     ) -> Result<(), RepositoryError> {
-        self.store.save(repository, message, include_untracked)
+        self.store
+            .save(repository, message, include_untracked, paths)
     }
 
     /// Applies an entry and keeps it.
@@ -75,5 +77,38 @@ impl Stashes {
             }
             _ => self.store.remove(repository, index),
         }
+    }
+
+    /// # Errors
+    /// Propagates [`StashStore::files`] errors.
+    pub fn files(&self, repository: &Path, index: usize) -> Result<Vec<String>, RepositoryError> {
+        self.store.files(repository, index)
+    }
+
+    /// # Errors
+    /// Propagates [`StashStore::apply_file`] errors.
+    pub fn apply_file(
+        &self,
+        repository: &Path,
+        index: usize,
+        file: &str,
+    ) -> Result<(), RepositoryError> {
+        self.store.apply_file(repository, index, file)
+    }
+
+    /// # Errors
+    /// [`RepositoryError::Git`] for an empty message, or [`StashStore::rename`] errors.
+    pub fn rename(
+        &self,
+        repository: &Path,
+        index: usize,
+        message: &str,
+    ) -> Result<(), RepositoryError> {
+        if message.trim().is_empty() {
+            return Err(RepositoryError::Git {
+                details: "A stash needs a name.".into(),
+            });
+        }
+        self.store.rename(repository, index, message)
     }
 }

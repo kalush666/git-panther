@@ -278,7 +278,8 @@ pub trait StashStore: Send + Sync {
     /// [`RepositoryError`] when the repository cannot be read.
     fn stashes(&self, repository: &Path) -> Result<Vec<Stash>, RepositoryError>;
 
-    /// Stashes staged and unstaged changes, and untracked files if asked.
+    /// Stashes staged and unstaged changes, and untracked files if asked;
+    /// only the files in `paths` when it is not empty.
     ///
     /// # Errors
     /// [`RepositoryError::NothingToStash`] for a clean work tree.
@@ -287,7 +288,33 @@ pub trait StashStore: Send + Sync {
         repository: &Path,
         message: Option<&str>,
         include_untracked: bool,
+        paths: &[String],
     ) -> Result<(), RepositoryError>;
+
+    /// The files entry `index` changes, untracked ones included.
+    ///
+    /// # Errors
+    /// [`RepositoryError::StashNotFound`].
+    fn files(&self, repository: &Path, index: usize) -> Result<Vec<String>, RepositoryError>;
+
+    /// Puts the stashed version of one `file` from entry `index` in the work
+    /// tree, leaving the entry in place.
+    ///
+    /// # Errors
+    /// [`RepositoryError::StashNotFound`], or a git error for a file it lacks.
+    fn apply_file(
+        &self,
+        repository: &Path,
+        index: usize,
+        file: &str,
+    ) -> Result<(), RepositoryError>;
+
+    /// Gives entry `index` a new message; it moves to the top of the list.
+    ///
+    /// # Errors
+    /// [`RepositoryError::StashNotFound`].
+    fn rename(&self, repository: &Path, index: usize, message: &str)
+    -> Result<(), RepositoryError>;
 
     /// Applies entry `index`; with `drop_after` (a pop) the entry is removed
     /// once it applied cleanly.

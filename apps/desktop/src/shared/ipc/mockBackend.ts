@@ -380,8 +380,11 @@ function createMockBackend(): Backend {
         signedIn() ? branchStore.push(options.forceWithLease ?? false) : AUTHENTICATION_FAILED,
       ),
     listStashes: () => Promise.resolve(stashes.list()),
-    saveStash: (_path, message, includeUntracked) =>
-      Promise.resolve(stashes.save(message, includeUntracked, branchStore.headName())),
+    saveStash: (_path, message, includeUntracked, files) =>
+      Promise.resolve(stashes.save(message, includeUntracked, branchStore.headName(), files)),
+    stashFiles: (_path, index) => Promise.resolve(stashes.files(index)),
+    applyStashFile: (_path, index, file) => Promise.resolve(stashes.applyFile(index, file)),
+    renameStash: (_path, index, message) => Promise.resolve(stashes.rename(index, message)),
     applyStash: (_path, index, pop) => Promise.resolve(stashes.apply(index, pop)),
     dropStash: (_path, index) =>
       Promise.resolve(

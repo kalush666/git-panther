@@ -82,7 +82,7 @@ fn saving_and_popping_a_stash_restores_the_changes() {
     let repo = dir.path();
     fs::write(repo.join("notes.txt"), "work in progress\n").unwrap();
 
-    stash().save(repo, Some("half done"), false).unwrap();
+    stash().save(repo, Some("half done"), false, &[]).unwrap();
 
     assert_eq!(read(repo, "notes.txt"), "base\n");
     let stashes = stash().stashes(repo).unwrap();
@@ -99,7 +99,7 @@ fn applying_keeps_the_entry_and_dropping_removes_it() {
     let dir = repository();
     let repo = dir.path();
     fs::write(repo.join("notes.txt"), "kept\n").unwrap();
-    stash().save(repo, None, false).unwrap();
+    stash().save(repo, None, false, &[]).unwrap();
 
     stash().apply(repo, 0, false).unwrap();
     assert_eq!(stash().stashes(repo).unwrap().len(), 1);
@@ -119,10 +119,10 @@ fn untracked_files_are_only_stashed_when_asked() {
     fs::write(repo.join("new.txt"), "new\n").unwrap();
 
     assert!(matches!(
-        stash().save(repo, None, false),
+        stash().save(repo, None, false, &[]),
         Err(RepositoryError::NothingToStash)
     ));
-    stash().save(repo, None, true).unwrap();
+    stash().save(repo, None, true, &[]).unwrap();
     assert!(!repo.join("new.txt").exists());
 }
 
@@ -131,7 +131,7 @@ fn a_conflicting_pop_keeps_the_stash_entry() {
     let dir = repository();
     let repo = dir.path();
     fs::write(repo.join("notes.txt"), "stashed\n").unwrap();
-    stash().save(repo, None, false).unwrap();
+    stash().save(repo, None, false, &[]).unwrap();
     commit_file(repo, "notes.txt", "committed\n");
 
     let result = stash().apply(repo, 0, true);
@@ -238,7 +238,7 @@ fn a_dropped_stash_can_be_restored() {
     let dir = repository();
     let repo = dir.path();
     fs::write(repo.join("notes.txt"), "keep me\n").unwrap();
-    stash().save(repo, Some("precious"), false).unwrap();
+    stash().save(repo, Some("precious"), false, &[]).unwrap();
     let dropped = stash().stashes(repo).unwrap().remove(0);
 
     stash().remove(repo, 0).unwrap();
@@ -248,4 +248,45 @@ fn a_dropped_stash_can_be_restored() {
     assert_eq!(back.len(), 1);
     assert_eq!(back[0].id, dropped.id);
     assert!(back[0].message.contains("precious"));
+}
+
+#[test]
+fn stashes_only_the_chosen_files_and_restores_one_file() {
+    let dir = repository();
+    let repo = dir.path();
+    commit_file(repo, "a.txt", "a\n");
+    commit_file(repo, "b.txt", "b\n");
+    fs::write(repo.join("a.txt"), "a changed\n").unwrap();
+    fs::write(repo.join("b.txt"), "b changed\n").unwrap();
+
+    stash()
+        .save(repo, Some("only a"), false, &["a.txt".into()])
+        .unwrap();
+    assert_eq!(fs::read_to_string(repo.join("a.txt")).unwrap(), "a\n");
+    assert_eq!(
+        fs::read_to_string(repo.join("b.txt")).unwrap(),
+        "b changed\n"
+    );
+    assert_eq!(stash().files(repo, 0).unwrap(), ["a.txt"]);
+
+    stash().apply_file(repo, 0, "a.txt").unwrap();
+    assert_eq!(
+        fs::read_to_string(repo.join("a.txt")).unwrap(),
+        "a changed\n"
+    );
+    assert_eq!(stash().stashes(repo).unwrap().len(), 1, "the stash stays");
+}
+
+#[test]
+fn renames_a_stash() {
+    let dir = repository();
+    let repo = dir.path();
+    commit_file(repo, "a.txt", "a\n");
+    fs::write(repo.join("a.txt"), "a changed\n").unwrap();
+    stash().save(repo, Some("wip"), false, &[]).unwrap();
+
+    stash().rename(repo, 0, "Login form, half done").unwrap();
+    let stashes = stash().stashes(repo).unwrap();
+    assert_eq!(stashes.len(), 1);
+    assert_eq!(stashes[0].message, "Login form, half done");
 }

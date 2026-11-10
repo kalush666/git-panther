@@ -399,7 +399,22 @@ mod tests {
         fn stashes(&self, _: &Path) -> Result<Vec<Stash>, RepositoryError> {
             Ok(Vec::new())
         }
-        fn save(&self, _: &Path, _: Option<&str>, _: bool) -> Result<(), RepositoryError> {
+        fn save(
+            &self,
+            _: &Path,
+            _: Option<&str>,
+            _: bool,
+            _: &[String],
+        ) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
+        fn files(&self, _: &Path, _: usize) -> Result<Vec<String>, RepositoryError> {
+            unreachable!()
+        }
+        fn apply_file(&self, _: &Path, _: usize, _: &str) -> Result<(), RepositoryError> {
+            unreachable!()
+        }
+        fn rename(&self, _: &Path, _: usize, _: &str) -> Result<(), RepositoryError> {
             unreachable!()
         }
         fn apply(&self, _: &Path, _: usize, _: bool) -> Result<(), RepositoryError> {
