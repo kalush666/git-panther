@@ -17,8 +17,8 @@ export default defineConfig({
   // Locally, more workers overload the static server on slower machines.
   workers: process.env.CI ? undefined : 2,
   forbidOnly: Boolean(process.env.CI),
-  // One retry, here as in CI; a test that needs it is reported as flaky.
-  retries: 1,
+  // No retries: a test that passes only sometimes is a bug to fix, not to hide.
+  retries: 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: { baseURL: PREVIEW_URL, trace: 'on-first-retry' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],

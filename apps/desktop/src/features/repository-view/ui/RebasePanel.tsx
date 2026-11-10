@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { GripVertical } from 'lucide-react';
-import { useState, type KeyboardEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 
 import { ipc, unwrap, type CommitSummary, type RebaseStep } from '../../../shared/ipc';
 import { Button } from '../../../shared/ui/Button/Button';
@@ -59,22 +59,38 @@ export function RebasePanel({ path, target, history }: RebasePanelProps) {
   });
   const [edited, setEdited] = useState<Row[] | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
-  const rows: Row[] =
-    edited ??
+  const planned = (): Row[] =>
     (plan.data ?? []).map((commit) => ({ commit, kind: 'pick', message: commit.summary }));
+  const rows: Row[] = edited ?? planned();
   const changed = rows.some(
     (row, index) => row.kind !== 'pick' || row.commit.id !== plan.data?.[index]?.id,
   );
+  /** The commit whose row should have focus once a move is on screen. */
+  const focusAfterMove = useRef<string | null>(null);
+  // Runs in the same commit as the move, before any later key or click, so
+  // it can never pull focus back from a row the user went to meanwhile.
+  useLayoutEffect(() => {
+    const commit = focusAfterMove.current;
+    if (commit === null) return;
+    focusAfterMove.current = null;
+    const index = rows.findIndex((row) => row.commit.id === commit);
+    if (index >= 0) document.getElementById(rowId(index))?.focus();
+  });
 
+  // Each change builds on the latest rows, so quick changes in a row never undo each other.
   const update = (index: number, change: Partial<Row>) => {
-    setEdited(rows.map((row, at) => (at === index ? { ...row, ...change } : row)));
+    setEdited((current) =>
+      (current ?? planned()).map((row, at) => (at === index ? { ...row, ...change } : row)),
+    );
   };
   const move = (from: number, to: number) => {
-    if (to < 0 || to >= rows.length || from === to) return;
-    const next = [...rows];
-    const [row] = next.splice(from, 1);
-    if (row) next.splice(to, 0, row);
-    setEdited(next);
+    setEdited((current) => {
+      const next = [...(current ?? planned())];
+      if (to < 0 || to >= next.length || from === to) return current;
+      const [row] = next.splice(from, 1);
+      if (row) next.splice(to, 0, row);
+      return next;
+    });
   };
 
   const onRowKey = (event: KeyboardEvent<HTMLLIElement>, index: number) => {
@@ -82,11 +98,9 @@ export function RebasePanel({ path, target, history }: RebasePanelProps) {
     if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
       event.preventDefault();
       const to = index + (event.key === 'ArrowUp' ? -1 : 1);
-      move(index, to);
       // Keep focus on the moved row.
-      requestAnimationFrame(() => {
-        document.getElementById(rowId(to))?.focus();
-      });
+      focusAfterMove.current = rows[index]?.commit.id ?? null;
+      move(index, to);
       return;
     }
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {

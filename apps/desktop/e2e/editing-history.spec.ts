@@ -28,7 +28,6 @@ test.describe('editing history', () => {
     // Keys: Alt+Down moves the row, D drops the focused one.
     await page.keyboard.press('Alt+ArrowDown');
     await expect(steps.nth(1).getByRole('radio', { name: 'Reword' })).toBeChecked();
-    // The moved row takes focus a frame later; wait so it cannot take it back.
     await expect(steps.nth(1)).toBeFocused();
     await steps.last().press('d');
     await expect(steps.last().getByRole('radio', { name: 'Drop' })).toBeChecked();
@@ -37,6 +36,37 @@ test.describe('editing history', () => {
     await expect(panel).toBeHidden();
     await expect(page.getByText(/^Rebased the commits after commit \w+$/)).toBeVisible();
     await expect(page.getByRole('status').getByRole('button', { name: 'Undo' })).toBeEnabled();
+  });
+
+  test('keys on another row right after a move reach that row, however busy the machine', async ({
+    page,
+  }) => {
+    // A busy machine: animation frames come 300 ms late.
+    await page.addInitScript(() => {
+      window.requestAnimationFrame = (callback) =>
+        window.setTimeout(() => {
+          callback(performance.now());
+        }, 300);
+    });
+    await page.goto('/');
+    await page.getByRole('button', { name: /^Open repository/ }).click();
+    await commitRow(page, 'Change number 4996').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Interactive rebase of later commits…' }).click();
+    const steps = page
+      .getByRole('region', { name: 'Interactive rebase' })
+      .getByRole('list', { name: 'Rebase steps' })
+      .getByRole('listitem');
+    await expect(steps).toHaveCount(5);
+
+    await steps.first().press('Alt+ArrowDown');
+    await steps.last().press('d');
+    await steps.nth(2).press('s');
+    await page.waitForTimeout(500);
+
+    await expect(steps.last().getByRole('radio', { name: 'Drop' })).toBeChecked();
+    await expect(steps.nth(2).getByRole('radio', { name: 'Squash' })).toBeChecked();
+    await expect(steps.nth(1).getByRole('radio', { name: 'Pick' })).toBeChecked();
+    await expect(steps.nth(2)).toBeFocused();
   });
 
   test('resolves a conflict in the editor', async ({ page }) => {
